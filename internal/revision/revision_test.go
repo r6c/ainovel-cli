@@ -197,6 +197,88 @@ func TestProjectorDeduplicatesRepeatedKnowledgeLearn(t *testing.T) {
 	}
 }
 
+func TestProjectorRejectsReaderRevealOfUnknownTruth(t *testing.T) {
+	st := newRevisionTestStore(t, 1)
+	records := []domain.ChapterRecord{testRecord(1, "正文", domain.ChapterFacts{
+		Title: "第一章", Summary: "错误揭示", KeyEvents: []string{"错误揭示"},
+		KnowledgeUpdates: []domain.KnowledgeUpdate{{ID: "k_missing", Action: "reveal_to_reader"}},
+	}, domain.StyleDelta{}, time.Now())}
+	if err := NewProjector(st).Apply(records); err == nil {
+		t.Fatal("expected projector to reject reader reveal of unknown truth")
+	}
+}
+
+func TestProjectorKeepsFirstReaderRevealChapter(t *testing.T) {
+	st := newRevisionTestStore(t, 3)
+	now := time.Now()
+	records := []domain.ChapterRecord{
+		testRecord(1, "正文一", domain.ChapterFacts{Title: "第一章", Summary: "建立", KeyEvents: []string{"建立"},
+			KnowledgeUpdates: []domain.KnowledgeUpdate{{ID: "k", Action: "establish", Truth: "真相"}}}, domain.StyleDelta{}, now),
+		testRecord(2, "正文二", domain.ChapterFacts{Title: "第二章", Summary: "揭示", KeyEvents: []string{"揭示"},
+			KnowledgeUpdates: []domain.KnowledgeUpdate{{ID: "k", Action: "reveal_to_reader"}}}, domain.StyleDelta{}, now.Add(time.Minute)),
+		testRecord(3, "正文三", domain.ChapterFacts{Title: "第三章", Summary: "重提", KeyEvents: []string{"重提"},
+			KnowledgeUpdates: []domain.KnowledgeUpdate{{ID: "k", Action: "reveal_to_reader"}}}, domain.StyleDelta{}, now.Add(2*time.Minute)),
+	}
+	if err := NewProjector(st).Apply(records); err != nil {
+		t.Fatal(err)
+	}
+	entries, err := st.World.LoadKnowledgeState()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(entries) != 1 || entries[0].ReaderRevealedAt != 2 {
+		t.Fatalf("projector changed first reader reveal: %+v", entries)
+	}
+}
+
+func TestProjectorAllowsRemovingReaderReveal(t *testing.T) {
+	st := newRevisionTestStore(t, 2)
+	if err := st.World.SaveKnowledgeState([]domain.KnowledgeEntry{{
+		ID: "k", Truth: "真相", EstablishedAt: 1, ReaderRevealedAt: 2,
+	}}); err != nil {
+		t.Fatal(err)
+	}
+	records := []domain.ChapterRecord{testRecord(1, "正文一", domain.ChapterFacts{
+		Title: "第一章", Summary: "建立真相", KeyEvents: []string{"建立"},
+		KnowledgeUpdates: []domain.KnowledgeUpdate{{ID: "k", Action: "establish", Truth: "真相"}},
+	}, domain.StyleDelta{}, time.Now())}
+	if err := NewProjector(st).Apply(records); err != nil {
+		t.Fatal(err)
+	}
+	entries, err := st.World.LoadKnowledgeState()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(entries) != 1 || entries[0].ReaderRevealedAt != 0 {
+		t.Fatalf("removed reader reveal survived rebuild: %+v", entries)
+	}
+}
+
+func TestProjectorRebuildsReaderRevealFromChapterRecords(t *testing.T) {
+	st := newRevisionTestStore(t, 4)
+	now := time.Now()
+	records := []domain.ChapterRecord{
+		testRecord(1, "正文一", domain.ChapterFacts{
+			Title: "第一章", Summary: "建立真相", KeyEvents: []string{"确认身份"},
+			KnowledgeUpdates: []domain.KnowledgeUpdate{{ID: "k_shadow", Action: "establish", Truth: "黑影是林墨的兄长"}},
+		}, domain.StyleDelta{}, now),
+		testRecord(4, "正文四", domain.ChapterFacts{
+			Title: "第四章", Summary: "向读者揭示", KeyEvents: []string{"读者得知身份"},
+			KnowledgeUpdates: []domain.KnowledgeUpdate{{ID: "k_shadow", Action: "reveal_to_reader"}},
+		}, domain.StyleDelta{}, now.Add(time.Minute)),
+	}
+	if err := NewProjector(st).Apply(records); err != nil {
+		t.Fatalf("project reader reveal: %v", err)
+	}
+	entries, err := st.World.LoadKnowledgeState()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(entries) != 1 || entries[0].ReaderRevealedAt != 4 || len(entries[0].KnownBy) != 0 {
+		t.Fatalf("projected reader reveal wrong: %+v", entries)
+	}
+}
+
 func TestProjectorRebuildsKnowledgeFromChapterRecords(t *testing.T) {
 	st := newRevisionTestStore(t, 3)
 	now := time.Now()

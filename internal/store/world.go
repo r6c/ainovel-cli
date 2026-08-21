@@ -315,6 +315,17 @@ func (s *WorldStore) UpdateKnowledge(chapter int, updates []domain.KnowledgeUpda
 				entries = append(entries, domain.KnowledgeEntry{
 					ID: update.ID, Truth: update.Truth, EstablishedAt: chapter,
 				})
+			case "reveal_to_reader":
+				if strings.TrimSpace(update.Truth) != "" || strings.TrimSpace(update.Character) != "" {
+					return fmt.Errorf("reveal knowledge %q to reader only accepts id", update.ID)
+				}
+				i, ok := idx[update.ID]
+				if !ok {
+					return fmt.Errorf("reveal unknown knowledge %q to reader", update.ID)
+				}
+				if entries[i].ReaderRevealedAt == 0 {
+					entries[i].ReaderRevealedAt = chapter
+				}
 			case "learn":
 				if strings.TrimSpace(update.Character) == "" {
 					return fmt.Errorf("learn knowledge %q requires character", update.ID)
@@ -663,6 +674,11 @@ func renderKnowledge(entries []domain.KnowledgeEntry) string {
 	b.WriteString("# 知识状态\n\n")
 	for _, entry := range entries {
 		fmt.Fprintf(&b, "- **[%s]** %s — 建立于第 %d 章", entry.ID, entry.Truth, entry.EstablishedAt)
+		if entry.ReaderRevealedAt > 0 {
+			fmt.Fprintf(&b, "；读者于第 %d 章获知", entry.ReaderRevealedAt)
+		} else {
+			b.WriteString("；读者尚未知")
+		}
 		if len(entry.KnownBy) == 0 {
 			b.WriteString("；尚无角色获知")
 		} else {

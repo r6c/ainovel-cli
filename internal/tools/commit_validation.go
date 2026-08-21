@@ -120,7 +120,7 @@ func (t *CommitChapterTool) validateCommitArgs(a commitArgs) error {
 				}
 				establishedAt[update.ID] = a.Chapter
 				truth[update.ID] = update.Truth
-			case "learn":
+			case "learn", "reveal_to_reader":
 				at, known := establishedAt[update.ID]
 				if !known {
 					return fmt.Errorf("knowledge_updates[%d] references unknown id %q: %w", i, update.ID, errs.ErrToolPrecondition)

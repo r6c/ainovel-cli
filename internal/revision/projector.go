@@ -193,6 +193,14 @@ func projectKnowledge(records []domain.ChapterRecord) ([]domain.KnowledgeEntry, 
 				entries = append(entries, domain.KnowledgeEntry{
 					ID: update.ID, Truth: update.Truth, EstablishedAt: record.Chapter,
 				})
+			case "reveal_to_reader":
+				i, exists := idx[update.ID]
+				if !exists {
+					return nil, fmt.Errorf("第 %d 章向读者揭示未知真相 %q", record.Chapter, update.ID)
+				}
+				if entries[i].ReaderRevealedAt == 0 {
+					entries[i].ReaderRevealedAt = record.Chapter
+				}
 			case "learn":
 				i, exists := idx[update.ID]
 				if !exists {

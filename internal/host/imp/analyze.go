@@ -15,7 +15,7 @@ import (
 )
 
 // analysisSchemaVersion 是逐章事实 schema 版本，纳入 InputDigest。
-const analysisSchemaVersion = 3
+const analysisSchemaVersion = 4
 
 // ImportedCharacterFact / ImportedWorldFact 是用于全书综合的紧凑观察，不直接写正式角色或世界规则。
 // 至少携带章节号，使综合结果有稳定来源（RFC §9.1）。
@@ -161,6 +161,7 @@ func buildLedger(prior []ImportedChapterFacts) string {
 	active := map[string]string{} // foreshadow id -> desc
 	truths := map[string]string{} // knowledge id -> author truth
 	knownBy := map[string]map[string]bool{}
+	readerKnown := map[string]bool{}
 	var recent []string
 	for _, f := range prior {
 		for _, c := range f.Characters {
@@ -182,6 +183,8 @@ func buildLedger(prior []ImportedChapterFacts) string {
 			switch ku.Action {
 			case "establish":
 				truths[ku.ID] = ku.Truth
+			case "reveal_to_reader":
+				readerKnown[ku.ID] = true
 			case "learn":
 				if knownBy[ku.ID] == nil {
 					knownBy[ku.ID] = map[string]bool{}
@@ -212,6 +215,11 @@ func buildLedger(prior []ImportedChapterFacts) string {
 		b.WriteString("作者真相与角色知情范围（复用 ID，勿让未列角色越权知情）：\n")
 		for _, id := range slices.Sorted(maps.Keys(truths)) {
 			fmt.Fprintf(&b, "- %s：%s", id, truths[id])
+			if readerKnown[id] {
+				b.WriteString("；读者已知")
+			} else {
+				b.WriteString("；读者未知")
+			}
 			if holders := knownBy[id]; len(holders) > 0 {
 				b.WriteString("；已知角色：")
 				b.WriteString(strings.Join(slices.Sorted(maps.Keys(holders)), "、"))
@@ -305,6 +313,13 @@ func validateBatch(r *AnalysisBatchResult, seg *Segmentation, start, end int) er
 				}
 				knowledgeTruths[ku.ID] = ku.Truth
 			case "learn":
+				if _, known := knowledgeTruths[ku.ID]; !known && start == 0 {
+					return fmt.Errorf("章 %d knowledge[%d] 引用未知真相 %q", f.Chapter, j, ku.ID)
+				}
+			case "reveal_to_reader":
+				if strings.TrimSpace(ku.Truth) != "" || strings.TrimSpace(ku.Character) != "" {
+					return fmt.Errorf("章 %d knowledge[%d] reveal_to_reader 只接受 id", f.Chapter, j)
+				}
 				if _, known := knowledgeTruths[ku.ID]; !known && start == 0 {
 					return fmt.Errorf("章 %d knowledge[%d] 引用未知真相 %q", f.Chapter, j, ku.ID)
 				}

@@ -435,6 +435,60 @@ ReaderRevealedAt
 
 本次只更新规划文件，没有修改 reader reveal 生产代码。
 
+### 阶段 16 完成
+
+提交前全量测试、vet、diff check 均通过；已使用中文提交信息建立 Knowledge 批次边界：
+
+```text
+6a7b7f7 功能：追踪作者真相与角色知情状态
+```
+
+Git 提交者身份仍由本机自动配置，未擅自 amend 或修改用户 Git 配置。C1 从干净工作区开始。
+
+### 阶段 17 首个红灯
+
+公共 Store 场景 `establish@1 → reveal_to_reader@3` 编译红灯：`KnowledgeEntry` 缺少 `ReaderRevealedAt`，符合预期。首个绿灯只增加字段与 Store 动作分支。
+
+### 阶段 17 完成
+
+Reader reveal 已在 Store 闭环：正常 reveal、未知引用拒绝、重复 reveal 保留首次章节、同 payload establish→reveal、JSON/Markdown 投影；整个 Store 包通过。
+
+### 阶段 18 完成
+
+Reader reveal 已贯通 ChapterFacts 与 Commit：三动作严格枚举、正常提交、同 payload establish→reveal、未知引用在 Pending 前拒绝、started 重放保留首次章节；整个 tools 包通过。
+
+### 阶段 19 完成
+
+Projector/Rewrite 已覆盖 reader reveal：正常重建、未知历史拒绝、重复保留首次章节、删除 reveal 可清零、删除 establish 且后续 reveal 时在 Pending 前拒绝；revision 与 tools 包通过。
+
+### 阶段 20 完成
+
+Import 已贯通 reader reveal：三动作严格 Schema、首批引用校验、跨批次 reader known ledger、真实发布和 analysisSchemaVersion 3→4 缓存失效；整个 Import 包通过。
+
+### 阶段 21 完成
+
+Context 已表达 ReaderKnown/CharacterKnown 信息差：读者已知但当前角色未知的 Truth 可见，读者未知且仅无关角色知道的 Truth 隐藏，当前章才 reveal 的 Truth 不提前暴露；既有 8 条上限和预算裁剪继续生效，整个 tools 包通过。
+
+### 阶段 22 完成
+
+Writer、Editor、Revision、Import Prompt 已同步 reveal_to_reader 纪律：完整揭示、角色/读者知情独立、提前泄底/重复揭秘检查、partial_payoff 不等于完整 reveal；Writer golden 与 assets 包通过。
+
+测试编写时曾漏掉一个 Go 循环的 `{`，首次运行是语法红灯；修正测试后获得预期的 Prompt 行为红灯，再完成最小资源修改。
+
+### 阶段 23 / 里程碑 C1 完成
+
+协议审计额外收紧了 `reveal_to_reader`：只允许 ID，Truth/Character 在 ChapterFacts、Store 和 Import 三层都会拒绝，避免多余字段被静默忽略。
+
+最终验证：
+
+```text
+go test ./... -timeout=5m
+go vet ./...
+git diff --check
+```
+
+全部通过。范围审计为 24 个文件、732+ / 101-；未新增 Service、Repository、状态机、数据库或格式迁移，未实现 belief、reader_belief、unreveal、conceal 或多读者模型。
+
 ### C1 规划校验
 
 - 阶段 16—23 均已写入且仅这些新阶段为 pending。

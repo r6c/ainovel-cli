@@ -586,6 +586,21 @@ func TestKnowledge_EstablishRequiresIDAndTruth(t *testing.T) {
 	}
 }
 
+func TestKnowledge_LoadsLegacyEntryWithoutReaderRevealField(t *testing.T) {
+	s := newTestStore(t)
+	legacy := `[{"id":"k_shadow","truth":"黑影是林墨的兄长","established_at":1,"known_by":[]}]`
+	if err := os.WriteFile(filepath.Join(s.Dir(), "knowledge_state.json"), []byte(legacy), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	entries, err := s.World.LoadKnowledgeState()
+	if err != nil {
+		t.Fatalf("load legacy knowledge entry: %v", err)
+	}
+	if len(entries) != 1 || entries[0].ReaderRevealedAt != 0 {
+		t.Fatalf("legacy reader reveal should decode as zero: %+v", entries)
+	}
+}
+
 func TestKnowledge_RejectsConflictingTruthForExistingID(t *testing.T) {
 	s := newTestStore(t)
 
@@ -673,6 +688,147 @@ func TestKnowledge_ReplayingLearnIsIdempotent(t *testing.T) {
 	}
 	if entries[0].KnownBy[0].Character != "林墨" || entries[0].KnownBy[0].LearnedAt != 2 {
 		t.Fatalf("learn replay changed first learned chapter: %+v", entries[0].KnownBy)
+	}
+}
+
+func TestKnowledge_ReaderRevealOnlyAcceptsID(t *testing.T) {
+	tests := []domain.KnowledgeUpdate{
+		{ID: "k_shadow", Action: "reveal_to_reader", Truth: "不应携带的真相"},
+		{ID: "k_shadow", Action: "reveal_to_reader", Character: "林墨"},
+	}
+	for _, update := range tests {
+		t.Run(update.Truth+update.Character, func(t *testing.T) {
+			s := newTestStore(t)
+			if err := s.World.UpdateKnowledge(1, []domain.KnowledgeUpdate{{ID: "k_shadow", Action: "establish", Truth: "真相"}}); err != nil {
+				t.Fatal(err)
+			}
+			if err := s.World.UpdateKnowledge(2, []domain.KnowledgeUpdate{update}); err == nil {
+				t.Fatalf("expected reader reveal with extra fields to fail: %+v", update)
+			}
+			entries, err := s.World.LoadKnowledgeState()
+			if err != nil {
+				t.Fatal(err)
+			}
+			if len(entries) != 1 || entries[0].ReaderRevealedAt != 0 {
+				t.Fatalf("rejected reader reveal changed state: %+v", entries)
+			}
+		})
+	}
+}
+
+func TestKnowledge_RejectsRevealingUnknownTruthToReader(t *testing.T) {
+	s := newTestStore(t)
+
+	if err := s.World.UpdateKnowledge(3, []domain.KnowledgeUpdate{{
+		ID: "k_missing", Action: "reveal_to_reader",
+	}}); err == nil {
+		t.Fatal("expected revealing unknown truth to reader to fail")
+	}
+	entries, err := s.World.LoadKnowledgeState()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(entries) != 0 {
+		t.Fatalf("rejected reveal changed knowledge state: %+v", entries)
+	}
+}
+
+func TestKnowledge_ReplayingReaderRevealKeepsFirstChapter(t *testing.T) {
+	s := newTestStore(t)
+
+	if err := s.World.UpdateKnowledge(1, []domain.KnowledgeUpdate{{
+		ID: "k_shadow", Action: "establish", Truth: "黑影是林墨的兄长",
+	}}); err != nil {
+		t.Fatal(err)
+	}
+	reveal := []domain.KnowledgeUpdate{{ID: "k_shadow", Action: "reveal_to_reader"}}
+	if err := s.World.UpdateKnowledge(3, reveal); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.World.UpdateKnowledge(5, reveal); err != nil {
+		t.Fatalf("replay reader reveal: %v", err)
+	}
+
+	entries, err := s.World.LoadKnowledgeState()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(entries) != 1 || entries[0].ReaderRevealedAt != 3 {
+		t.Fatalf("reader reveal replay changed first chapter: %+v", entries)
+	}
+}
+
+func TestKnowledge_EstablishesAndRevealsToReaderInSamePayload(t *testing.T) {
+	s := newTestStore(t)
+
+	if err := s.World.UpdateKnowledge(1, []domain.KnowledgeUpdate{
+		{ID: "k_shadow", Action: "establish", Truth: "黑影是林墨的兄长"},
+		{ID: "k_shadow", Action: "reveal_to_reader"},
+	}); err != nil {
+		t.Fatalf("establish then reveal: %v", err)
+	}
+	entries, err := s.World.LoadKnowledgeState()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(entries) != 1 || entries[0].EstablishedAt != 1 || entries[0].ReaderRevealedAt != 1 {
+		t.Fatalf("same-payload reader reveal wrong: %+v", entries)
+	}
+}
+
+func TestKnowledge_RevealsEstablishedTruthToReader(t *testing.T) {
+	s := newTestStore(t)
+
+	if err := s.World.UpdateKnowledge(1, []domain.KnowledgeUpdate{{
+		ID: "k_shadow", Action: "establish", Truth: "黑影是林墨的兄长",
+	}}); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.World.UpdateKnowledge(3, []domain.KnowledgeUpdate{{
+		ID: "k_shadow", Action: "reveal_to_reader",
+	}}); err != nil {
+		t.Fatalf("reveal knowledge to reader: %v", err)
+	}
+
+	entries, err := s.World.LoadKnowledgeState()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(entries) != 1 {
+		t.Fatalf("want 1 knowledge entry, got %d: %+v", len(entries), entries)
+	}
+	got := entries[0]
+	if got.Truth != "黑影是林墨的兄长" || got.EstablishedAt != 1 || got.ReaderRevealedAt != 3 {
+		t.Fatalf("reader reveal changed established truth: %+v", got)
+	}
+	if len(got.KnownBy) != 0 {
+		t.Fatalf("reader reveal must not teach any character: %+v", got.KnownBy)
+	}
+}
+
+func TestKnowledge_ProjectionShowsReaderReveal(t *testing.T) {
+	s := newTestStore(t)
+
+	if err := s.World.UpdateKnowledge(1, []domain.KnowledgeUpdate{{
+		ID: "k_shadow", Action: "establish", Truth: "黑影是林墨的兄长",
+	}}); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.World.UpdateKnowledge(3, []domain.KnowledgeUpdate{{
+		ID: "k_shadow", Action: "reveal_to_reader",
+	}}); err != nil {
+		t.Fatal(err)
+	}
+	data, err := os.ReadFile(filepath.Join(s.Dir(), "knowledge_state.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := string(data)
+	if !strings.Contains(got, "读者于第 3 章获知") {
+		t.Fatalf("projection missing reader reveal chapter:\n%s", got)
+	}
+	if !strings.Contains(got, "尚无角色获知") {
+		t.Fatalf("reader reveal must not imply character knowledge:\n%s", got)
 	}
 }
 

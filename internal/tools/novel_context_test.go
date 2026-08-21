@@ -100,6 +100,77 @@ func TestContextToolBoundsKnowledgeForCurrentOutline(t *testing.T) {
 	}
 }
 
+func TestContextToolDoesNotExposeTruthUntilAfterReaderRevealChapter(t *testing.T) {
+	st := store.NewStore(t.TempDir())
+	if err := st.Init(); err != nil {
+		t.Fatal(err)
+	}
+	if err := st.Progress.Init(10); err != nil {
+		t.Fatal(err)
+	}
+	if err := st.Outline.SaveOutline([]domain.OutlineEntry{{
+		Chapter: 4, Title: "林墨追查", CoreEvent: "林墨继续调查",
+	}}); err != nil {
+		t.Fatal(err)
+	}
+	if err := st.Characters.Save([]domain.Character{{Name: "林墨", Role: "主角"}}); err != nil {
+		t.Fatal(err)
+	}
+	if err := st.World.SaveKnowledgeState([]domain.KnowledgeEntry{{
+		ID: "k_shadow", Truth: "黑影是林墨的兄长", EstablishedAt: 1, ReaderRevealedAt: 4,
+	}}); err != nil {
+		t.Fatal(err)
+	}
+
+	raw, err := newTestContextTool(st, References{}, "default").Execute(context.Background(), json.RawMessage(`{"chapter":4}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(raw), "k_shadow") || strings.Contains(string(raw), "黑影是林墨的兄长") {
+		t.Fatalf("context exposed truth in its reveal chapter before prose established it: %s", raw)
+	}
+}
+
+func TestContextToolExposesReaderKnownTruthWithoutTeachingCurrentCharacter(t *testing.T) {
+	st := store.NewStore(t.TempDir())
+	if err := st.Init(); err != nil {
+		t.Fatal(err)
+	}
+	if err := st.Progress.Init(10); err != nil {
+		t.Fatal(err)
+	}
+	if err := st.Outline.SaveOutline([]domain.OutlineEntry{{
+		Chapter: 4, Title: "林墨追问黑影", CoreEvent: "林墨继续追查兄长下落",
+	}}); err != nil {
+		t.Fatal(err)
+	}
+	if err := st.Characters.Save([]domain.Character{
+		{Name: "林墨", Role: "主角", Description: "追查兄长", Arc: "接近真相", Traits: []string{"执着"}},
+		{Name: "苏晚", Role: "盟友", Description: "掌握密令", Arc: "隐藏身份", Traits: []string{"谨慎"}},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if err := st.World.SaveKnowledgeState([]domain.KnowledgeEntry{
+		{ID: "k_shadow", Truth: "黑影是林墨的兄长", EstablishedAt: 1, ReaderRevealedAt: 2},
+		{ID: "k_order", Truth: "苏晚奉命监视林墨", EstablishedAt: 1,
+			KnownBy: []domain.KnowledgeHolder{{Character: "苏晚", LearnedAt: 2}}},
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	raw, err := newTestContextTool(st, References{}, "default").Execute(context.Background(), json.RawMessage(`{"chapter":4}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	text := string(raw)
+	if !strings.Contains(text, "k_shadow") || !strings.Contains(text, "reader_revealed_at") {
+		t.Fatalf("context missing reader-known truth: %s", text)
+	}
+	if strings.Contains(text, "k_order") || strings.Contains(text, "苏晚奉命监视林墨") {
+		t.Fatalf("context leaked reader-unknown unrelated truth: %s", text)
+	}
+}
+
 func TestContextToolSelectsKnowledgeForCharactersInCurrentOutline(t *testing.T) {
 	st := store.NewStore(t.TempDir())
 	if err := st.Init(); err != nil {

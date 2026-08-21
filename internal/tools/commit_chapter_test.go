@@ -49,7 +49,7 @@ func TestCommitChapterSchemaIncludesKnowledgeUpdates(t *testing.T) {
 		t.Fatalf("knowledge update properties missing: %#v", items["properties"])
 	}
 	action, ok := itemProps["action"].(map[string]any)
-	if !ok || fmt.Sprint(action["enum"]) != "[establish learn]" {
+	if !ok || fmt.Sprint(action["enum"]) != "[establish learn reveal_to_reader]" {
 		t.Fatalf("knowledge action enum = %#v", action["enum"])
 	}
 }
@@ -172,6 +172,74 @@ func TestCommitChapterRejectsLearningUnknownKnowledgeBeforePending(t *testing.T)
 	}
 }
 
+func TestCommitChapterRejectsRevealingUnknownKnowledgeBeforePending(t *testing.T) {
+	s := store.NewStore(t.TempDir())
+	if err := s.Init(); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Progress.Init(1); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Progress.UpdatePhase(domain.PhaseWriting); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Drafts.SaveDraft(1, "第一章正文错误地向读者揭示一个尚未建立的作者真相。摘要需要足够清楚。"); err != nil {
+		t.Fatal(err)
+	}
+
+	args, _ := json.Marshal(map[string]any{
+		"chapter": 1, "title": "第一章", "summary": "错误揭示未知真相",
+		"characters": []string{"林墨"}, "key_events": []string{"错误揭示"},
+		"knowledge_updates": []map[string]any{{"id": "k_missing", "action": "reveal_to_reader"}},
+	})
+	if _, err := newTestCommitChapterTool(s).Execute(context.Background(), args); err == nil {
+		t.Fatal("expected revealing unknown knowledge to fail")
+	}
+	if pending, err := s.Signals.LoadPendingCommit(); err != nil || pending != nil {
+		t.Fatalf("unknown reader reveal must fail before pending: pending=%+v err=%v", pending, err)
+	}
+}
+
+func TestCommitChapterRevealsKnowledgeToReader(t *testing.T) {
+	s := store.NewStore(t.TempDir())
+	if err := s.Init(); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Progress.Init(2); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Progress.UpdatePhase(domain.PhaseWriting); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.World.UpdateKnowledge(1, []domain.KnowledgeUpdate{{
+		ID: "k_shadow", Action: "establish", Truth: "黑影是林墨的兄长",
+	}}); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Progress.MarkChapterComplete(1, 1000, "", ""); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Drafts.SaveDraft(2, "第二章正文直接向读者揭示黑影是林墨的兄长，但林墨本人仍不知道这个真相。"); err != nil {
+		t.Fatal(err)
+	}
+
+	args, _ := json.Marshal(map[string]any{
+		"chapter": 2, "title": "第二章", "summary": "向读者揭示黑影身份",
+		"characters": []string{"林墨"}, "key_events": []string{"读者得知黑影身份"},
+		"knowledge_updates": []map[string]any{{"id": "k_shadow", "action": "reveal_to_reader"}},
+	})
+	if _, err := newTestCommitChapterTool(s).Execute(context.Background(), args); err != nil {
+		t.Fatalf("execute reader reveal: %v", err)
+	}
+	entries, err := s.World.LoadKnowledgeState()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(entries) != 1 || entries[0].ReaderRevealedAt != 2 || len(entries[0].KnownBy) != 0 {
+		t.Fatalf("commit reader reveal wrong: %+v", entries)
+	}
+}
+
 func TestCommitChapterRecordsCharacterLearningKnowledge(t *testing.T) {
 	s := store.NewStore(t.TempDir())
 	if err := s.Init(); err != nil {
@@ -215,6 +283,41 @@ func TestCommitChapterRecordsCharacterLearningKnowledge(t *testing.T) {
 	}
 	if len(entries) != 1 || len(entries[0].KnownBy) != 1 || entries[0].KnownBy[0].Character != "林墨" || entries[0].KnownBy[0].LearnedAt != 2 {
 		t.Fatalf("commit did not record character learning: %+v", entries)
+	}
+}
+
+func TestCommitChapterEstablishesAndRevealsKnowledgeInSamePayload(t *testing.T) {
+	s := store.NewStore(t.TempDir())
+	if err := s.Init(); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Progress.Init(1); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Progress.UpdatePhase(domain.PhaseWriting); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Drafts.SaveDraft(1, "第一章正文直接向读者揭示黑影是林墨的兄长，但林墨本人仍未获知。"); err != nil {
+		t.Fatal(err)
+	}
+
+	args, _ := json.Marshal(map[string]any{
+		"chapter": 1, "title": "第一章", "summary": "向读者揭示黑影身份",
+		"characters": []string{"林墨"}, "key_events": []string{"读者得知身份"},
+		"knowledge_updates": []map[string]any{
+			{"id": "k_shadow", "action": "establish", "truth": "黑影是林墨的兄长"},
+			{"id": "k_shadow", "action": "reveal_to_reader"},
+		},
+	})
+	if _, err := newTestCommitChapterTool(s).Execute(context.Background(), args); err != nil {
+		t.Fatalf("execute establish then reader reveal: %v", err)
+	}
+	entries, err := s.World.LoadKnowledgeState()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(entries) != 1 || entries[0].EstablishedAt != 1 || entries[0].ReaderRevealedAt != 1 || len(entries[0].KnownBy) != 0 {
+		t.Fatalf("same-payload reader reveal wrong: %+v", entries)
 	}
 }
 
@@ -606,71 +709,86 @@ func TestCommitChapterAllowsPendingRewrite(t *testing.T) {
 }
 
 func TestCommitChapterRewriteRejectsRemovingKnowledgeRequiredByLaterChapterBeforePending(t *testing.T) {
-	s := store.NewStore(t.TempDir())
-	if err := s.Init(); err != nil {
-		t.Fatal(err)
-	}
-	if err := s.Progress.Init(3); err != nil {
-		t.Fatal(err)
-	}
-	facts := []domain.ChapterFacts{
+	tests := []struct {
+		name       string
+		later      domain.KnowledgeUpdate
+		projection domain.KnowledgeEntry
+	}{
 		{
-			Title: "第一章", Summary: "建立真相", KeyEvents: []string{"确认身份"},
-			KnowledgeUpdates: []domain.KnowledgeUpdate{{ID: "k_shadow", Action: "establish", Truth: "黑影是林墨的兄长"}},
+			name:  "later character learn",
+			later: domain.KnowledgeUpdate{ID: "k_shadow", Action: "learn", Character: "林墨"},
+			projection: domain.KnowledgeEntry{
+				ID: "k_shadow", Truth: "黑影是林墨的兄长", EstablishedAt: 1,
+				KnownBy: []domain.KnowledgeHolder{{Character: "林墨", LearnedAt: 3}},
+			},
 		},
-		{Title: "第二章", Summary: "继续追查", KeyEvents: []string{"追查"}},
 		{
-			Title: "第三章", Summary: "角色获知", KeyEvents: []string{"承认身份"},
-			KnowledgeUpdates: []domain.KnowledgeUpdate{{ID: "k_shadow", Action: "learn", Character: "林墨"}},
+			name:  "later reader reveal",
+			later: domain.KnowledgeUpdate{ID: "k_shadow", Action: "reveal_to_reader"},
+			projection: domain.KnowledgeEntry{
+				ID: "k_shadow", Truth: "黑影是林墨的兄长", EstablishedAt: 1, ReaderRevealedAt: 3,
+			},
 		},
 	}
-	for i, chapterFacts := range facts {
-		chapter := i + 1
-		content := fmt.Sprintf("第%d章旧正文。", chapter)
-		if _, err := s.ChapterRecords.Accept(chapter, domain.ChapterOriginGenerated, content, chapterFacts, domain.StyleDelta{}); err != nil {
-			t.Fatal(err)
-		}
-		if err := s.Drafts.SaveFinalChapter(chapter, content); err != nil {
-			t.Fatal(err)
-		}
-		if err := s.Progress.MarkChapterComplete(chapter, len([]rune(content)), "", ""); err != nil {
-			t.Fatal(err)
-		}
-	}
-	if err := s.World.SaveKnowledgeState([]domain.KnowledgeEntry{{
-		ID: "k_shadow", Truth: "黑影是林墨的兄长", EstablishedAt: 1,
-		KnownBy: []domain.KnowledgeHolder{{Character: "林墨", LearnedAt: 3}},
-	}}); err != nil {
-		t.Fatal(err)
-	}
-	if err := s.Progress.SetPendingRewrites([]int{1}, "删除已不成立的作者真相"); err != nil {
-		t.Fatal(err)
-	}
-	if err := s.Progress.SetFlow(domain.FlowRewriting); err != nil {
-		t.Fatal(err)
-	}
-	if err := s.Drafts.SaveDraft(1, "重写后的第一章正文，不再确立黑影身份。"); err != nil {
-		t.Fatal(err)
-	}
-	args, err := json.Marshal(map[string]any{
-		"chapter": 1, "title": "第一章", "summary": "删除黑影真相",
-		"characters": []string{"林墨"}, "key_events": []string{"身份仍未知"},
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, err := newTestCommitChapterTool(s).Execute(context.Background(), args); err == nil {
-		t.Fatal("expected rewrite to reject removing truth required by later learn")
-	}
-	if pending, err := s.Signals.LoadPendingCommit(); err != nil || pending != nil {
-		t.Fatalf("invalid rewrite must fail before pending: pending=%+v err=%v", pending, err)
-	}
-	record, err := s.ChapterRecords.Load(1)
-	if err != nil || record == nil {
-		t.Fatalf("load original record: record=%+v err=%v", record, err)
-	}
-	if len(record.Facts.KnowledgeUpdates) != 1 || record.Facts.KnowledgeUpdates[0].Action != "establish" {
-		t.Fatalf("invalid rewrite overwrote original establish: %+v", record.Facts.KnowledgeUpdates)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			s := store.NewStore(t.TempDir())
+			if err := s.Init(); err != nil {
+				t.Fatal(err)
+			}
+			if err := s.Progress.Init(3); err != nil {
+				t.Fatal(err)
+			}
+			facts := []domain.ChapterFacts{
+				{Title: "第一章", Summary: "建立真相", KeyEvents: []string{"确认身份"},
+					KnowledgeUpdates: []domain.KnowledgeUpdate{{ID: "k_shadow", Action: "establish", Truth: "黑影是林墨的兄长"}}},
+				{Title: "第二章", Summary: "继续追查", KeyEvents: []string{"追查"}},
+				{Title: "第三章", Summary: "后续依赖", KeyEvents: []string{"后续依赖"},
+					KnowledgeUpdates: []domain.KnowledgeUpdate{tt.later}},
+			}
+			for i, chapterFacts := range facts {
+				chapter := i + 1
+				content := fmt.Sprintf("第%d章旧正文。", chapter)
+				if _, err := s.ChapterRecords.Accept(chapter, domain.ChapterOriginGenerated, content, chapterFacts, domain.StyleDelta{}); err != nil {
+					t.Fatal(err)
+				}
+				if err := s.Drafts.SaveFinalChapter(chapter, content); err != nil {
+					t.Fatal(err)
+				}
+				if err := s.Progress.MarkChapterComplete(chapter, len([]rune(content)), "", ""); err != nil {
+					t.Fatal(err)
+				}
+			}
+			if err := s.World.SaveKnowledgeState([]domain.KnowledgeEntry{tt.projection}); err != nil {
+				t.Fatal(err)
+			}
+			if err := s.Progress.SetPendingRewrites([]int{1}, "删除已不成立的作者真相"); err != nil {
+				t.Fatal(err)
+			}
+			if err := s.Progress.SetFlow(domain.FlowRewriting); err != nil {
+				t.Fatal(err)
+			}
+			if err := s.Drafts.SaveDraft(1, "重写后的第一章正文，不再确立黑影身份。"); err != nil {
+				t.Fatal(err)
+			}
+			args, _ := json.Marshal(map[string]any{
+				"chapter": 1, "title": "第一章", "summary": "删除黑影真相",
+				"characters": []string{"林墨"}, "key_events": []string{"身份仍未知"},
+			})
+			if _, err := newTestCommitChapterTool(s).Execute(context.Background(), args); err == nil {
+				t.Fatal("expected rewrite to reject removing truth required by later chapter")
+			}
+			if pending, err := s.Signals.LoadPendingCommit(); err != nil || pending != nil {
+				t.Fatalf("invalid rewrite must fail before pending: pending=%+v err=%v", pending, err)
+			}
+			record, err := s.ChapterRecords.Load(1)
+			if err != nil || record == nil {
+				t.Fatalf("load original record: record=%+v err=%v", record, err)
+			}
+			if len(record.Facts.KnowledgeUpdates) != 1 || record.Facts.KnowledgeUpdates[0].Action != "establish" {
+				t.Fatalf("invalid rewrite overwrote original establish: %+v", record.Facts.KnowledgeUpdates)
+			}
+		})
 	}
 }
 
@@ -1188,6 +1306,51 @@ func TestCommitChapterUpdatesCastLedger(t *testing.T) {
 	}
 	if _, ok := byName["李清砚"]; ok {
 		t.Errorf("核心角色 李清砚 不应进 ledger")
+	}
+}
+
+func TestCommitChapterReplayKeepsFirstReaderRevealChapter(t *testing.T) {
+	s := store.NewStore(t.TempDir())
+	if err := s.Init(); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Progress.Init(1); err != nil {
+		t.Fatal(err)
+	}
+	updates := []domain.KnowledgeUpdate{
+		{ID: "k_shadow", Action: "establish", Truth: "黑影是林墨的兄长"},
+		{ID: "k_shadow", Action: "reveal_to_reader"},
+	}
+	if err := s.World.UpdateKnowledge(1, updates); err != nil {
+		t.Fatal(err)
+	}
+	payload, err := json.Marshal(map[string]any{
+		"chapter": 1, "title": "第一章", "summary": "向读者揭示身份",
+		"characters": []string{"林墨"}, "key_events": []string{"读者得知身份"},
+		"knowledge_updates": updates,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Signals.SavePendingCommit(domain.PendingCommit{
+		Chapter: 1, Stage: domain.CommitStageStarted, Payload: payload,
+		DraftContent: "第一章正文向读者揭示黑影是林墨的兄长，但林墨仍不知道。",
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := newTestCommitChapterTool(s).Execute(context.Background(), json.RawMessage(`{"chapter":1}`)); err != nil {
+		t.Fatalf("replay reader reveal: %v", err)
+	}
+	entries, err := s.World.LoadKnowledgeState()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(entries) != 1 || entries[0].ReaderRevealedAt != 1 || len(entries[0].KnownBy) != 0 {
+		t.Fatalf("reader reveal changed after replay: %+v", entries)
+	}
+	if pending, err := s.Signals.LoadPendingCommit(); err != nil || pending != nil {
+		t.Fatalf("pending commit not cleared: pending=%+v err=%v", pending, err)
 	}
 }
 

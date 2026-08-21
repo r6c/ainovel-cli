@@ -92,6 +92,20 @@ func factsJSON(chapter int, title string) string {
 	return string(data)
 }
 
+func TestBuildLedgerIncludesReaderRevealState(t *testing.T) {
+	ledger := buildLedger([]ImportedChapterFacts{
+		{Chapter: 1, KnowledgeUpdates: []domain.KnowledgeUpdate{{
+			ID: "k_shadow", Action: "establish", Truth: "黑影是林墨的兄长",
+		}}},
+		{Chapter: 2, KnowledgeUpdates: []domain.KnowledgeUpdate{{
+			ID: "k_shadow", Action: "reveal_to_reader",
+		}}},
+	})
+	if !strings.Contains(ledger, "k_shadow") || !strings.Contains(ledger, "读者已知") {
+		t.Fatalf("knowledge ledger missing reader reveal state:\n%s", ledger)
+	}
+}
+
 func TestBuildLedgerIncludesKnowledgeContinuity(t *testing.T) {
 	ledger := buildLedger([]ImportedChapterFacts{
 		{Chapter: 1, KnowledgeUpdates: []domain.KnowledgeUpdate{{
@@ -105,6 +119,45 @@ func TestBuildLedgerIncludesKnowledgeContinuity(t *testing.T) {
 		if !strings.Contains(ledger, want) {
 			t.Fatalf("knowledge ledger missing %q:\n%s", want, ledger)
 		}
+	}
+}
+
+func TestValidateBatchReaderRevealOnlyAcceptsID(t *testing.T) {
+	_, seg := analyzeFixture(t, 1)
+	for _, update := range []domain.KnowledgeUpdate{
+		{ID: "k_shadow", Action: "reveal_to_reader", Truth: "不应携带的真相"},
+		{ID: "k_shadow", Action: "reveal_to_reader", Character: "林墨"},
+	} {
+		batch := &AnalysisBatchResult{Chapters: []ImportedChapterFacts{{
+			Chapter: 1, Summary: "揭示", CoreEvent: "揭示", HookType: "mystery", DominantStrand: "quest",
+			KnowledgeUpdates: []domain.KnowledgeUpdate{
+				{ID: "k_shadow", Action: "establish", Truth: "真相"}, update,
+			},
+		}}}
+		if err := validateBatch(batch, seg, 0, 1); err == nil {
+			t.Fatalf("expected import reader reveal with extra fields to fail: %+v", update)
+		}
+	}
+}
+
+func TestValidateBatchReaderRevealContinuity(t *testing.T) {
+	_, seg := analyzeFixture(t, 1)
+	valid := &AnalysisBatchResult{Chapters: []ImportedChapterFacts{{
+		Chapter: 1, Summary: "揭示真相", CoreEvent: "读者得知身份", HookType: "mystery", DominantStrand: "quest",
+		KnowledgeUpdates: []domain.KnowledgeUpdate{
+			{ID: "k_shadow", Action: "establish", Truth: "黑影是林墨的兄长"},
+			{ID: "k_shadow", Action: "reveal_to_reader"},
+		},
+	}}}
+	if err := validateBatch(valid, seg, 0, 1); err != nil {
+		t.Fatalf("establish then reader reveal should be valid: %v", err)
+	}
+	unknown := &AnalysisBatchResult{Chapters: []ImportedChapterFacts{{
+		Chapter: 1, Summary: "错误揭示", CoreEvent: "错误引用", HookType: "mystery", DominantStrand: "quest",
+		KnowledgeUpdates: []domain.KnowledgeUpdate{{ID: "k_missing", Action: "reveal_to_reader"}},
+	}}}
+	if err := validateBatch(unknown, seg, 0, 1); err == nil {
+		t.Fatal("revealing unknown knowledge should fail validation")
 	}
 }
 
@@ -226,7 +279,7 @@ func TestAnalyzedChaptersInvalidatesPreviousAnalysisSchemaVersion(t *testing.T) 
 	var old strings.Builder
 	old.WriteString("analyze\x00")
 	old.WriteString("v1")
-	old.WriteString("\x00v2\x00")
+	old.WriteString("\x00v3\x00")
 	old.WriteString("segid")
 	old.WriteString("\x00ch1\x00")
 	old.WriteString(seg.Content(norm, 0))

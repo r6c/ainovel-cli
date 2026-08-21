@@ -39,7 +39,10 @@ func TestPublishChaptersPersistsKnowledgeState(t *testing.T) {
 		{
 			Chapter: 2, Title: "第二章", Summary: "角色获知", KeyEvents: []string{"承认身份"},
 			HookType: "mystery", DominantStrand: "quest",
-			KnowledgeUpdates: []domain.KnowledgeUpdate{{ID: "k_shadow", Action: "learn", Character: "林墨"}},
+			KnowledgeUpdates: []domain.KnowledgeUpdate{
+				{ID: "k_shadow", Action: "learn", Character: "林墨"},
+				{ID: "k_shadow", Action: "reveal_to_reader"},
+			},
 		},
 	}
 	for i, facts := range chapters {
@@ -52,7 +55,7 @@ func TestPublishChaptersPersistsKnowledgeState(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(entries) != 1 || entries[0].EstablishedAt != 1 || len(entries[0].KnownBy) != 1 || entries[0].KnownBy[0].LearnedAt != 2 {
+	if len(entries) != 1 || entries[0].EstablishedAt != 1 || len(entries[0].KnownBy) != 1 || entries[0].KnownBy[0].LearnedAt != 2 || entries[0].ReaderRevealedAt != 2 {
 		t.Fatalf("published knowledge state wrong: %+v", entries)
 	}
 }

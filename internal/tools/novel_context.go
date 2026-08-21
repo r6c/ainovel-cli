@@ -710,7 +710,8 @@ func (t *ContextTool) selectKnowledgeForCurrentOutline(state contextBuildState, 
 				copy.KnownBy = append(copy.KnownBy, holder)
 			}
 		}
-		if len(copy.KnownBy) > 0 {
+		readerKnown := entry.ReaderRevealedAt > 0 && entry.ReaderRevealedAt < state.chapter
+		if len(copy.KnownBy) > 0 || readerKnown {
 			selected = append(selected, copy)
 			if len(selected) == maxKnowledge {
 				break

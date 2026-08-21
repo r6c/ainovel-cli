@@ -506,3 +506,9 @@ ReaderRevealedAt
 2. 读者在当前章之前已经知道。
 
 作者已建立、但当前角色与读者都未知的 Truth 继续隐藏。否则新增 ReaderRevealedAt 反而会成为向 Writer 泄漏全量作者真相的通道。
+
+## C1 实施结论
+
+`reveal_to_reader` 已完成全链路实现。它是单调、幂等的首次完整揭示记录：只引用已有知识 ID，不修改角色 KnownBy，也不接受 Truth/Character 作为附加输入。Context 只在 `ReaderRevealedAt < currentChapter` 时将读者已知 Truth 暴露给 Writer，因此当前章揭示不会提前泄漏。
+
+C1 没有把伏笔 `partial_payoff` 自动映射为读者完整获知：部分兑现可能只揭开局部答案，完整 Truth 仍需独立 `reveal_to_reader`。错误信念、撤销揭示和多读者模型继续留给后续独立里程碑。

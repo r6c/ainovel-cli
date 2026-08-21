@@ -38,9 +38,9 @@ func Properties(includeFeedback bool) []schema.Prop {
 	)
 	knowledgeUpdate := schema.Object(
 		schema.Property("id", schema.String("知识事实 ID")).Required(),
-		schema.Property("action", schema.Enum("知识动作", "establish", "learn")).Required(),
-		schema.Property("truth", llmcontract.Nullable(schema.String("establish 时的作者真相；learn 时为 null"))).Required(),
-		schema.Property("character", llmcontract.Nullable(schema.String("learn 时获知真相的角色；establish 时为 null"))).Required(),
+		schema.Property("action", schema.Enum("知识动作", "establish", "learn", "reveal_to_reader")).Required(),
+		schema.Property("truth", llmcontract.Nullable(schema.String("仅 establish 时填写作者真相；learn/reveal_to_reader 时为 null"))).Required(),
+		schema.Property("character", llmcontract.Nullable(schema.String("仅 learn 时填写获知真相的角色；establish/reveal_to_reader 时为 null"))).Required(),
 	)
 	props := []schema.Prop{
 		schema.Property("title", schema.String("最终标题")).Required(),
@@ -130,6 +130,10 @@ func Validate(facts domain.ChapterFacts) error {
 		case "establish":
 			if strings.TrimSpace(update.Truth) == "" {
 				return fmt.Errorf("knowledge_updates[%d] establish requires truth", i)
+			}
+		case "reveal_to_reader":
+			if strings.TrimSpace(update.Truth) != "" || strings.TrimSpace(update.Character) != "" {
+				return fmt.Errorf("knowledge_updates[%d] reveal_to_reader only accepts id", i)
 			}
 		case "learn":
 			if strings.TrimSpace(update.Character) == "" {

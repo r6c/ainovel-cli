@@ -8,16 +8,17 @@ type KnowledgeHolder struct {
 
 // KnowledgeEntry 是作者真相及其角色知情范围的当前投影。
 type KnowledgeEntry struct {
-	ID            string            `json:"id"`
-	Truth         string            `json:"truth"`
-	EstablishedAt int               `json:"established_at"`
-	KnownBy       []KnowledgeHolder `json:"known_by"`
+	ID               string            `json:"id"`
+	Truth            string            `json:"truth"`
+	EstablishedAt    int               `json:"established_at"`
+	KnownBy          []KnowledgeHolder `json:"known_by"`
+	ReaderRevealedAt int               `json:"reader_revealed_at,omitempty"`
 }
 
 // KnowledgeUpdate 是章节对知识状态的增量操作。
 type KnowledgeUpdate struct {
 	ID        string `json:"id"`
-	Action    string `json:"action"` // establish / learn
+	Action    string `json:"action"` // establish / learn / reveal_to_reader
 	Truth     string `json:"truth,omitempty"`
 	Character string `json:"character,omitempty"`
 }

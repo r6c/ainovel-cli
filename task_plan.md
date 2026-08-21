@@ -2,8 +2,8 @@
 
 ## 规划总览
 
-- 总体状态：`planned`
-- 当前执行门禁：阶段 16——隔离已完成的 Knowledge 批次
+- 总体状态：`complete`
+- 当前执行阶段：里程碑 C1 已完成
 - 已完成领域里程碑：A 伏笔生命周期；B 作者真相 + 角色获知
 - 下一领域里程碑：C1 读者揭示状态
 - 规划原则：先复用既有 ChapterFacts/Commit Saga/WorldStore/Projector/Context，再增加最小领域数据；不从参考项目移植运行架构
@@ -650,15 +650,15 @@ reveal_to_reader：正文在本章明确让读者知道已有 Truth；不自动�
 
 ### 阶段 16：隔离 Knowledge 批次
 
-状态：`pending`
+状态：`complete`
 
 执行前门禁：
 
-- [ ] 用户授权提交当前 Knowledge 批次，或建立等价可恢复边界
-- [ ] 提交前重新运行 `go test ./... -timeout=5m`
-- [ ] `go vet ./...` 通过
-- [ ] `git diff --check` 通过
-- [ ] C1 从干净工作区开始
+- [x] 已创建独立提交：`6a7b7f7 功能：追踪作者真相与角色知情状态`
+- [x] 提交前 `go test ./... -timeout=5m` 通过
+- [x] `go vet ./...` 通过
+- [x] `git diff --check` 通过
+- [x] C1 从干净工作区开始
 
 建议提交信息：
 
@@ -672,7 +672,7 @@ feat: track author truths and character knowledge
 
 ### 阶段 17：Store 的 reader reveal 首个切片
 
-状态：`pending`
+状态：`complete`
 
 严格 TDD 顺序：
 
@@ -695,7 +695,7 @@ feat: track author truths and character knowledge
 
 ### 阶段 18：ChapterFacts 与 Commit Saga
 
-状态：`pending`
+状态：`complete`
 
 1. 扩展严格动作枚举为：
    ```text
@@ -712,7 +712,7 @@ feat: track author truths and character knowledge
 
 ### 阶段 19：Revision、Projector 与 Rewrite 安全
 
-状态：`pending`
+状态：`complete`
 
 1. Projector 重建：
    ```text
@@ -728,7 +728,7 @@ feat: track author truths and character knowledge
 
 ### 阶段 20：Import 契约、缓存与发布
 
-状态：`pending`
+状态：`complete`
 
 1. Import Schema 接受 `reveal_to_reader`。
 2. `validateBatch` 支持批次内 `establish → reveal_to_reader`。
@@ -741,7 +741,7 @@ feat: track author truths and character knowledge
 
 ### 阶段 21：Writer Context 的信息差表达
 
-状态：`pending`
+状态：`complete`
 
 目标：Writer 能区分“读者知道”和“角色知道”，但不获得无关隐藏 Truth。
 
@@ -764,7 +764,7 @@ TDD 场景：
 
 ### 阶段 22：Writer / Editor 纪律
 
-状态：`pending`
+状态：`complete`
 
 Writer：
 
@@ -786,7 +786,7 @@ Editor：
 
 ### 阶段 23：全量验证与范围审计
 
-状态：`pending`
+状态：`complete`
 
 验证矩阵：
 
@@ -818,13 +818,25 @@ git diff --check
 
 范围审计：
 
-- [ ] 不实现错误信念、撤销揭示或多读者模型
-- [ ] 不增加 Service、Repository、数据库或格式迁移
-- [ ] 不把全部作者 Truth 暴露给 Writer
-- [ ] 不用 Prompt 代替引用、幂等和 Saga 校验
-- [ ] 与现有 establish/learn 完整兼容
+- [x] 不实现错误信念、撤销揭示或多读者模型
+- [x] 不增加 Service、Repository、数据库或格式迁移
+- [x] 不把全部作者 Truth 暴露给 Writer
+- [x] 不用 Prompt 代替引用、幂等和 Saga 校验
+- [x] 与现有 establish/learn 完整兼容
 
 ---
+
+## 里程碑 C1 完成定义
+
+以下条件已满足：
+
+1. `reveal_to_reader` 在 Store、ChapterFacts、Commit、Projector、Rewrite、Import 和 Context 中语义一致。
+2. 未知 reveal 在 PendingCommit 前拒绝，重复 reveal 保留首次 `ReaderRevealedAt`。
+3. reveal 只接受 ID，不携带 Truth 或 Character；三层确定性校验一致。
+4. 删除唯一 establish 且后续仍 reveal 时，Rewrite 在 PendingCommit 前拒绝；删除 reveal 本身允许。
+5. Context 只注入当前角色已知或当前章之前读者已知的 Truth，不暴露当前章/未来揭示或无关隐藏 Truth。
+6. Import 分析 Schema 升级为 v4，旧 v3 缓存失效；旧 KnowledgeEntry 缺字段时兼容为 0。
+7. 全量测试、vet、diff check 和范围扫描全部通过。
 
 ## 后续候选里程碑（C1 之后，不进入当前执行范围）
 
