@@ -227,7 +227,7 @@ func scriptedWriterModel() *scriptedChatModel {
 				"chapter": chapter, "title": fmt.Sprintf("第%d章", chapter), "summary": fmt.Sprintf("第%d章摘要", chapter),
 				"characters": []string{"主角"}, "key_events": []string{"推进"},
 				"timeline_events": []any{}, "foreshadow_updates": []any{},
-				"relationship_changes": []any{}, "state_changes": []any{}, "cast_intros": []any{},
+				"relationship_changes": []any{}, "state_changes": []any{}, "knowledge_updates": []any{}, "cast_intros": []any{},
 				"hook_type": "crisis", "dominant_strand": "quest", "feedback": nil,
 			})
 		}

@@ -26,6 +26,7 @@ type ChapterFacts struct {
 	ForeshadowUpdates   []ForeshadowUpdate  `json:"foreshadow_updates"`
 	RelationshipChanges []RelationshipEntry `json:"relationship_changes"`
 	StateChanges        []StateChange       `json:"state_changes"`
+	KnowledgeUpdates    []KnowledgeUpdate   `json:"knowledge_updates"`
 	CastIntros          []CastIntro         `json:"cast_intros"`
 	HookType            string              `json:"hook_type,omitempty"`
 	DominantStrand      string              `json:"dominant_strand,omitempty"`

@@ -179,6 +179,13 @@ project foreshadow lifecycle: 第 2 章伏笔操作非法: "reinforce"
 | 阶段 6 | Saga 夹具批量替换中的断言文本不唯一 | 结构化编辑原子拒绝；改用函数级唯一上下文逐段替换 |
 | 阶段 7 | `check-complete.sh` 返回 0 但报告未找到项目根计划 | 不重复调用；搜索确认 task_plan 无 pending/in_progress/未勾选项 |
 | 路线规划 | 搜索大纲角色字段的正则未转义 `[]` | 改为直接读取 `internal/domain/story.go`，未重复失败查询 |
+| 阶段 12 | 猜测读取不存在的 `internal/llmcontract/jsonschema.go` | 改读搜索确认的 `validate.go` 与 `contract.go`，不重复错误路径 |
+| 阶段 12 | Import Knowledge 测试仅向静态 Schema 塞未知字段，因 JSON Schema 默认允许 additionalProperties 而误绿 | 改为先直接断言 `knowledge_updates` 属性和动作枚举存在，再验证合法 payload |
+| 阶段 12 | `go test ./internal/host/imp -count=1` 超过宿主 120 秒超时，未返回具体失败 | 不原样重跑；拆为 contracts/analyze/publish 定向测试定位 |
+| 阶段 14 | 对单个 `assets/load_test.go` 路径调用目录搜索，返回 ENOTDIR | 改为 `read_file` 直接读取，不重复错误调用 |
+| 阶段 15 | 读取不存在的 `internal/store/chapter_records_test.go` | 目录确认无该文件；新建最小公开 Load 兼容测试，不重复错误读取 |
+| 阶段 15 | 对单个 `commit_chapter.go` 文件路径调用目录搜索，返回 ENOTDIR | 已由随后 read_file 获得调用顺序；不重复该搜索 |
+| 阶段 15 | migration 两处 `validateRecordSet` 批量替换因非唯一匹配被拒绝 | 文件未部分修改；改用带上下文精确替换 |
 
 ## 文件变更日志
 
@@ -238,8 +245,8 @@ project foreshadow lifecycle: 第 2 章伏笔操作非法: "reinforce"
 
 ```text
 里程碑 A：伏笔生命周期闭环——complete
-里程碑 B：最小知识事实闭环——planned
-当前门禁：阶段 8，先隔离/提交伏笔批次
+里程碑 B：最小知识事实闭环——complete
+当前状态：阶段 8—15 全部完成
 ```
 
 ### 下一步
@@ -250,7 +257,191 @@ project foreshadow lifecycle: 第 2 章伏笔操作非法: "reinforce"
 只写 WorldStore establish→learn 的首个失败测试
 ```
 
-门禁完成前不修改知识状态生产代码。
+阶段 8 已完成；开始阶段 9 时只修改 Knowledge Store 首个 TDD 切片。
+
+### 阶段 9 首个红灯
+
+公共 Store 场景：
+
+```text
+establish k_shadow@1 → 林墨 learn@2
+```
+
+命令：
+
+```text
+go test ./internal/store -run '^TestKnowledge_CharacterLearnsEstablishedTruth$' -count=1
+```
+
+结果为编译红灯：缺少 `domain.KnowledgeUpdate`、`WorldStore.UpdateKnowledge` 和 `LoadKnowledgeState`，符合预期。
+
+### 阶段 9 首个绿灯
+
+只增加 Knowledge 领域 DTO 和 WorldStore JSON 当前投影，`establish@1 → 林墨 learn@2` 已通过。尚未接入 ChapterFacts、Commit、Projector、Import 或 Context。
+
+### 阶段 9 完成
+
+Knowledge Store 已通过以下公共行为：
+
+- `establish@1 → learn@2`
+- 相同 ID、不同 Truth 拒绝且原事实不变
+- 相同 ID、相同 Truth 幂等
+- 未知事实不能 learn
+- 同角色重复 learn 幂等并保留首次 LearnedAt
+- establish 要求 ID/Truth，learn 要求角色名
+- `knowledge_state.json` 与 `knowledge_state.md` 同步投影
+
+验证：
+
+```text
+go test ./internal/store -run '^TestKnowledge_' -count=1
+go test ./internal/store -count=1
+```
+
+均通过。阶段 10 开始接入共享 ChapterFacts 与 Commit Saga。
+
+### 阶段 10 当前进度
+
+已完成：
+
+- `ChapterFacts.KnowledgeUpdates` 零值兼容字段；
+- Commit 严格 Schema 的 `knowledge_updates` 契约；
+- `chapterfacts.Validate` 的 ID/action/Truth/Character 校验；
+- Commit 正常 establish 和 learn；
+- 同 payload `establish → learn`；
+- 未知 learn 与冲突 Truth 在 PendingCommit 前拒绝。
+
+下一切片：构造 `CommitStageStarted` 重放，确认 Knowledge 状态幂等且 PendingCommit 清除。
+
+### 阶段 10 完成
+
+Knowledge 已贯通共享 ChapterFacts 与 Commit Saga：
+
+- 严格 Schema、Validate；
+- establish、learn、同 payload 顺序；
+- 未知引用和 Truth 冲突在 PendingCommit 前拒绝；
+- `CommitStageStarted` 重放幂等且 PendingCommit 清除。
+
+验证：`go test ./internal/chapterfacts -count=1` 与 `go test ./internal/tools -count=1` 均通过。
+
+### 阶段 11 严格 Schema 回归
+
+Knowledge Projector 定向测试已通过，但整个 revision 包出现预期契约红灯：
+
+```text
+$.facts.knowledge_updates 是必填字段
+```
+
+原因是旧修订模型测试夹具仍按旧严格 Schema 返回 facts。处理原则：只同步夹具为空数组；不放宽 Schema、不把字段改为可选。
+
+### 阶段 11 完成
+
+Knowledge 已贯通 Revision：
+
+- Projector 重建 `establish@1 → learn@3`；
+- 冲突 Truth 历史拒绝；
+- 重复 learn 去重并保留首次章节；
+- revision 严格 Schema 夹具同步；
+- 含 Knowledge 的 Commit Rewrite 正常重建并清理队列/PendingCommit。
+
+`go test ./internal/revision -count=1` 与 Knowledge 工具测试均通过。
+
+### 阶段 12 完成
+
+Knowledge 已贯通 Import：DTO、严格 Schema、跨批次 ledger、首批连续性校验、publish 参数映射和真实两章发布均通过。
+
+整个包验证：
+
+```text
+go test ./internal/host/imp -count=1 -timeout=5m
+```
+
+通过。此前默认宿主超时没有复现。
+
+### 阶段 13 完成
+
+Knowledge Context 已实现：
+
+- 复用大纲文本与 `matchOutlineCharacters` 选择当前角色；
+- 只注入这些角色已知的 Truth，不泄露无关角色独占真相；
+- 过滤当前章及未来才建立/获知的信息；
+- 最近优先、最多 8 条；
+- 接入 `trimByBudget` 和 `_trimmed`。
+
+`go test ./internal/tools -count=1` 通过。
+
+### 阶段 14 完成
+
+Writer、Editor、Revision 和 Import Prompt 已同步知识语义纪律，Writer golden 保持一致。`go test ./assets -count=1` 通过。
+
+### 阶段 15 全量回归
+
+`go vet ./...` 与 `git diff --check` 通过；`go test ./... -timeout=5m` 发现 4 个 Host Engine 流程未落章：
+
+- `TestEngine_ReviewPermitWritesExactlyOneNewChapter`
+- `TestEngine_WritesBookToCompletion`
+- `TestEngine_PauseWithEditorDispatchWaitsForRewriteQueue`
+- `TestEngine_TargetChapterHoldStopsAtRequestedChapter`
+
+其他包全部通过。症状 `CompletedChapters=[]`/返工队列未排空，初步判断 Host 的模拟 Writer 工具参数仍缺严格必填 `knowledge_updates`。下一步单测定位后只同步共享夹具。
+
+### 阶段 15 链路审计发现
+
+Import 的逐章事实 Schema 已新增必填 `knowledge_updates`，但 `analysisSchemaVersion` 仍为 2。由于该版本参与分析工件 InputDigest，未提升会让旧 Schema 产生的缓存可能继续被视为新鲜。下一切片先构造 v2 digest 工件证明当前误复用，再提升到 v3。
+
+关于章节重写：暂不照搬伏笔的 `RestoreOwnPlants`。用户修订可能明确删除或改写作者真相，强制保留旧 establish 会让知识事实不可撤销；当前 revision 会重新分析完整正文，Projector 对未知 learn/冲突 Truth 有确定性保护。除非出现具体失败场景，不新增 RestoreOwnKnowledge。
+
+### 阶段 15 完成
+
+最终链路审计额外发现并修复：
+
+1. Import 新严格 Schema 未提升分析缓存版本：`analysisSchemaVersion 2 → 3`，旧 v2 分析工件失效。
+2. 重写真相建立章可能先覆盖 ChapterRecord、再因后续 learn 失去前置事实而锁死：现于 Rewrite PendingCommit 前用候选记录集执行 `revision.ValidateRecordSet`。
+3. 无 ChapterRecord 的旧书/旧测试夹具继续沿用原返工路径；有完整记录时执行依赖验证。
+4. `TestLoadEmpty`、工具说明和 WorldStore 注释同步 Knowledge。
+
+最终验证：
+
+```text
+go test ./... -timeout=5m
+go vet ./...
+git diff --check
+```
+
+全部通过。
+
+范围审计：
+
+```text
+30 files changed
+1574 insertions(+)
+29 deletions(-)
+```
+
+未新增 Service、Repository、数据库、Web 事实源或通用状态机；未实现 belief、reader reveal、forget、reveal plan。Knowledge 批次尚未创建 Git 提交。
+
+### 下一步规划：里程碑 C1
+
+当前 Knowledge 批次仍未提交（31 个文件、1675+ / 38-），所以新计划首先设置阶段 16 提交/隔离门禁。
+
+下一领域切片选择“读者揭示状态”，只规划：
+
+```text
+reveal_to_reader
+ReaderRevealedAt
+```
+
+错误信念、撤销揭示、多读者模型继续延期。计划已拆为阶段 16—23：隔离、Store、ChapterFacts/Commit、Revision/Projector、Import、Context、Prompt、全量验证。
+
+本次只更新规划文件，没有修改 reader reveal 生产代码。
+
+### C1 规划校验
+
+- 阶段 16—23 均已写入且仅这些新阶段为 pending。
+- 后续候选已改为 C2 角色错误信念，不与 C1 读者揭示重复。
+- 搜索确认 `internal/` 尚无 `ReaderRevealedAt` 或 `reveal_to_reader` 实现。
+- `git diff --check` 通过。
+- 生产代码仍是尚未提交的 Knowledge 批次，本次没有新增 C1 代码。
 
 ### 规划一致性校验
 
@@ -258,4 +449,14 @@ project foreshadow lifecycle: 第 2 章伏笔操作非法: "reinforce"
 - `git diff --stat -- assets internal` 仍为原伏笔批次的 18 个文件、812+ / 51-，本次规划没有新增生产代码 diff。
 - 搜索确认仓库尚无 `KnowledgeEntry`、`UpdateKnowledge` 或 `knowledge_state` Go 实现。
 - `git diff --check` 通过。
-- 规划已停在阶段 8 门禁，没有越权创建提交、stash、分支或知识状态代码。
+- 规划当时停在阶段 8 门禁，没有越权创建知识状态代码。
+
+### 阶段 8 完成
+
+已获用户授权并创建独立提交：
+
+```text
+13a775b feat: complete foreshadow lifecycle tracking
+```
+
+提交包含伏笔生命周期批次、对应测试和三份规划文件。Git 提示提交者身份由本机用户名/主机名自动配置；未擅自 amend 或修改用户 Git 配置。下一批从该提交边界开始。

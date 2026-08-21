@@ -65,4 +65,8 @@
 
 调用 `commit_chapter` 时按本章实际进展选择伏笔动作：新埋线索用 `plant`；已有线索仅被再次强调、增加存在感用 `reinforce`；揭开部分答案但仍有核心悬念用 `partial_payoff`（部分兑现）；常规推进用 `advance`；完整揭晓并收束才用 `resolve`。复用账本中的伏笔 ID，不对已回收伏笔再次推进。
 
+## 知识事实
+
+`episodic_memory.knowledge_boundaries` 只列当前章相关角色已经知道的作者真相。角色只能依据其边界内的信息行动或推理，不得越权知情。正文首次确立客观真相时提交 `knowledge_updates.action=establish`；正文明确让某角色获知已有真相时提交 `learn`。`establish` 不代表任何角色自动知道，`learn` 必须复用已有知识 ID。只提交正文实际建立或获知的变化。
+
 调用 `commit_chapter` 时，根据本章实际内容提交摘要、事件、连续性变化和后续大纲反馈，不编造没有发生的事实。

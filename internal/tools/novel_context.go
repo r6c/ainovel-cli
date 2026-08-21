@@ -525,6 +525,7 @@ func trimByBudget(result map[string]any, budget int) {
 		"timeline",
 		"recent_state_changes",
 		"foreshadow_ledger",
+		"knowledge_boundaries",
 		"relationship_state",
 	}
 
@@ -677,6 +678,48 @@ func findLastStateChange(changes []domain.StateChange, entity string, currentCha
 }
 
 // matchOutlineCharacters 从大纲文本中匹配出场角色名。
+func (t *ContextTool) selectKnowledgeForCurrentOutline(state contextBuildState, reads *contextReads) []domain.KnowledgeEntry {
+	if state.currentEntry == nil || len(state.knowledge) == 0 {
+		return nil
+	}
+	outlineText := state.currentEntry.Title + " " + state.currentEntry.CoreEvent + " " + strings.Join(state.currentEntry.Scenes, " ")
+	characters, err := t.store.Characters.Load()
+	if err != nil {
+		reads.warn("knowledge_boundaries.characters", err)
+		return nil
+	}
+	matched := matchOutlineCharacters(outlineText, characters)
+	if len(matched) == 0 {
+		return nil
+	}
+	wanted := make(map[string]bool, len(matched))
+	for _, character := range matched {
+		wanted[character] = true
+	}
+	const maxKnowledge = 8
+	var selected []domain.KnowledgeEntry
+	for i := len(state.knowledge) - 1; i >= 0; i-- {
+		entry := state.knowledge[i]
+		if entry.EstablishedAt >= state.chapter {
+			continue
+		}
+		copy := entry
+		copy.KnownBy = nil
+		for _, holder := range entry.KnownBy {
+			if wanted[holder.Character] && holder.LearnedAt < state.chapter {
+				copy.KnownBy = append(copy.KnownBy, holder)
+			}
+		}
+		if len(copy.KnownBy) > 0 {
+			selected = append(selected, copy)
+			if len(selected) == maxKnowledge {
+				break
+			}
+		}
+	}
+	return selected
+}
+
 func matchOutlineCharacters(text string, chars []domain.Character) []string {
 	var matched []string
 	for _, c := range chars {

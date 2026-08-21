@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/voocel/agentcore"
+	"github.com/voocel/ainovel-cli/internal/domain"
 )
 
 // TestDiscardAnalysesAfter 守护 #4a：清理越过新鲜前缀的旧分析工件，
@@ -85,10 +86,53 @@ func factsJSON(chapter int, title string) string {
 		"key_events": []string{"事件"}, "hook": nil, "scenes": []string{}, "characters": []string{},
 		"character_evidence": []any{}, "world_evidence": []any{}, "timeline_events": []any{},
 		"foreshadow_updates": []any{}, "relationship_changes": []any{}, "state_changes": []any{},
-		"hook_type": "mystery", "dominant_strand": "quest",
+		"knowledge_updates": []any{}, "hook_type": "mystery", "dominant_strand": "quest",
 	}
 	data, _ := json.Marshal(f)
 	return string(data)
+}
+
+func TestBuildLedgerIncludesKnowledgeContinuity(t *testing.T) {
+	ledger := buildLedger([]ImportedChapterFacts{
+		{Chapter: 1, KnowledgeUpdates: []domain.KnowledgeUpdate{{
+			ID: "k_shadow", Action: "establish", Truth: "黑影是林墨的兄长",
+		}}},
+		{Chapter: 2, KnowledgeUpdates: []domain.KnowledgeUpdate{{
+			ID: "k_shadow", Action: "learn", Character: "林墨",
+		}}},
+	})
+	for _, want := range []string{"k_shadow", "黑影是林墨的兄长", "林墨"} {
+		if !strings.Contains(ledger, want) {
+			t.Fatalf("knowledge ledger missing %q:\n%s", want, ledger)
+		}
+	}
+}
+
+func TestValidateBatchKnowledgeContinuity(t *testing.T) {
+	_, seg := analyzeFixture(t, 2)
+	valid := &AnalysisBatchResult{Chapters: []ImportedChapterFacts{
+		{
+			Chapter: 1, Summary: "建立真相", CoreEvent: "确认身份", HookType: "mystery", DominantStrand: "quest",
+			KnowledgeUpdates: []domain.KnowledgeUpdate{{ID: "k_shadow", Action: "establish", Truth: "黑影是林墨的兄长"}},
+		},
+		{
+			Chapter: 2, Summary: "角色获知", CoreEvent: "承认身份", HookType: "mystery", DominantStrand: "quest",
+			KnowledgeUpdates: []domain.KnowledgeUpdate{{ID: "k_shadow", Action: "learn", Character: "林墨"}},
+		},
+	}}
+	if err := validateBatch(valid, seg, 0, 2); err != nil {
+		t.Fatalf("establish then learn should be valid: %v", err)
+	}
+
+	unknown := &AnalysisBatchResult{Chapters: []ImportedChapterFacts{
+		{
+			Chapter: 1, Summary: "错误获知", CoreEvent: "错误引用", HookType: "mystery", DominantStrand: "quest",
+			KnowledgeUpdates: []domain.KnowledgeUpdate{{ID: "k_missing", Action: "learn", Character: "林墨"}},
+		},
+	}}
+	if err := validateBatch(unknown, seg, 0, 1); err == nil {
+		t.Fatal("learning unknown knowledge should fail validation")
+	}
 }
 
 func TestValidateBatchRejections(t *testing.T) {
@@ -176,6 +220,27 @@ func TestSalvagePrefixStopsAtGap(t *testing.T) {
 
 // TestAnalyzedChaptersInvalidatesOnUpstreamChange 验证切分身份或 prompt 版本变化使已落盘分析失效（不变量 1）。
 // 这是 InputDigest 机制真正落地的核心：改上游即失效下游，而非只看文件是否存在。
+func TestAnalyzedChaptersInvalidatesPreviousAnalysisSchemaVersion(t *testing.T) {
+	norm, seg := analyzeFixture(t, 1)
+	ws := &Workspace{dir: t.TempDir()}
+	var old strings.Builder
+	old.WriteString("analyze\x00")
+	old.WriteString("v1")
+	old.WriteString("\x00v2\x00")
+	old.WriteString("segid")
+	old.WriteString("\x00ch1\x00")
+	old.WriteString(seg.Content(norm, 0))
+	if err := writeArtifact(ws, analysisPath(1), Digest([]byte(old.String())), ChapterAnalysisPayload{
+		Facts: ImportedChapterFacts{Chapter: 1},
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	if got := analyzedChapters(ws, seg, norm, "segid", "v1"); got != 0 {
+		t.Fatalf("previous analysis schema cache must be invalidated, got %d reusable chapters", got)
+	}
+}
+
 func TestAnalyzedChaptersInvalidatesOnUpstreamChange(t *testing.T) {
 	norm, seg := analyzeFixture(t, 2)
 	ws := &Workspace{dir: t.TempDir()}

@@ -1,5 +1,27 @@
 package domain
 
+// KnowledgeHolder 记录角色首次获知某项作者真相的章节。
+type KnowledgeHolder struct {
+	Character string `json:"character"`
+	LearnedAt int    `json:"learned_at"`
+}
+
+// KnowledgeEntry 是作者真相及其角色知情范围的当前投影。
+type KnowledgeEntry struct {
+	ID            string            `json:"id"`
+	Truth         string            `json:"truth"`
+	EstablishedAt int               `json:"established_at"`
+	KnownBy       []KnowledgeHolder `json:"known_by"`
+}
+
+// KnowledgeUpdate 是章节对知识状态的增量操作。
+type KnowledgeUpdate struct {
+	ID        string `json:"id"`
+	Action    string `json:"action"` // establish / learn
+	Truth     string `json:"truth,omitempty"`
+	Character string `json:"character,omitempty"`
+}
+
 // StateChange 角色/实体状态变化记录。
 type StateChange struct {
 	Chapter  int    `json:"chapter"`

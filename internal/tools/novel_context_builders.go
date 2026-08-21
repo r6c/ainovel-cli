@@ -16,6 +16,7 @@ type contextBuildState struct {
 	chapterPlan     *domain.ChapterPlan
 	storyThreads    []domain.RecallItem
 	foreshadow      []domain.ForeshadowEntry
+	knowledge       []domain.KnowledgeEntry
 	relationships   []domain.RelationshipEntry
 	allStateChanges []domain.StateChange
 	styleRules      *domain.WritingStyleRules
@@ -316,6 +317,10 @@ func (t *ContextTool) prepareChapterContext(chapter int, envelope *chapterContex
 	reads.require("foreshadow_ledger", foreshadowErr)
 	state.foreshadow = foreshadow
 
+	knowledge, knowledgeErr := t.store.World.LoadKnowledgeState()
+	reads.require("knowledge_state", knowledgeErr)
+	state.knowledge = knowledge
+
 	relationships, relErr := t.store.World.LoadRelationships()
 	reads.require("relationship_state", relErr)
 	if len(relationships) > 0 {
@@ -493,6 +498,10 @@ func (t *ContextTool) buildChapterSelectedMemory(envelope *chapterContextEnvelop
 }
 
 func (t *ContextTool) buildChapterEpisodicMemory(envelope *chapterContextEnvelope, state contextBuildState, reads *contextReads) {
+	if selected := t.selectKnowledgeForCurrentOutline(state, reads); len(selected) > 0 {
+		envelope.Episodic["knowledge_boundaries"] = selected
+	}
+
 	if len(state.foreshadow) > 0 && len(state.storyThreads) == 0 {
 		envelope.Episodic["foreshadow_ledger"] = state.foreshadow
 	}

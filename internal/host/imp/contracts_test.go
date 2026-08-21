@@ -3,6 +3,7 @@ package imp
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"strings"
 	"testing"
 
@@ -16,6 +17,47 @@ func TestStructuredContractsAreStrictReady(t *testing.T) {
 		if err := llmcontract.ValidateStrictReady(contract.Schema); err != nil {
 			t.Fatalf("%s: %v", contract.Name, err)
 		}
+	}
+}
+
+func TestAnalysisContractAcceptsKnowledgeActions(t *testing.T) {
+	rootProps, ok := analysisContract.Schema["properties"].(map[string]any)
+	if !ok {
+		t.Fatalf("analysis properties missing: %#v", analysisContract.Schema["properties"])
+	}
+	chapters := rootProps["chapters"].(map[string]any)
+	chapterItems := chapters["items"].(map[string]any)
+	chapterProps := chapterItems["properties"].(map[string]any)
+	knowledge, ok := chapterProps["knowledge_updates"].(map[string]any)
+	if !ok {
+		t.Fatalf("knowledge_updates schema missing: %#v", chapterProps["knowledge_updates"])
+	}
+	updateItems := knowledge["items"].(map[string]any)
+	updateProps := updateItems["properties"].(map[string]any)
+	action := updateProps["action"].(map[string]any)
+	if fmt.Sprint(action["enum"]) != "[establish learn]" {
+		t.Fatalf("knowledge action enum = %#v", action["enum"])
+	}
+
+	updates := []map[string]any{
+		{"id": "k_shadow", "action": "establish", "truth": "黑影是林墨的兄长", "character": nil},
+		{"id": "k_shadow", "action": "learn", "truth": nil, "character": "林墨"},
+	}
+	for _, update := range updates {
+		t.Run(update["action"].(string), func(t *testing.T) {
+			var facts map[string]any
+			if err := json.Unmarshal([]byte(factsJSON(1, "第一章")), &facts); err != nil {
+				t.Fatal(err)
+			}
+			facts["knowledge_updates"] = []any{update}
+			body, err := json.Marshal(map[string]any{"chapters": []any{facts}})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := llmcontract.ValidateJSON(analysisContract.Schema, body); err != nil {
+				t.Fatalf("analysis contract rejected knowledge update: %v", err)
+			}
+		})
 	}
 }
 

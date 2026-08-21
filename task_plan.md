@@ -3,10 +3,11 @@
 ## 规划总览
 
 - 总体状态：`planned`
-- 当前执行门禁：阶段 8——隔离已完成的伏笔生命周期批次
-- 下一领域里程碑：最小知识事实闭环（作者真相 + 角色获知）
+- 当前执行门禁：阶段 16——隔离已完成的 Knowledge 批次
+- 已完成领域里程碑：A 伏笔生命周期；B 作者真相 + 角色获知
+- 下一领域里程碑：C1 读者揭示状态
 - 规划原则：先复用既有 ChapterFacts/Commit Saga/WorldStore/Projector/Context，再增加最小领域数据；不从参考项目移植运行架构
-- 当前风险：工作区已有 18 个受跟踪文件、812+ / 51- 的未提交伏笔改动，禁止直接叠加知识状态实现
+- 当前工作区：Knowledge 批次尚未提交，共 31 个文件、1675+ / 38-；伏笔批次已由提交 `13a775b` 隔离
 
 ## 路线决策摘要
 
@@ -376,7 +377,7 @@ learn：已有角色在本章获知一个已建立事实
 
 ### 阶段 8：隔离当前伏笔批次
 
-状态：`pending`
+状态：`complete`
 
 执行门禁：在开始知识状态代码前，必须任选一种方式建立独立边界：
 
@@ -386,11 +387,11 @@ learn：已有角色在本章获知一个已建立事实
 
 门禁验收：
 
-- [ ] 当前伏笔批次有独立提交或等价可恢复边界
-- [ ] `go test ./...` 通过
-- [ ] `go vet ./...` 通过
-- [ ] `git diff --check` 通过
-- [ ] 下一批 diff 不与伏笔批次混杂
+- [x] 当前伏笔批次有独立提交：`13a775b feat: complete foreshadow lifecycle tracking`
+- [x] `go test ./...` 通过（提交前最终验证）
+- [x] `go vet ./...` 通过（提交前最终验证）
+- [x] `git diff --check` 通过
+- [x] 下一批从干净工作区开始，不与伏笔批次混杂
 
 在门禁完成前，不修改知识状态生产代码。
 
@@ -398,7 +399,7 @@ learn：已有角色在本章获知一个已建立事实
 
 ### 阶段 9：Knowledge Store 首个纵向切片
 
-状态：`pending`
+状态：`complete`
 
 严格 TDD 顺序：
 
@@ -431,7 +432,7 @@ knowledge_state.md
 
 ### 阶段 10：ChapterFacts 与 Commit Saga 接入
 
-状态：`pending`
+状态：`complete`
 
 切片顺序：
 
@@ -452,7 +453,7 @@ knowledge_state.md
 
 ### 阶段 11：章节修订与 Projector 重建
 
-状态：`pending`
+状态：`complete`
 
 TDD 切片：
 
@@ -470,7 +471,7 @@ TDD 切片：
 
 ### 阶段 12：Import 契约与发布同步
 
-状态：`pending`
+状态：`complete`
 
 1. 给 `ImportedChapterFacts` 增加 `KnowledgeUpdates`。
 2. 同步 import 严格 Schema 和 Prompt。
@@ -483,7 +484,7 @@ TDD 切片：
 
 ### 阶段 13：Writer Context 有界消费
 
-状态：`pending`
+状态：`complete`
 
 目标不是把全量作者真相常驻上下文，而是复用现有 Context 选择机制。
 
@@ -506,7 +507,7 @@ TDD 切片：
 
 ### 阶段 14：Writer/Editor 语义纪律
 
-状态：`pending`
+状态：`complete`
 
 只在代码事实闭环完成后更新 Prompt：
 
@@ -522,7 +523,7 @@ TDD 切片：
 
 ### 阶段 15：全量验证与范围审计
 
-状态：`pending`
+状态：`complete`
 
 验证矩阵：
 
@@ -555,19 +556,281 @@ git diff --stat
 
 范围审计：
 
-- [ ] 没有新增 Service、Repository 或通用状态机接口
-- [ ] 没有实现 belief、reader reveal、forget 或 reveal plan
-- [ ] 没有新增数据库或 Web 事实源
-- [ ] 没有复制外部项目代码/Prompt
-- [ ] 正常提交、重放、重写、导入、Context 结果一致
+- [x] 没有新增 Service、Repository 或通用状态机接口
+- [x] 没有实现 belief、reader reveal、forget 或 reveal plan
+- [x] 没有新增数据库或 Web 事实源
+- [x] 没有复制外部项目代码/Prompt
+- [x] 正常提交、重放、重写、导入、Context 结果一致
 
 ---
 
-## 后续候选里程碑（不进入当前执行范围）
+## 里程碑 B 完成定义
+
+以下条件已满足：
+
+1. `establish/learn` 在 Store、ChapterFacts、Commit、PendingCommit、Revision、Projector、Import 和 Context 中语义一致。
+2. 未知引用、冲突 Truth 和破坏后续 learn 依赖的重写都在创建 PendingCommit 前拒绝。
+3. 同 ID 同 Truth、重复 learn 和崩溃重放保持幂等。
+4. Context 仅选择当前角色已知的历史真相，过滤未来信息，最多 8 条并可预算裁剪。
+5. 旧 ChapterRecord 缺少 `knowledge_updates` 时仍可读取，无需提升记录版本。
+6. Import 逐章分析 Schema 升级为 v3，旧 v2 缓存自然失效。
+7. 全量测试、vet、diff check 和范围审计全部通过。
+
+---
+
+## 里程碑 C1：读者揭示状态
+
+### 为什么下一步只做读者揭示
+
+现有 Knowledge 已能区分：
+
+```text
+作者认定的客观真相
+某个角色是否已经知道
+```
+
+但仍无法表达：
+
+```text
+读者是否已经知道该真相
+```
+
+这会影响悬疑、马甲、误会、权谋和戏剧性反讽：Writer 不知道哪些 Truth 可以作为读者已知背景使用，Editor 也无法判断提前泄底或重复揭秘。
+
+错误信念比读者揭示更复杂，需要描述角色相信的内容、与 Truth 的关系、纠正和撤销语义。为避免一次扩张成完整认知状态机，C1 只增加全局读者揭示；belief 继续延期。
+
+### 最小模型增量
+
+在现有类型上增量扩展：
+
+```go
+type KnowledgeEntry struct {
+    ID               string
+    Truth            string
+    EstablishedAt    int
+    KnownBy          []KnowledgeHolder
+    ReaderRevealedAt int
+}
+
+type KnowledgeUpdate struct {
+    ID        string
+    Action    string // establish / learn / reveal_to_reader
+    Truth     string
+    Character string
+}
+```
+
+动作语义：
+
+```text
+reveal_to_reader：正文在本章明确让读者知道已有 Truth；不自动让任何角色知道
+```
+
+不变量：
+
+- 必须引用已 establish 的知识 ID。
+- `establish → reveal_to_reader` 可在同一 payload 中发生。
+- 重复 reveal 幂等，保留首次 `ReaderRevealedAt`。
+- reveal 不修改 KnownBy。
+- `learn` 不自动代表读者知道；角色可在场外或省略场景中获知。
+- 第一版只支持完整 Truth 揭示；部分信息继续拆为独立 KnowledgeEntry 或伏笔 `partial_payoff`。
+- 不实现 conceal、unreveal、reader_belief、角色错误信念或多读者群体。
+
+### 已确认公共接缝
+
+1. `WorldStore.UpdateKnowledge` / `LoadKnowledgeState`
+2. `chapterfacts.Properties` / `Validate`
+3. `CommitChapterTool.Execute`
+4. `revision.ValidateRecordSet` / `Projector.Apply`
+5. Import `analysisContract → buildLedger → publishChapter`
+6. `ContextTool.Execute`
+7. Writer / Editor / Revision / Import Prompt
+
+---
+
+### 阶段 16：隔离 Knowledge 批次
+
+状态：`pending`
+
+执行前门禁：
+
+- [ ] 用户授权提交当前 Knowledge 批次，或建立等价可恢复边界
+- [ ] 提交前重新运行 `go test ./... -timeout=5m`
+- [ ] `go vet ./...` 通过
+- [ ] `git diff --check` 通过
+- [ ] C1 从干净工作区开始
+
+建议提交信息：
+
+```text
+feat: track author truths and character knowledge
+```
+
+在阶段 16 完成前，不修改 reader reveal 生产代码。
+
+---
+
+### 阶段 17：Store 的 reader reveal 首个切片
+
+状态：`pending`
+
+严格 TDD 顺序：
+
+1. 公开 Store 测试：
+   ```text
+   establish@1 → reveal_to_reader@3
+   ```
+2. 断言：
+   - Truth / EstablishedAt 不变；
+   - `ReaderRevealedAt == 3`；
+   - KnownBy 仍为空。
+3. 再驱动：
+   - 未知 ID reveal 拒绝；
+   - 重复 reveal 幂等并保留首次章节；
+   - 同 payload `establish → reveal_to_reader`；
+   - JSON 与 Markdown 投影显示“读者于第 N 章获知”。
+4. 不先修改 ChapterFacts、Commit 或 Prompt。
+
+---
+
+### 阶段 18：ChapterFacts 与 Commit Saga
+
+状态：`pending`
+
+1. 扩展严格动作枚举为：
+   ```text
+   establish / learn / reveal_to_reader
+   ```
+2. `chapterfacts.Validate` 校验 reveal 只需要 ID，不接受用 Truth 静默改写已有事实。
+3. Commit 正常提交 reader reveal。
+4. 提交前临时状态支持 `establish → reveal_to_reader`。
+5. 未知引用必须在 PendingCommit 前拒绝。
+6. `CommitStageStarted` 重放不改变首次揭示章。
+7. 保持现有 Saga 阶段和 Knowledge Store 接口，不新增服务。
+
+---
+
+### 阶段 19：Revision、Projector 与 Rewrite 安全
+
+状态：`pending`
+
+1. Projector 重建：
+   ```text
+   establish@1 → reveal_to_reader@4
+   ```
+2. 重复 reveal 保留首次章节。
+3. 未知 reveal 历史记录拒绝。
+4. Rewrite 删除唯一 establish、但后续仍有 reveal 时，必须由现有候选记录集校验在 PendingCommit 前拒绝。
+5. Rewrite 删除 reveal 本身应允许，并重建为读者尚未知；不新增 `RestoreOwnReveal`。
+6. Revision Prompt 只根据修改后正文明确揭示情况生成动作。
+
+---
+
+### 阶段 20：Import 契约、缓存与发布
+
+状态：`pending`
+
+1. Import Schema 接受 `reveal_to_reader`。
+2. `validateBatch` 支持批次内 `establish → reveal_to_reader`。
+3. 跨批次 ledger 显示 Reader 是否已知。
+4. `publishChapter` 真实发布 reader reveal。
+5. 提升 `analysisSchemaVersion`，使旧 v3 分析缓存失效；不提升 workspace 版本。
+6. Import Prompt 只有正文明确向读者揭示 Truth 时才输出 reveal。
+
+---
+
+### 阶段 21：Writer Context 的信息差表达
+
+状态：`pending`
+
+目标：Writer 能区分“读者知道”和“角色知道”，但不获得无关隐藏 Truth。
+
+选择规则：
+
+1. 当前大纲涉及角色已知的 Truth：继续注入。
+2. 已 `ReaderRevealedAt < currentChapter` 的 Truth：即使当前角色未知，也可注入，并明确标记 ReaderKnown/角色未知，用于戏剧性反讽。
+3. 作者已建立但读者和当前角色都未知的 Truth：不注入，避免泄底。
+4. 当前章或未来才 reveal 的 Truth：不注入。
+5. 继续沿用最多 8 条与预算裁剪，不新增检索服务。
+
+TDD 场景：
+
+```text
+读者已知、林墨未知 → 当前林墨章节可看到信息差标记
+读者未知、苏晚独知 → 当前林墨章节不可看到 Truth
+```
+
+---
+
+### 阶段 22：Writer / Editor 纪律
+
+状态：`pending`
+
+Writer：
+
+- `reveal_to_reader` 只在正文明确让读者知道完整 Truth 时提交；
+- reveal 不等于任何角色知道；
+- 使用 ReaderKnown Truth 制造信息差时，角色行为仍受 KnownBy 限制；
+- 不为一般暗示、模糊怀疑或伏笔强化提交完整 reveal。
+
+Editor：
+
+- 检查提前泄底；
+- 检查重复揭秘；
+- 检查读者已知但角色未知时，角色是否越权；
+- 不把 `partial_payoff` 自动当成完整 reader reveal。
+
+同步 Revision/Import Prompt 和 Writer golden。
+
+---
+
+### 阶段 23：全量验证与范围审计
+
+状态：`pending`
+
+验证矩阵：
+
+| 接缝 | 必须覆盖 |
+|---|---|
+| Store | reveal、未知引用、幂等、Markdown |
+| ChapterFacts | 新枚举和 Validate |
+| Commit | 正常提交、同 payload、Pending 前拒绝、重放 |
+| Projector | 正常重建、非法历史、首次 reveal |
+| Rewrite | 删除 establish 拒绝；删除 reveal 允许 |
+| Import | Schema、ledger、缓存版本、publish |
+| Context | ReaderKnown/CharacterKnown 信息差、有界裁剪 |
+| Prompt | Writer/Editor/Revision/Import 纪律 |
+| Compatibility | 旧 KnowledgeEntry 缺 ReaderRevealedAt 时为 0 |
+
+最终命令：
+
+```bash
+gofmt -w <本批 Go 文件>
+go test ./internal/store -run 'Knowledge|Reader' -count=1
+go test ./internal/tools -run 'Knowledge|Reader|ContextTool' -count=1
+go test ./internal/revision -run 'Knowledge|Reader' -count=1
+go test ./internal/host/imp -run 'Knowledge|Reader|AnalysisSchemaVersion' -count=1
+go test ./assets -count=1
+go test ./... -timeout=5m
+go vet ./...
+git diff --check
+```
+
+范围审计：
+
+- [ ] 不实现错误信念、撤销揭示或多读者模型
+- [ ] 不增加 Service、Repository、数据库或格式迁移
+- [ ] 不把全部作者 Truth 暴露给 Writer
+- [ ] 不用 Prompt 代替引用、幂等和 Saga 校验
+- [ ] 与现有 establish/learn 完整兼容
+
+---
+
+## 后续候选里程碑（C1 之后，不进入当前执行范围）
 
 优先级按当前仓库增量价值调整为：
 
-1. **知识阶段 C：错误信念与读者已知**——只在 `establish/learn` 稳定后设计。
+1. **知识阶段 C2：角色错误信念**——只在 C1 读者揭示稳定后单独设计 belief/correction 语义。
 2. **Prose Lint 增量**——在 `rules.Lint` 中优先做重复段落、异常标点或章节截断，每条规则独立评估误报率。
 3. **具体题材/平台资源试点**——在现有 References/覆盖层中先落一个题材或 rubric，不先建 Pack 框架。
 4. **cocreate 阶段化访谈**——扩展现有共创对话，不先加第三启动模式。

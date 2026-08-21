@@ -32,6 +32,9 @@ func TestLoadEmpty(t *testing.T) {
 	if v, err := s.World.LoadRelationships(); err != nil || v != nil {
 		t.Errorf("Relationships: want (nil, nil), got (%v, %v)", v, err)
 	}
+	if v, err := s.World.LoadKnowledgeState(); err != nil || v != nil {
+		t.Errorf("Knowledge: want (nil, nil), got (%v, %v)", v, err)
+	}
 	if v, err := s.World.LoadStateChanges(); err != nil || v != nil {
 		t.Errorf("StateChanges: want (nil, nil), got (%v, %v)", v, err)
 	}
@@ -553,6 +556,179 @@ func TestForeshadow_PlantIsIdempotent(t *testing.T) {
 	}
 	if all[0].Status != "advanced" {
 		t.Fatalf("duplicate plant should not downgrade status, got %s", all[0].Status)
+	}
+}
+
+// ── Knowledge ──
+
+func TestKnowledge_EstablishRequiresIDAndTruth(t *testing.T) {
+	tests := []struct {
+		name   string
+		update domain.KnowledgeUpdate
+	}{
+		{name: "missing id", update: domain.KnowledgeUpdate{Action: "establish", Truth: "黑影是林墨的兄长"}},
+		{name: "missing truth", update: domain.KnowledgeUpdate{ID: "k_shadow", Action: "establish"}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			s := newTestStore(t)
+			if err := s.World.UpdateKnowledge(1, []domain.KnowledgeUpdate{tt.update}); err == nil {
+				t.Fatal("expected malformed establish to fail")
+			}
+			entries, err := s.World.LoadKnowledgeState()
+			if err != nil {
+				t.Fatal(err)
+			}
+			if len(entries) != 0 {
+				t.Fatalf("rejected establish changed knowledge state: %+v", entries)
+			}
+		})
+	}
+}
+
+func TestKnowledge_RejectsConflictingTruthForExistingID(t *testing.T) {
+	s := newTestStore(t)
+
+	if err := s.World.UpdateKnowledge(1, []domain.KnowledgeUpdate{{
+		ID: "k_shadow", Action: "establish", Truth: "黑影是林墨的兄长",
+	}}); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.World.UpdateKnowledge(2, []domain.KnowledgeUpdate{{
+		ID: "k_shadow", Action: "establish", Truth: "黑影是林墨的父亲",
+	}}); err == nil {
+		t.Fatal("expected conflicting truth to fail")
+	}
+
+	entries, err := s.World.LoadKnowledgeState()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(entries) != 1 || entries[0].Truth != "黑影是林墨的兄长" || entries[0].EstablishedAt != 1 {
+		t.Fatalf("conflicting establish changed truth: %+v", entries)
+	}
+}
+
+func TestKnowledge_LearnRequiresCharacter(t *testing.T) {
+	s := newTestStore(t)
+
+	if err := s.World.UpdateKnowledge(1, []domain.KnowledgeUpdate{{
+		ID: "k_shadow", Action: "establish", Truth: "黑影是林墨的兄长",
+	}}); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.World.UpdateKnowledge(2, []domain.KnowledgeUpdate{{
+		ID: "k_shadow", Action: "learn",
+	}}); err == nil {
+		t.Fatal("expected learn without character to fail")
+	}
+	entries, err := s.World.LoadKnowledgeState()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(entries) != 1 || len(entries[0].KnownBy) != 0 {
+		t.Fatalf("rejected learn changed known_by: %+v", entries)
+	}
+}
+
+func TestKnowledge_RejectsLearningUnknownTruth(t *testing.T) {
+	s := newTestStore(t)
+
+	if err := s.World.UpdateKnowledge(2, []domain.KnowledgeUpdate{{
+		ID: "k_unknown", Action: "learn", Character: "林墨",
+	}}); err == nil {
+		t.Fatal("expected learning unknown truth to fail")
+	}
+	entries, err := s.World.LoadKnowledgeState()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(entries) != 0 {
+		t.Fatalf("rejected learn changed knowledge state: %+v", entries)
+	}
+}
+
+func TestKnowledge_ReplayingLearnIsIdempotent(t *testing.T) {
+	s := newTestStore(t)
+
+	if err := s.World.UpdateKnowledge(1, []domain.KnowledgeUpdate{{
+		ID: "k_shadow", Action: "establish", Truth: "黑影是林墨的兄长",
+	}}); err != nil {
+		t.Fatal(err)
+	}
+	learn := []domain.KnowledgeUpdate{{ID: "k_shadow", Action: "learn", Character: "林墨"}}
+	if err := s.World.UpdateKnowledge(2, learn); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.World.UpdateKnowledge(2, learn); err != nil {
+		t.Fatalf("replay learn: %v", err)
+	}
+
+	entries, err := s.World.LoadKnowledgeState()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(entries) != 1 || len(entries[0].KnownBy) != 1 {
+		t.Fatalf("learn replay duplicated holder: %+v", entries)
+	}
+	if entries[0].KnownBy[0].Character != "林墨" || entries[0].KnownBy[0].LearnedAt != 2 {
+		t.Fatalf("learn replay changed first learned chapter: %+v", entries[0].KnownBy)
+	}
+}
+
+func TestKnowledge_WritesReadableProjection(t *testing.T) {
+	s := newTestStore(t)
+
+	if err := s.World.UpdateKnowledge(1, []domain.KnowledgeUpdate{{
+		ID: "k_shadow", Action: "establish", Truth: "黑影是林墨的兄长",
+	}}); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.World.UpdateKnowledge(2, []domain.KnowledgeUpdate{{
+		ID: "k_shadow", Action: "learn", Character: "林墨",
+	}}); err != nil {
+		t.Fatal(err)
+	}
+
+	data, err := os.ReadFile(filepath.Join(s.Dir(), "knowledge_state.md"))
+	if err != nil {
+		t.Fatalf("read knowledge projection: %v", err)
+	}
+	got := string(data)
+	for _, want := range []string{"k_shadow", "黑影是林墨的兄长", "建立于第 1 章", "林墨（第 2 章获知）"} {
+		if !strings.Contains(got, want) {
+			t.Fatalf("knowledge projection missing %q:\n%s", want, got)
+		}
+	}
+}
+
+func TestKnowledge_CharacterLearnsEstablishedTruth(t *testing.T) {
+	s := newTestStore(t)
+
+	if err := s.World.UpdateKnowledge(1, []domain.KnowledgeUpdate{{
+		ID: "k_shadow", Action: "establish", Truth: "黑影是林墨失踪多年的兄长",
+	}}); err != nil {
+		t.Fatalf("establish knowledge: %v", err)
+	}
+	if err := s.World.UpdateKnowledge(2, []domain.KnowledgeUpdate{{
+		ID: "k_shadow", Action: "learn", Character: "林墨",
+	}}); err != nil {
+		t.Fatalf("learn knowledge: %v", err)
+	}
+
+	entries, err := s.World.LoadKnowledgeState()
+	if err != nil {
+		t.Fatalf("load knowledge state: %v", err)
+	}
+	if len(entries) != 1 {
+		t.Fatalf("want 1 knowledge entry, got %d: %+v", len(entries), entries)
+	}
+	got := entries[0]
+	if got.ID != "k_shadow" || got.Truth != "黑影是林墨失踪多年的兄长" || got.EstablishedAt != 1 {
+		t.Fatalf("established truth changed: %+v", got)
+	}
+	if len(got.KnownBy) != 1 || got.KnownBy[0].Character != "林墨" || got.KnownBy[0].LearnedAt != 2 {
+		t.Fatalf("character knowledge not recorded: %+v", got.KnownBy)
 	}
 }
 

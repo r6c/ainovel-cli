@@ -13,7 +13,7 @@ import (
 	"github.com/voocel/ainovel-cli/internal/rules"
 )
 
-// WorldStore 管理时间线、伏笔、人物关系、状态变化、世界规则、风格规则、审阅和交接。
+// WorldStore 管理时间线、伏笔、知识状态、人物关系、状态变化、世界规则、风格规则、审阅和交接。
 type WorldStore struct {
 	io *IO
 
@@ -259,6 +259,92 @@ func (s *WorldStore) LoadActiveForeshadow() ([]domain.ForeshadowEntry, error) {
 		}
 	}
 	return active, nil
+}
+
+// ── 知识状态 ──
+
+// SaveKnowledgeState 全量替换作者真相与角色知情范围投影。
+func (s *WorldStore) SaveKnowledgeState(entries []domain.KnowledgeEntry) error {
+	return s.io.WithWriteLock(func() error {
+		if err := s.io.WriteJSONUnlocked("knowledge_state.json", entries); err != nil {
+			return err
+		}
+		return s.io.WriteMarkdownUnlocked("knowledge_state.md", renderKnowledge(entries))
+	})
+}
+
+// LoadKnowledgeState 读取作者真相及角色知情范围的当前投影。
+func (s *WorldStore) LoadKnowledgeState() ([]domain.KnowledgeEntry, error) {
+	var entries []domain.KnowledgeEntry
+	if err := s.io.ReadJSON("knowledge_state.json", &entries); err != nil {
+		if os.IsNotExist(err) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return entries, nil
+}
+
+// UpdateKnowledge 批量应用作者真相建立和角色获知操作。
+func (s *WorldStore) UpdateKnowledge(chapter int, updates []domain.KnowledgeUpdate) error {
+	return s.io.WithWriteLock(func() error {
+		var entries []domain.KnowledgeEntry
+		if err := s.io.ReadJSONUnlocked("knowledge_state.json", &entries); err != nil && !os.IsNotExist(err) {
+			return err
+		}
+		idx := make(map[string]int, len(entries))
+		for i, entry := range entries {
+			idx[entry.ID] = i
+		}
+		for _, update := range updates {
+			if strings.TrimSpace(update.ID) == "" {
+				return fmt.Errorf("knowledge id 不能为空")
+			}
+			switch update.Action {
+			case "establish":
+				if strings.TrimSpace(update.Truth) == "" {
+					return fmt.Errorf("establish knowledge %q requires truth", update.ID)
+				}
+				if i, ok := idx[update.ID]; ok {
+					if entries[i].Truth != update.Truth {
+						return fmt.Errorf("knowledge %q truth conflicts with established truth", update.ID)
+					}
+					continue
+				}
+				idx[update.ID] = len(entries)
+				entries = append(entries, domain.KnowledgeEntry{
+					ID: update.ID, Truth: update.Truth, EstablishedAt: chapter,
+				})
+			case "learn":
+				if strings.TrimSpace(update.Character) == "" {
+					return fmt.Errorf("learn knowledge %q requires character", update.ID)
+				}
+				i, ok := idx[update.ID]
+				if !ok {
+					return fmt.Errorf("learn unknown knowledge %q", update.ID)
+				}
+				known := false
+				for _, holder := range entries[i].KnownBy {
+					if holder.Character == update.Character {
+						known = true
+						break
+					}
+				}
+				if known {
+					continue
+				}
+				entries[i].KnownBy = append(entries[i].KnownBy, domain.KnowledgeHolder{
+					Character: update.Character, LearnedAt: chapter,
+				})
+			default:
+				return fmt.Errorf("invalid knowledge action %q", update.Action)
+			}
+		}
+		if err := s.io.WriteJSONUnlocked("knowledge_state.json", entries); err != nil {
+			return err
+		}
+		return s.io.WriteMarkdownUnlocked("knowledge_state.md", renderKnowledge(entries))
+	})
 }
 
 // ── 人物关系 ──
@@ -568,6 +654,27 @@ func renderForeshadow(entries []domain.ForeshadowEntry) string {
 		}
 		fmt.Fprintf(&b, "- **[%s]** %s — 埋设于第 %d 章，状态：%s%s\n",
 			e.ID, e.Description, e.PlantedAt, status, advanced)
+	}
+	return b.String()
+}
+
+func renderKnowledge(entries []domain.KnowledgeEntry) string {
+	var b strings.Builder
+	b.WriteString("# 知识状态\n\n")
+	for _, entry := range entries {
+		fmt.Fprintf(&b, "- **[%s]** %s — 建立于第 %d 章", entry.ID, entry.Truth, entry.EstablishedAt)
+		if len(entry.KnownBy) == 0 {
+			b.WriteString("；尚无角色获知")
+		} else {
+			b.WriteString("；已知角色：")
+			for i, holder := range entry.KnownBy {
+				if i > 0 {
+					b.WriteString("、")
+				}
+				fmt.Fprintf(&b, "%s（第 %d 章获知）", holder.Character, holder.LearnedAt)
+			}
+		}
+		b.WriteByte('\n')
 	}
 	return b.String()
 }

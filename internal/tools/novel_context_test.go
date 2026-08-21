@@ -50,6 +50,105 @@ func TestBuildProgressStatusHidesLayeredCapacityEstimate(t *testing.T) {
 	}
 }
 
+func TestContextToolBoundsKnowledgeForCurrentOutline(t *testing.T) {
+	st := store.NewStore(t.TempDir())
+	if err := st.Init(); err != nil {
+		t.Fatal(err)
+	}
+	if err := st.Progress.Init(20); err != nil {
+		t.Fatal(err)
+	}
+	if err := st.Outline.SaveOutline([]domain.OutlineEntry{{
+		Chapter: 10, Title: "林墨整理线索", CoreEvent: "林墨回忆自己知道的真相",
+	}}); err != nil {
+		t.Fatal(err)
+	}
+	if err := st.Characters.Save([]domain.Character{{
+		Name: "林墨", Role: "主角", Description: "追查真相", Arc: "揭开秘密", Traits: []string{"执着"},
+	}}); err != nil {
+		t.Fatal(err)
+	}
+	var entries []domain.KnowledgeEntry
+	for i := 1; i <= 12; i++ {
+		entries = append(entries, domain.KnowledgeEntry{
+			ID: fmt.Sprintf("k_%02d", i), Truth: fmt.Sprintf("第 %d 项作者真相", i), EstablishedAt: i,
+			KnownBy: []domain.KnowledgeHolder{{Character: "林墨", LearnedAt: i}},
+		})
+	}
+	if err := st.World.SaveKnowledgeState(entries); err != nil {
+		t.Fatal(err)
+	}
+
+	args, err := json.Marshal(map[string]any{"chapter": 10})
+	if err != nil {
+		t.Fatal(err)
+	}
+	raw, err := newTestContextTool(st, References{}, "default").Execute(context.Background(), args)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var payload struct {
+		Episodic struct {
+			Knowledge []domain.KnowledgeEntry `json:"knowledge_boundaries"`
+		} `json:"episodic_memory"`
+	}
+	if err := json.Unmarshal(raw, &payload); err != nil {
+		t.Fatal(err)
+	}
+	if len(payload.Episodic.Knowledge) != 8 {
+		t.Fatalf("want bounded 8 knowledge entries, got %d", len(payload.Episodic.Knowledge))
+	}
+}
+
+func TestContextToolSelectsKnowledgeForCharactersInCurrentOutline(t *testing.T) {
+	st := store.NewStore(t.TempDir())
+	if err := st.Init(); err != nil {
+		t.Fatal(err)
+	}
+	if err := st.Progress.Init(10); err != nil {
+		t.Fatal(err)
+	}
+	if err := st.Outline.SaveOutline([]domain.OutlineEntry{{
+		Chapter: 3, Title: "林墨追问黑影", CoreEvent: "林墨向黑影确认兄长身份", Scenes: []string{"林墨追问"},
+	}}); err != nil {
+		t.Fatal(err)
+	}
+	if err := st.Characters.Save([]domain.Character{
+		{Name: "林墨", Role: "主角", Description: "追查兄长", Arc: "接近真相", Traits: []string{"执着"}},
+		{Name: "苏晚", Role: "盟友", Description: "掌握密令", Arc: "隐藏身份", Traits: []string{"谨慎"}},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if err := st.World.SaveKnowledgeState([]domain.KnowledgeEntry{
+		{
+			ID: "k_shadow", Truth: "黑影是林墨的兄长", EstablishedAt: 1,
+			KnownBy: []domain.KnowledgeHolder{{Character: "林墨", LearnedAt: 2}},
+		},
+		{
+			ID: "k_order", Truth: "城主密令要求苏晚监视林墨", EstablishedAt: 1,
+			KnownBy: []domain.KnowledgeHolder{{Character: "苏晚", LearnedAt: 2}},
+		},
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	args, err := json.Marshal(map[string]any{"chapter": 3})
+	if err != nil {
+		t.Fatal(err)
+	}
+	raw, err := newTestContextTool(st, References{}, "default").Execute(context.Background(), args)
+	if err != nil {
+		t.Fatal(err)
+	}
+	text := string(raw)
+	if !strings.Contains(text, "k_shadow") || !strings.Contains(text, "黑影是林墨的兄长") {
+		t.Fatalf("context missing current character knowledge: %s", text)
+	}
+	if strings.Contains(text, "k_order") || strings.Contains(text, "城主密令要求苏晚监视林墨") {
+		t.Fatalf("context leaked unrelated character knowledge: %s", text)
+	}
+}
+
 func TestContextToolInjectsStyleStats(t *testing.T) {
 	dir := t.TempDir()
 	st := store.NewStore(dir)
@@ -491,6 +590,28 @@ func TestContextToolArchitectModeIncludesFlatOutline(t *testing.T) {
 	}
 	if _, ok := payload["outline"]; ok {
 		t.Fatal("unexpected top-level outline")
+	}
+}
+
+func TestTrimByBudgetRecordsKnowledgeBoundaries(t *testing.T) {
+	result := map[string]any{
+		"episodic_memory": map[string]any{
+			"knowledge_boundaries": []domain.KnowledgeEntry{{
+				ID: "k_shadow", Truth: strings.Repeat("很长的作者真相", 50), EstablishedAt: 1,
+				KnownBy: []domain.KnowledgeHolder{{Character: "林墨", LearnedAt: 2}},
+			}},
+		},
+	}
+
+	trimByBudget(result, 80)
+
+	episodic := result["episodic_memory"].(map[string]any)
+	if _, ok := episodic["knowledge_boundaries"]; ok {
+		t.Fatal("expected knowledge boundaries to be trimmed")
+	}
+	trimmed, ok := result["_trimmed"].([]string)
+	if !ok || !slices.Contains(trimmed, "knowledge_boundaries") {
+		t.Fatalf("trimmed keys missing knowledge boundaries: %#v", result["_trimmed"])
 	}
 }
 

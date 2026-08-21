@@ -17,7 +17,8 @@ type Projector struct{ store *store.Store }
 
 func NewProjector(st *store.Store) *Projector { return &Projector{store: st} }
 
-func validateRecordSet(records []domain.ChapterRecord) error {
+// ValidateRecordSet 只验证章节记录能否按章序重建全部派生事实，不写入 Store。
+func ValidateRecordSet(records []domain.ChapterRecord) error {
 	records = slices.Clone(records)
 	slices.SortFunc(records, func(a, b domain.ChapterRecord) int { return a.Chapter - b.Chapter })
 	for _, record := range records {
@@ -25,7 +26,10 @@ func validateRecordSet(records []domain.ChapterRecord) error {
 			return fmt.Errorf("第 %d 章事实无效: %w", record.Chapter, err)
 		}
 	}
-	_, _, _, _, err := projectWorld(records)
+	if _, _, _, _, err := projectWorld(records); err != nil {
+		return err
+	}
+	_, err := projectKnowledge(records)
 	return err
 }
 
@@ -39,6 +43,10 @@ func (p *Projector) Apply(records []domain.ChapterRecord) error {
 	}
 
 	timeline, ledger, relationships, changes, err := projectWorld(records)
+	if err != nil {
+		return err
+	}
+	knowledge, err := projectKnowledge(records)
 	if err != nil {
 		return err
 	}
@@ -64,6 +72,9 @@ func (p *Projector) Apply(records []domain.ChapterRecord) error {
 	}
 	if err := p.store.World.SaveRelationships(relationships); err != nil {
 		return fmt.Errorf("重建人物关系: %w", err)
+	}
+	if err := p.store.World.SaveKnowledgeState(knowledge); err != nil {
+		return fmt.Errorf("重建知识状态: %w", err)
 	}
 	if err := p.store.World.SaveStateChanges(changes); err != nil {
 		return fmt.Errorf("重建状态变化: %w", err)
@@ -163,6 +174,47 @@ func projectWorld(records []domain.ChapterRecord) ([]domain.TimelineEvent, []dom
 		return strings.Compare(relationshipKey(a.CharacterA, a.CharacterB), relationshipKey(b.CharacterA, b.CharacterB))
 	})
 	return timeline, ledger, relationList, changes, nil
+}
+
+func projectKnowledge(records []domain.ChapterRecord) ([]domain.KnowledgeEntry, error) {
+	var entries []domain.KnowledgeEntry
+	idx := make(map[string]int)
+	for _, record := range records {
+		for _, update := range record.Facts.KnowledgeUpdates {
+			switch update.Action {
+			case "establish":
+				if i, exists := idx[update.ID]; exists {
+					if entries[i].Truth != update.Truth {
+						return nil, fmt.Errorf("第 %d 章真相 %q 与已建立内容冲突", record.Chapter, update.ID)
+					}
+					continue
+				}
+				idx[update.ID] = len(entries)
+				entries = append(entries, domain.KnowledgeEntry{
+					ID: update.ID, Truth: update.Truth, EstablishedAt: record.Chapter,
+				})
+			case "learn":
+				i, exists := idx[update.ID]
+				if !exists {
+					return nil, fmt.Errorf("第 %d 章角色获知未知真相 %q", record.Chapter, update.ID)
+				}
+				known := false
+				for _, holder := range entries[i].KnownBy {
+					if holder.Character == update.Character {
+						known = true
+						break
+					}
+				}
+				if known {
+					continue
+				}
+				entries[i].KnownBy = append(entries[i].KnownBy, domain.KnowledgeHolder{
+					Character: update.Character, LearnedAt: record.Chapter,
+				})
+			}
+		}
+	}
+	return entries, nil
 }
 
 func (p *Projector) projectCast(records []domain.ChapterRecord) ([]domain.CastEntry, error) {

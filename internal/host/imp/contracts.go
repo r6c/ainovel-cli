@@ -73,6 +73,12 @@ func chapterFactsSchema() map[string]any {
 		schema.Property("new_value", schema.String("变化后状态")).Required(),
 		schema.Property("reason", nullableString("变化原因；正文未说明时为 null")).Required(),
 	)
+	knowledgeUpdate := schema.Object(
+		schema.Property("id", schema.String("知识事实 ID")).Required(),
+		schema.Property("action", schema.Enum("知识动作", "establish", "learn")).Required(),
+		schema.Property("truth", nullableString("establish 时的作者真相；learn 时为 null")).Required(),
+		schema.Property("character", nullableString("learn 时获知真相的角色；establish 时为 null")).Required(),
+	)
 	return schema.Object(
 		schema.Property("chapter", schema.Int("章号")).Required(),
 		schema.Property("title", schema.String("章节标题")).Required(),
@@ -88,6 +94,7 @@ func chapterFactsSchema() map[string]any {
 		schema.Property("foreshadow_updates", schema.Array("伏笔增量", foreshadow)).Required(),
 		schema.Property("relationship_changes", schema.Array("关系变化", relationship)).Required(),
 		schema.Property("state_changes", schema.Array("状态变化", stateChange)).Required(),
+		schema.Property("knowledge_updates", schema.Array("作者真相与角色获知变化", knowledgeUpdate)).Required(),
 		schema.Property("hook_type", schema.Enum("章末钩子类型", domain.HookTypes()...)).Required(),
 		schema.Property("dominant_strand", schema.Enum("主导叙事线", domain.DominantStrands()...)).Required(),
 	)

@@ -226,6 +226,9 @@ func commitArgs(chapter int, f ImportedChapterFacts) map[string]any {
 	if len(f.StateChanges) > 0 {
 		args["state_changes"] = f.StateChanges
 	}
+	if len(f.KnowledgeUpdates) > 0 {
+		args["knowledge_updates"] = f.KnowledgeUpdates
+	}
 	return args
 }
 

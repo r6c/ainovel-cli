@@ -144,6 +144,95 @@ func TestChangedExcerptOmitsUnchangedPrefixAndSuffix(t *testing.T) {
 	}
 }
 
+func TestProjectorRejectsConflictingKnowledgeTruth(t *testing.T) {
+	st := newRevisionTestStore(t, 2)
+	now := time.Now()
+	records := []domain.ChapterRecord{
+		testRecord(1, "正文一", domain.ChapterFacts{
+			Title: "第一章", Summary: "建立真相", KeyEvents: []string{"确认身份"},
+			KnowledgeUpdates: []domain.KnowledgeUpdate{{
+				ID: "k_shadow", Action: "establish", Truth: "黑影是林墨的兄长",
+			}},
+		}, domain.StyleDelta{}, now),
+		testRecord(2, "正文二", domain.ChapterFacts{
+			Title: "第二章", Summary: "冲突真相", KeyEvents: []string{"错误改写身份"},
+			KnowledgeUpdates: []domain.KnowledgeUpdate{{
+				ID: "k_shadow", Action: "establish", Truth: "黑影是林墨的父亲",
+			}},
+		}, domain.StyleDelta{}, now.Add(time.Minute)),
+	}
+
+	if err := NewProjector(st).Apply(records); err == nil {
+		t.Fatal("expected projector to reject conflicting knowledge truth")
+	}
+}
+
+func TestProjectorDeduplicatesRepeatedKnowledgeLearn(t *testing.T) {
+	st := newRevisionTestStore(t, 3)
+	now := time.Now()
+	records := []domain.ChapterRecord{
+		testRecord(1, "正文一", domain.ChapterFacts{
+			Title: "第一章", Summary: "建立真相", KeyEvents: []string{"确认身份"},
+			KnowledgeUpdates: []domain.KnowledgeUpdate{{ID: "k_shadow", Action: "establish", Truth: "黑影是林墨的兄长"}},
+		}, domain.StyleDelta{}, now),
+		testRecord(2, "正文二", domain.ChapterFacts{
+			Title: "第二章", Summary: "林墨获知", KeyEvents: []string{"承认身份"},
+			KnowledgeUpdates: []domain.KnowledgeUpdate{{ID: "k_shadow", Action: "learn", Character: "林墨"}},
+		}, domain.StyleDelta{}, now.Add(time.Minute)),
+		testRecord(3, "正文三", domain.ChapterFacts{
+			Title: "第三章", Summary: "重复记录获知", KeyEvents: []string{"再次提及身份"},
+			KnowledgeUpdates: []domain.KnowledgeUpdate{{ID: "k_shadow", Action: "learn", Character: "林墨"}},
+		}, domain.StyleDelta{}, now.Add(2*time.Minute)),
+	}
+
+	if err := NewProjector(st).Apply(records); err != nil {
+		t.Fatal(err)
+	}
+	entries, err := st.World.LoadKnowledgeState()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(entries) != 1 || len(entries[0].KnownBy) != 1 || entries[0].KnownBy[0].LearnedAt != 2 {
+		t.Fatalf("projector duplicated knowledge holder: %+v", entries)
+	}
+}
+
+func TestProjectorRebuildsKnowledgeFromChapterRecords(t *testing.T) {
+	st := newRevisionTestStore(t, 3)
+	now := time.Now()
+	records := []domain.ChapterRecord{
+		testRecord(1, "正文一", domain.ChapterFacts{
+			Title: "第一章", Summary: "建立黑影真相", KeyEvents: []string{"确认黑影身份"},
+			KnowledgeUpdates: []domain.KnowledgeUpdate{{
+				ID: "k_shadow", Action: "establish", Truth: "黑影是林墨失踪多年的兄长",
+			}},
+		}, domain.StyleDelta{}, now),
+		testRecord(2, "正文二", domain.ChapterFacts{
+			Title: "第二章", Summary: "真相仍未公开", KeyEvents: []string{"林墨继续追查"},
+		}, domain.StyleDelta{}, now.Add(time.Minute)),
+		testRecord(3, "正文三", domain.ChapterFacts{
+			Title: "第三章", Summary: "林墨获知真相", KeyEvents: []string{"黑影承认身份"},
+			KnowledgeUpdates: []domain.KnowledgeUpdate{{
+				ID: "k_shadow", Action: "learn", Character: "林墨",
+			}},
+		}, domain.StyleDelta{}, now.Add(2*time.Minute)),
+	}
+
+	if err := NewProjector(st).Apply(records); err != nil {
+		t.Fatalf("project knowledge: %v", err)
+	}
+	entries, err := st.World.LoadKnowledgeState()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(entries) != 1 || entries[0].EstablishedAt != 1 || len(entries[0].KnownBy) != 1 {
+		t.Fatalf("projected knowledge wrong: %+v", entries)
+	}
+	if entries[0].KnownBy[0].Character != "林墨" || entries[0].KnownBy[0].LearnedAt != 3 {
+		t.Fatalf("projected holder wrong: %+v", entries[0].KnownBy)
+	}
+}
+
 func TestProjectorRebuildsForeshadowLifecycleFromChapterRecords(t *testing.T) {
 	st := newRevisionTestStore(t, 4)
 	now := time.Now()
@@ -312,7 +401,7 @@ func TestServiceAcceptsRevisionAndRefreshesFacts(t *testing.T) {
     "timeline_events":[{"time":"当夜","event":"林墨离开城市","characters":["林墨"]}],
     "foreshadow_updates":[],"relationship_changes":[],
     "state_changes":[{"entity":"林墨","field":"location","old_value":"城中","new_value":"城外","reason":"主动离开"}],
-    "cast_intros":[],"hook_type":null,"dominant_strand":null
+    "knowledge_updates":[],"cast_intros":[],"hook_type":null,"dominant_strand":null
   },
   "style_delta":{"prose":["动作表达直接，不补充解释"],"dialogue":[],"taboos":[]},
   "outline_impact":{"deviation":"主角已提前离城","suggestion":"后续从城外承接"},

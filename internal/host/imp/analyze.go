@@ -15,7 +15,7 @@ import (
 )
 
 // analysisSchemaVersion 是逐章事实 schema 版本，纳入 InputDigest。
-const analysisSchemaVersion = 2
+const analysisSchemaVersion = 3
 
 // ImportedCharacterFact / ImportedWorldFact 是用于全书综合的紧凑观察，不直接写正式角色或世界规则。
 // 至少携带章节号，使综合结果有稳定来源（RFC §9.1）。
@@ -47,6 +47,7 @@ type ImportedChapterFacts struct {
 	ForeshadowUpdates   []domain.ForeshadowUpdate  `json:"foreshadow_updates,omitempty"`
 	RelationshipChanges []domain.RelationshipEntry `json:"relationship_changes,omitempty"`
 	StateChanges        []domain.StateChange       `json:"state_changes,omitempty"`
+	KnowledgeUpdates    []domain.KnowledgeUpdate   `json:"knowledge_updates,omitempty"`
 	HookType            string                     `json:"hook_type"`
 	DominantStrand      string                     `json:"dominant_strand"`
 }
@@ -158,6 +159,8 @@ func buildLedger(prior []ImportedChapterFacts) string {
 	}
 	names := map[string]bool{}
 	active := map[string]string{} // foreshadow id -> desc
+	truths := map[string]string{} // knowledge id -> author truth
+	knownBy := map[string]map[string]bool{}
 	var recent []string
 	for _, f := range prior {
 		for _, c := range f.Characters {
@@ -165,7 +168,7 @@ func buildLedger(prior []ImportedChapterFacts) string {
 		}
 		for _, fu := range f.ForeshadowUpdates {
 			switch fu.Action {
-			case "plant", "advance":
+			case "plant", "advance", "reinforce", "partial_payoff":
 				if fu.Description != "" {
 					active[fu.ID] = fu.Description
 				} else if _, ok := active[fu.ID]; !ok {
@@ -173,6 +176,17 @@ func buildLedger(prior []ImportedChapterFacts) string {
 				}
 			case "resolve":
 				delete(active, fu.ID)
+			}
+		}
+		for _, ku := range f.KnowledgeUpdates {
+			switch ku.Action {
+			case "establish":
+				truths[ku.ID] = ku.Truth
+			case "learn":
+				if knownBy[ku.ID] == nil {
+					knownBy[ku.ID] = map[string]bool{}
+				}
+				knownBy[ku.ID][ku.Character] = true
 			}
 		}
 	}
@@ -192,6 +206,19 @@ func buildLedger(prior []ImportedChapterFacts) string {
 		b.WriteString("活跃伏笔（复用 ID，勿新造）：\n")
 		for _, id := range slices.Sorted(maps.Keys(active)) {
 			fmt.Fprintf(&b, "- %s：%s\n", id, active[id])
+		}
+	}
+	if len(truths) > 0 {
+		b.WriteString("作者真相与角色知情范围（复用 ID，勿让未列角色越权知情）：\n")
+		for _, id := range slices.Sorted(maps.Keys(truths)) {
+			fmt.Fprintf(&b, "- %s：%s", id, truths[id])
+			if holders := knownBy[id]; len(holders) > 0 {
+				b.WriteString("；已知角色：")
+				b.WriteString(strings.Join(slices.Sorted(maps.Keys(holders)), "、"))
+			} else {
+				b.WriteString("；尚无角色获知")
+			}
+			b.WriteString("\n")
 		}
 	}
 	if len(recent) > 0 {
@@ -250,6 +277,7 @@ func validateBatch(r *AnalysisBatchResult, seg *Segmentation, start, end int) er
 	if len(r.Chapters) != want {
 		return fmt.Errorf("批次章节数 %d != 预期 %d", len(r.Chapters), want)
 	}
+	knowledgeTruths := make(map[string]string)
 	for i, f := range r.Chapters {
 		want := seg.Chapters[start+i]
 		if f.Chapter != want.Number {
@@ -267,6 +295,19 @@ func validateBatch(r *AnalysisBatchResult, seg *Segmentation, start, end int) er
 		for j, fu := range f.ForeshadowUpdates {
 			if fu.Action == "plant" && strings.TrimSpace(fu.Description) == "" {
 				return fmt.Errorf("章 %d foreshadow[%d] plant 需 description", f.Chapter, j)
+			}
+		}
+		for j, ku := range f.KnowledgeUpdates {
+			switch ku.Action {
+			case "establish":
+				if truth, known := knowledgeTruths[ku.ID]; known && truth != ku.Truth {
+					return fmt.Errorf("章 %d knowledge[%d] 真相 %q 与本批次已建立内容冲突", f.Chapter, j, ku.ID)
+				}
+				knowledgeTruths[ku.ID] = ku.Truth
+			case "learn":
+				if _, known := knowledgeTruths[ku.ID]; !known && start == 0 {
+					return fmt.Errorf("章 %d knowledge[%d] 引用未知真相 %q", f.Chapter, j, ku.ID)
+				}
 			}
 		}
 		// 枚举按小写校验就按小写落盘：commit_chapter 不复验枚举，大小写变体会直通正式状态

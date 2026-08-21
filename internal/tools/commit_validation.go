@@ -4,11 +4,47 @@ import (
 	"fmt"
 
 	"github.com/voocel/ainovel-cli/internal/chapterfacts"
+	"github.com/voocel/ainovel-cli/internal/domain"
 	"github.com/voocel/ainovel-cli/internal/errs"
+	"github.com/voocel/ainovel-cli/internal/revision"
 )
 
 // validateCommitArgs 在创建 PendingCommit 前校验模型提交的完整语义载荷。
 // 错误直接返回模型修正；不生成半成品状态，也不猜测缺失值。
+func (t *CommitChapterTool) validateRewriteRecordSet(a commitArgs, progress *domain.Progress) error {
+	target, err := t.store.ChapterRecords.Load(a.Chapter)
+	if err != nil {
+		return fmt.Errorf("load chapter record for rewrite validation: %w: %w", errs.ErrStoreRead, err)
+	}
+	// 兼容尚未迁移出 ChapterRecord 的旧书/测试夹具：没有可替换的事实基线时，
+	// 保持既有返工路径；正式迁移完成的书会进入下方完整依赖验证。
+	if target == nil {
+		return nil
+	}
+	records, err := t.store.ChapterRecords.LoadCompleted(progress.CompletedChapters)
+	if err != nil {
+		return fmt.Errorf("load chapter records for rewrite validation: %w: %w", errs.ErrStoreRead, err)
+	}
+	found := false
+	for i := range records {
+		if records[i].Chapter != a.Chapter {
+			continue
+		}
+		facts := a.ChapterFacts
+		facts.ForeshadowUpdates = domain.RestoreOwnPlants(records[i].Facts.ForeshadowUpdates, facts.ForeshadowUpdates)
+		records[i].Facts = facts
+		found = true
+		break
+	}
+	if !found {
+		return fmt.Errorf("第 %d 章缺少接纳记录，无法验证返工事实: %w", a.Chapter, errs.ErrToolPrecondition)
+	}
+	if err := revision.ValidateRecordSet(records); err != nil {
+		return fmt.Errorf("第 %d 章返工会破坏后续事实依赖: %v: %w", a.Chapter, err, errs.ErrToolPrecondition)
+	}
+	return nil
+}
+
 func (t *CommitChapterTool) validateCommitArgs(a commitArgs) error {
 	if err := chapterfacts.Validate(a.ChapterFacts); err != nil {
 		return fmt.Errorf("%v: %w", err, errs.ErrToolArgs)
@@ -57,6 +93,41 @@ func (t *CommitChapterTool) validateCommitArgs(a commitArgs) error {
 					status[update.ID] = "partially_paid"
 				case "resolve":
 					status[update.ID] = "resolved"
+				}
+			}
+		}
+	}
+
+	if len(a.KnowledgeUpdates) > 0 {
+		entries, err := t.store.World.LoadKnowledgeState()
+		if err != nil {
+			return fmt.Errorf("load knowledge state: %w: %w", errs.ErrStoreRead, err)
+		}
+		establishedAt := make(map[string]int, len(entries))
+		truth := make(map[string]string, len(entries))
+		for _, entry := range entries {
+			establishedAt[entry.ID] = entry.EstablishedAt
+			truth[entry.ID] = entry.Truth
+		}
+		for i, update := range a.KnowledgeUpdates {
+			switch update.Action {
+			case "establish":
+				if _, known := establishedAt[update.ID]; known {
+					if truth[update.ID] != update.Truth {
+						return fmt.Errorf("knowledge_updates[%d] 真相 %q 与已建立内容冲突: %w", i, update.ID, errs.ErrToolPrecondition)
+					}
+					continue
+				}
+				establishedAt[update.ID] = a.Chapter
+				truth[update.ID] = update.Truth
+			case "learn":
+				at, known := establishedAt[update.ID]
+				if !known {
+					return fmt.Errorf("knowledge_updates[%d] references unknown id %q: %w", i, update.ID, errs.ErrToolPrecondition)
+				}
+				if at > a.Chapter {
+					return fmt.Errorf("knowledge_updates[%d] 真相 %q 建立于第 %d 章，不能在第 %d 章获知: %w",
+						i, update.ID, at, a.Chapter, errs.ErrToolPrecondition)
 				}
 			}
 		}

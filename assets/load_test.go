@@ -51,6 +51,33 @@ func TestLoad_NoOverrides(t *testing.T) {
 	}
 }
 
+func TestKnowledgePromptsDescribeTruthAndLearningBoundaries(t *testing.T) {
+	writer := mustRead(promptsFS, "prompts/writer.md")
+	for _, phrase := range []string{"knowledge_boundaries", "establish", "learn", "越权知情"} {
+		if !strings.Contains(writer, phrase) {
+			t.Fatalf("Writer 提示缺少知识边界纪律 %q", phrase)
+		}
+	}
+
+	editor := mustRead(promptsFS, "prompts/editor.md")
+	for _, phrase := range []string{"knowledge_boundaries", "越权知情"} {
+		if !strings.Contains(editor, phrase) {
+			t.Fatalf("Editor 提示缺少知识一致性检查 %q", phrase)
+		}
+	}
+
+	for name, prompt := range map[string]string{
+		"revision": mustRead(promptsFS, "prompts/revision-analyze.md"),
+		"import":   mustRead(promptsFS, "prompts/import-analyze.md"),
+	} {
+		for _, phrase := range []string{"establish", "learn", "正文明确"} {
+			if !strings.Contains(prompt, phrase) {
+				t.Fatalf("%s 提示缺少知识事实提取纪律 %q", name, phrase)
+			}
+		}
+	}
+}
+
 func TestForeshadowPromptsDescribeLifecycleActions(t *testing.T) {
 	writer := mustRead(promptsFS, "prompts/writer.md")
 	for _, phrase := range []string{"reinforce", "partial_payoff", "部分兑现", "resolve"} {

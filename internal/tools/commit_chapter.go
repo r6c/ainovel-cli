@@ -59,7 +59,7 @@ type commitArgs struct {
 
 func (t *CommitChapterTool) Name() string { return "commit_chapter" }
 func (t *CommitChapterTool) Description() string {
-	return "提交章节终稿。加载草稿正文保存为终稿，更新时间线、伏笔、关系、角色状态和进度。" +
+	return "提交章节终稿。加载草稿正文保存为终稿，更新时间线、伏笔、知识、关系、角色状态和进度。" +
 		"返回结构化事实：next_chapter / review_required / arc_end / volume_end / needs_expansion / book_complete / flow 等"
 }
 func (t *CommitChapterTool) Label() string { return "提交章节" }
@@ -142,6 +142,9 @@ func (t *CommitChapterTool) Execute(_ context.Context, args json.RawMessage) (js
 		if slices.Contains(progress.PendingRewrites, a.Chapter) {
 			content, err := t.validateRewriteDraft(a.Chapter, a.Title, progress)
 			if err != nil {
+				return nil, err
+			}
+			if err := t.validateRewriteRecordSet(a, progress); err != nil {
 				return nil, err
 			}
 			payload, err := json.Marshal(a)
@@ -268,6 +271,11 @@ func (t *CommitChapterTool) Execute(_ context.Context, args json.RawMessage) (js
 		if len(a.ForeshadowUpdates) > 0 {
 			if err := t.store.World.UpdateForeshadow(a.Chapter, a.ForeshadowUpdates); err != nil {
 				return nil, fmt.Errorf("update foreshadow: %w: %w", errs.ErrStoreWrite, err)
+			}
+		}
+		if len(a.KnowledgeUpdates) > 0 {
+			if err := t.store.World.UpdateKnowledge(a.Chapter, a.KnowledgeUpdates); err != nil {
+				return nil, fmt.Errorf("update knowledge: %w: %w", errs.ErrStoreWrite, err)
 			}
 		}
 		if len(a.RelationshipChanges) > 0 {

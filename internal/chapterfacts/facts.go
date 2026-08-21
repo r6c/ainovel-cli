@@ -36,6 +36,12 @@ func Properties(includeFeedback bool) []schema.Prop {
 		schema.Property("new_value", schema.String("变化后值")).Required(),
 		schema.Property("reason", llmcontract.Nullable(schema.String("原因"))).Required(),
 	)
+	knowledgeUpdate := schema.Object(
+		schema.Property("id", schema.String("知识事实 ID")).Required(),
+		schema.Property("action", schema.Enum("知识动作", "establish", "learn")).Required(),
+		schema.Property("truth", llmcontract.Nullable(schema.String("establish 时的作者真相；learn 时为 null"))).Required(),
+		schema.Property("character", llmcontract.Nullable(schema.String("learn 时获知真相的角色；establish 时为 null"))).Required(),
+	)
 	props := []schema.Prop{
 		schema.Property("title", schema.String("最终标题")).Required(),
 		schema.Property("summary", schema.String("章节摘要")).Required(),
@@ -45,6 +51,7 @@ func Properties(includeFeedback bool) []schema.Prop {
 		schema.Property("foreshadow_updates", schema.Array("伏笔操作", foreshadow)).Required(),
 		schema.Property("relationship_changes", schema.Array("关系变化", relationship)).Required(),
 		schema.Property("state_changes", schema.Array("状态变化", stateChange)).Required(),
+		schema.Property("knowledge_updates", schema.Array("作者真相与角色获知变化", knowledgeUpdate)).Required(),
 		schema.Property("cast_intros", schema.Array("新配角", schema.Object(
 			schema.Property("name", schema.String("姓名")).Required(),
 			schema.Property("brief_role", schema.String("定位")).Required(),
@@ -113,6 +120,23 @@ func Validate(facts domain.ChapterFacts) error {
 	for i, change := range facts.StateChanges {
 		if strings.TrimSpace(change.Entity) == "" || strings.TrimSpace(change.Field) == "" || strings.TrimSpace(change.NewValue) == "" {
 			return fmt.Errorf("state_changes[%d] requires entity, field and new_value", i)
+		}
+	}
+	for i, update := range facts.KnowledgeUpdates {
+		if strings.TrimSpace(update.ID) == "" {
+			return fmt.Errorf("knowledge_updates[%d].id is required", i)
+		}
+		switch update.Action {
+		case "establish":
+			if strings.TrimSpace(update.Truth) == "" {
+				return fmt.Errorf("knowledge_updates[%d] establish requires truth", i)
+			}
+		case "learn":
+			if strings.TrimSpace(update.Character) == "" {
+				return fmt.Errorf("knowledge_updates[%d] learn requires character", i)
+			}
+		default:
+			return fmt.Errorf("knowledge_updates[%d].action invalid: %q", i, update.Action)
 		}
 	}
 	for i, intro := range facts.CastIntros {

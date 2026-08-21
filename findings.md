@@ -418,3 +418,91 @@ Entity=林墨, Field=knows:f_secret, NewValue=true
 - 作者真相与角色状态的边界。
 
 所以知识状态是一个真实的新领域事实，而角色心理仍可留在通用 StateChange 中。
+
+---
+
+# 最小知识事实里程碑完成结论（2026-08-21）
+
+## 已实现范围
+
+仅实现：
+
+```text
+establish：建立作者认定的客观真相
+learn：某角色明确获知已有真相
+```
+
+没有实现 belief、reader reveal、forget、reveal plan。
+
+## 完整链路
+
+```text
+ChapterFacts 严格 Schema / Validate
+→ Commit 提交前临时可见性与 Truth 冲突校验
+→ PendingCommit 幂等重放
+→ knowledge_state.json / knowledge_state.md
+→ ChapterRecord
+→ Revision Analyze / Rewrite
+→ Projector 全量重建
+→ Import Schema / ledger / publish
+→ Context 角色相关选择与预算裁剪
+→ Writer / Editor 语义纪律
+```
+
+## 关键不变量
+
+- 同一 ID 不可建立不同 Truth。
+- 相同 ID + 相同 Truth 重放幂等。
+- learn 必须引用已建立 Truth。
+- 同角色重复 learn 不复制，保留首次 LearnedAt。
+- `establish` 不代表任何角色自动知情。
+- 重写不得在保留后续 learn 的同时删除其唯一 establish；该错误在 Rewrite PendingCommit 前拒绝。
+- Writer Context 只看到当前大纲涉及角色已经知道的历史真相，不看到无关角色独占真相或未来信息。
+- Context 最多注入 8 条 Knowledge，并可被预算裁剪、记录 `_trimmed`。
+
+## 兼容性与缓存
+
+- `ChapterRecordVersion` 保持 1；旧记录缺少 `knowledge_updates` 时解码为空切片。
+- Import `analysisSchemaVersion` 从 2 提升到 3，只失效逐章分析缓存，不提升工作区版本。
+- 没有增加数据库、迁移服务或第二事实源。
+
+## 审计判断
+
+该实现保持了既定架构边界：Knowledge 是 ChapterRecord 派生的当前投影，Commit/Revision/Import 共享同一事实契约，Context 只是有界消费端。没有把外部项目的 Skill/Hook、CRUD Service 或数据库架构移植进来。
+
+---
+
+# 下一里程碑决策：C1 读者揭示状态
+
+## 决策
+
+下一步不同时实现“错误信念 + 读者已知”，而是只扩展：
+
+```text
+reveal_to_reader
+ReaderRevealedAt
+```
+
+## 原因
+
+1. 读者揭示是现有 Truth 的单调属性：未知 → 已知，容易保持 Saga 幂等和 Projector 重放。
+2. 错误信念不是 Truth 的简单属性，需要额外描述“角色相信的内容”，以及纠正、替换、撤销和与客观 Truth 的关系；过早加入会形成新的认知状态机。
+3. 读者揭示能直接解决悬疑、马甲、误会和戏剧性反讽中的上下文问题，增量价值明确。
+4. 当前 Knowledge 批次仍未提交，必须先隔离后再扩展。
+
+## 语义边界
+
+- `reveal_to_reader` 表示正文已让读者明确知道完整 Truth。
+- reveal 不自动修改任何角色 KnownBy。
+- learn 不自动修改 ReaderRevealedAt。
+- 暗示、伏笔强化、部分兑现不等于完整 reveal。
+- 第一版不支持“部分读者知道”“不可靠叙述者误导读者”或撤销揭示。
+
+## Context 风险控制
+
+未来 Context 只能注入两类 Truth：
+
+1. 当前大纲涉及角色已经知道；
+2. 读者在当前章之前已经知道。
+
+作者已建立、但当前角色与读者都未知的 Truth 继续隐藏。否则新增 ReaderRevealedAt 反而会成为向 Writer 泄漏全量作者真相的通道。
