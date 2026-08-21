@@ -15,7 +15,7 @@ import (
 )
 
 // analysisSchemaVersion 是逐章事实 schema 版本，纳入 InputDigest。
-const analysisSchemaVersion = 4
+const analysisSchemaVersion = 5
 
 // ImportedCharacterFact / ImportedWorldFact 是用于全书综合的紧凑观察，不直接写正式角色或世界规则。
 // 至少携带章节号，使综合结果有稳定来源（RFC §9.1）。
@@ -161,6 +161,7 @@ func buildLedger(prior []ImportedChapterFacts) string {
 	active := map[string]string{} // foreshadow id -> desc
 	truths := map[string]string{} // knowledge id -> author truth
 	knownBy := map[string]map[string]bool{}
+	beliefBy := map[string]map[string]string{}
 	readerKnown := map[string]bool{}
 	var recent []string
 	for _, f := range prior {
@@ -183,6 +184,11 @@ func buildLedger(prior []ImportedChapterFacts) string {
 			switch ku.Action {
 			case "establish":
 				truths[ku.ID] = ku.Truth
+			case "believe":
+				if beliefBy[ku.ID] == nil {
+					beliefBy[ku.ID] = map[string]string{}
+				}
+				beliefBy[ku.ID][ku.Character] = ku.Belief
 			case "reveal_to_reader":
 				readerKnown[ku.ID] = true
 			case "learn":
@@ -190,6 +196,7 @@ func buildLedger(prior []ImportedChapterFacts) string {
 					knownBy[ku.ID] = map[string]bool{}
 				}
 				knownBy[ku.ID][ku.Character] = true
+				delete(beliefBy[ku.ID], ku.Character)
 			}
 		}
 	}
@@ -225,6 +232,16 @@ func buildLedger(prior []ImportedChapterFacts) string {
 				b.WriteString(strings.Join(slices.Sorted(maps.Keys(holders)), "、"))
 			} else {
 				b.WriteString("；尚无角色获知")
+			}
+			if beliefs := beliefBy[id]; len(beliefs) > 0 {
+				b.WriteString("；活跃错误信念：")
+				characters := slices.Sorted(maps.Keys(beliefs))
+				for i, character := range characters {
+					if i > 0 {
+						b.WriteString("、")
+					}
+					fmt.Fprintf(&b, "%s误信：%s", character, beliefs[character])
+				}
 			}
 			b.WriteString("\n")
 		}
@@ -286,6 +303,8 @@ func validateBatch(r *AnalysisBatchResult, seg *Segmentation, start, end int) er
 		return fmt.Errorf("批次章节数 %d != 预期 %d", len(r.Chapters), want)
 	}
 	knowledgeTruths := make(map[string]string)
+	knowledgeKnownBy := make(map[string]map[string]bool)
+	knowledgeBeliefs := make(map[string]map[string]string)
 	for i, f := range r.Chapters {
 		want := seg.Chapters[start+i]
 		if f.Chapter != want.Number {
@@ -308,21 +327,58 @@ func validateBatch(r *AnalysisBatchResult, seg *Segmentation, start, end int) er
 		for j, ku := range f.KnowledgeUpdates {
 			switch ku.Action {
 			case "establish":
+				if strings.TrimSpace(ku.Truth) == "" || strings.TrimSpace(ku.Character) != "" || strings.TrimSpace(ku.Belief) != "" {
+					return fmt.Errorf("章 %d knowledge[%d] establish 字段非法", f.Chapter, j)
+				}
 				if truth, known := knowledgeTruths[ku.ID]; known && truth != ku.Truth {
 					return fmt.Errorf("章 %d knowledge[%d] 真相 %q 与本批次已建立内容冲突", f.Chapter, j, ku.ID)
 				}
 				knowledgeTruths[ku.ID] = ku.Truth
+				if knowledgeKnownBy[ku.ID] == nil {
+					knowledgeKnownBy[ku.ID] = map[string]bool{}
+					knowledgeBeliefs[ku.ID] = map[string]string{}
+				}
+			case "believe":
+				if strings.TrimSpace(ku.Character) == "" || strings.TrimSpace(ku.Belief) == "" || strings.TrimSpace(ku.Truth) != "" {
+					return fmt.Errorf("章 %d knowledge[%d] believe 需 character+belief 且不能携带 truth", f.Chapter, j)
+				}
+				truth, known := knowledgeTruths[ku.ID]
+				if !known && start == 0 {
+					return fmt.Errorf("章 %d knowledge[%d] 引用未知真相 %q", f.Chapter, j, ku.ID)
+				}
+				if known && strings.TrimSpace(ku.Belief) == strings.TrimSpace(truth) {
+					return fmt.Errorf("章 %d knowledge[%d] 错误信念与客观真相相同", f.Chapter, j)
+				}
+				if knowledgeKnownBy[ku.ID][ku.Character] {
+					return fmt.Errorf("章 %d knowledge[%d] 已知角色不能形成错误信念", f.Chapter, j)
+				}
+				if prior, exists := knowledgeBeliefs[ku.ID][ku.Character]; exists && prior != ku.Belief {
+					return fmt.Errorf("章 %d knowledge[%d] 不能改写角色错误信念", f.Chapter, j)
+				}
+				if knowledgeBeliefs[ku.ID] == nil {
+					knowledgeBeliefs[ku.ID] = map[string]string{}
+				}
+				knowledgeBeliefs[ku.ID][ku.Character] = ku.Belief
 			case "learn":
+				if strings.TrimSpace(ku.Character) == "" || strings.TrimSpace(ku.Truth) != "" || strings.TrimSpace(ku.Belief) != "" {
+					return fmt.Errorf("章 %d knowledge[%d] learn 字段非法", f.Chapter, j)
+				}
 				if _, known := knowledgeTruths[ku.ID]; !known && start == 0 {
 					return fmt.Errorf("章 %d knowledge[%d] 引用未知真相 %q", f.Chapter, j, ku.ID)
 				}
+				if knowledgeKnownBy[ku.ID] == nil {
+					knowledgeKnownBy[ku.ID] = map[string]bool{}
+				}
+				knowledgeKnownBy[ku.ID][ku.Character] = true
 			case "reveal_to_reader":
-				if strings.TrimSpace(ku.Truth) != "" || strings.TrimSpace(ku.Character) != "" {
+				if strings.TrimSpace(ku.Truth) != "" || strings.TrimSpace(ku.Character) != "" || strings.TrimSpace(ku.Belief) != "" {
 					return fmt.Errorf("章 %d knowledge[%d] reveal_to_reader 只接受 id", f.Chapter, j)
 				}
 				if _, known := knowledgeTruths[ku.ID]; !known && start == 0 {
 					return fmt.Errorf("章 %d knowledge[%d] 引用未知真相 %q", f.Chapter, j, ku.ID)
 				}
+			default:
+				return fmt.Errorf("章 %d knowledge[%d] 动作非法：%q", f.Chapter, j, ku.Action)
 			}
 		}
 		// 枚举按小写校验就按小写落盘：commit_chapter 不复验枚举，大小写变体会直通正式状态

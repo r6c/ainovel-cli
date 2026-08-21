@@ -75,9 +75,10 @@ func chapterFactsSchema() map[string]any {
 	)
 	knowledgeUpdate := schema.Object(
 		schema.Property("id", schema.String("知识事实 ID")).Required(),
-		schema.Property("action", schema.Enum("知识动作", "establish", "learn", "reveal_to_reader")).Required(),
-		schema.Property("truth", nullableString("仅 establish 时填写作者真相；learn/reveal_to_reader 时为 null")).Required(),
-		schema.Property("character", nullableString("仅 learn 时填写获知真相的角色；establish/reveal_to_reader 时为 null")).Required(),
+		schema.Property("action", schema.Enum("知识动作", "establish", "believe", "learn", "reveal_to_reader")).Required(),
+		schema.Property("truth", nullableString("仅 establish 时填写作者真相；其它动作时为 null")).Required(),
+		schema.Property("character", nullableString("believe/learn 时填写角色；其它动作时为 null")).Required(),
+		schema.Property("belief", nullableString("仅 believe 时填写角色明确相信的错误内容；其它动作时为 null")).Required(),
 	)
 	return schema.Object(
 		schema.Property("chapter", schema.Int("章号")).Required(),

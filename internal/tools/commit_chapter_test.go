@@ -49,8 +49,11 @@ func TestCommitChapterSchemaIncludesKnowledgeUpdates(t *testing.T) {
 		t.Fatalf("knowledge update properties missing: %#v", items["properties"])
 	}
 	action, ok := itemProps["action"].(map[string]any)
-	if !ok || fmt.Sprint(action["enum"]) != "[establish learn reveal_to_reader]" {
+	if !ok || fmt.Sprint(action["enum"]) != "[establish believe learn reveal_to_reader]" {
 		t.Fatalf("knowledge action enum = %#v", action["enum"])
+	}
+	if _, ok := itemProps["belief"].(map[string]any); !ok {
+		t.Fatalf("knowledge belief field missing: %#v", itemProps["belief"])
 	}
 }
 
@@ -172,6 +175,187 @@ func TestCommitChapterRejectsLearningUnknownKnowledgeBeforePending(t *testing.T)
 	}
 }
 
+func TestCommitChapterRejectsBelievingUnknownKnowledgeBeforePending(t *testing.T) {
+	s := store.NewStore(t.TempDir())
+	if err := s.Init(); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Progress.Init(1); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Progress.UpdatePhase(domain.PhaseWriting); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Drafts.SaveDraft(1, "第一章正文，林墨错误地相信一个尚未建立的真相，并据此采取行动。摘要需要足够清楚。 "); err != nil {
+		t.Fatal(err)
+	}
+
+	args, _ := json.Marshal(map[string]any{
+		"chapter": 1, "title": "第一章", "summary": "错误引用未知真相",
+		"characters": []string{"林墨"}, "key_events": []string{"形成错误认知"},
+		"knowledge_updates": []map[string]any{{
+			"id": "k_missing", "action": "believe", "character": "林墨", "belief": "黑影是仇人",
+		}},
+	})
+	if _, err := newTestCommitChapterTool(s).Execute(context.Background(), args); err == nil {
+		t.Fatal("expected belief about unknown knowledge to fail")
+	}
+	if pending, err := s.Signals.LoadPendingCommit(); err != nil || pending != nil {
+		t.Fatalf("unknown belief must fail before pending: pending=%+v err=%v", pending, err)
+	}
+}
+
+func TestCommitChapterRejectsTrueBeliefBeforePending(t *testing.T) {
+	s := store.NewStore(t.TempDir())
+	if err := s.Init(); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Progress.Init(2); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Progress.UpdatePhase(domain.PhaseWriting); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.World.UpdateKnowledge(1, []domain.KnowledgeUpdate{{ID: "k_shadow", Action: "establish", Truth: "黑影是兄长"}}); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Progress.MarkChapterComplete(1, 1000, "", ""); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Drafts.SaveDraft(2, "第二章正文错误地把客观真相当成错误信念提交。摘要需要足够清楚。 "); err != nil {
+		t.Fatal(err)
+	}
+	args, _ := json.Marshal(map[string]any{
+		"chapter": 2, "title": "第二章", "summary": "错误信念与真相相同",
+		"characters": []string{"林墨"}, "key_events": []string{"错误提交认知"},
+		"knowledge_updates": []map[string]any{{
+			"id": "k_shadow", "action": "believe", "character": "林墨", "belief": "黑影是兄长",
+		}},
+	})
+	if _, err := newTestCommitChapterTool(s).Execute(context.Background(), args); err == nil {
+		t.Fatal("expected belief equal to truth to fail")
+	}
+	if pending, err := s.Signals.LoadPendingCommit(); err != nil || pending != nil {
+		t.Fatalf("true belief must fail before pending: pending=%+v err=%v", pending, err)
+	}
+}
+
+func TestCommitChapterRejectsBeliefAfterCharacterKnowsTruthBeforePending(t *testing.T) {
+	s := store.NewStore(t.TempDir())
+	if err := s.Init(); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Progress.Init(3); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Progress.UpdatePhase(domain.PhaseWriting); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.World.UpdateKnowledge(1, []domain.KnowledgeUpdate{{ID: "k_shadow", Action: "establish", Truth: "黑影是兄长"}}); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.World.UpdateKnowledge(2, []domain.KnowledgeUpdate{{ID: "k_shadow", Action: "learn", Character: "林墨"}}); err != nil {
+		t.Fatal(err)
+	}
+	for chapter := 1; chapter <= 2; chapter++ {
+		if err := s.Progress.MarkChapterComplete(chapter, 1000, "", ""); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := s.Drafts.SaveDraft(3, "第三章正文错误地让已经知道真相的林墨重新形成相反认知。摘要需要足够清楚。 "); err != nil {
+		t.Fatal(err)
+	}
+	args, _ := json.Marshal(map[string]any{
+		"chapter": 3, "title": "第三章", "summary": "已知角色错误形成信念",
+		"characters": []string{"林墨"}, "key_events": []string{"错误认知"},
+		"knowledge_updates": []map[string]any{{
+			"id": "k_shadow", "action": "believe", "character": "林墨", "belief": "黑影是仇人",
+		}},
+	})
+	if _, err := newTestCommitChapterTool(s).Execute(context.Background(), args); err == nil {
+		t.Fatal("expected known character belief to fail")
+	}
+	if pending, err := s.Signals.LoadPendingCommit(); err != nil || pending != nil {
+		t.Fatalf("known character belief must fail before pending: pending=%+v err=%v", pending, err)
+	}
+}
+
+func TestCommitChapterRejectsBeliefAfterLearningInSamePayloadBeforePending(t *testing.T) {
+	s := store.NewStore(t.TempDir())
+	if err := s.Init(); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Progress.Init(2); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Progress.UpdatePhase(domain.PhaseWriting); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.World.UpdateKnowledge(1, []domain.KnowledgeUpdate{{ID: "k_shadow", Action: "establish", Truth: "黑影是兄长"}}); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Progress.MarkChapterComplete(1, 1000, "", ""); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Drafts.SaveDraft(2, "第二章正文先让林墨获知真相，却又错误提交相反信念。摘要需要足够清楚。 "); err != nil {
+		t.Fatal(err)
+	}
+	args, _ := json.Marshal(map[string]any{
+		"chapter": 2, "title": "第二章", "summary": "同章认知顺序冲突",
+		"characters": []string{"林墨"}, "key_events": []string{"获知后错误形成信念"},
+		"knowledge_updates": []map[string]any{
+			{"id": "k_shadow", "action": "learn", "character": "林墨"},
+			{"id": "k_shadow", "action": "believe", "character": "林墨", "belief": "黑影是仇人"},
+		},
+	})
+	if _, err := newTestCommitChapterTool(s).Execute(context.Background(), args); err == nil {
+		t.Fatal("expected learn then believe to fail")
+	}
+	if pending, err := s.Signals.LoadPendingCommit(); err != nil || pending != nil {
+		t.Fatalf("same-payload learn then believe must fail before pending: pending=%+v err=%v", pending, err)
+	}
+}
+
+func TestCommitChapterRejectsChangingActiveBeliefBeforePending(t *testing.T) {
+	s := store.NewStore(t.TempDir())
+	if err := s.Init(); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Progress.Init(3); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Progress.UpdatePhase(domain.PhaseWriting); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.World.UpdateKnowledge(1, []domain.KnowledgeUpdate{{ID: "k_shadow", Action: "establish", Truth: "黑影是兄长"}}); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.World.UpdateKnowledge(2, []domain.KnowledgeUpdate{{ID: "k_shadow", Action: "believe", Character: "林墨", Belief: "黑影是仇人"}}); err != nil {
+		t.Fatal(err)
+	}
+	for chapter := 1; chapter <= 2; chapter++ {
+		if err := s.Progress.MarkChapterComplete(chapter, 1000, "", ""); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := s.Drafts.SaveDraft(3, "第三章正文错误地把林墨的稳定错误信念改成另一种内容。摘要需要足够清楚。 "); err != nil {
+		t.Fatal(err)
+	}
+	args, _ := json.Marshal(map[string]any{
+		"chapter": 3, "title": "第三章", "summary": "错误改写角色信念",
+		"characters": []string{"林墨"}, "key_events": []string{"改写错误认知"},
+		"knowledge_updates": []map[string]any{{
+			"id": "k_shadow", "action": "believe", "character": "林墨", "belief": "黑影是陌生人",
+		}},
+	})
+	if _, err := newTestCommitChapterTool(s).Execute(context.Background(), args); err == nil {
+		t.Fatal("expected changing active belief to fail")
+	}
+	if pending, err := s.Signals.LoadPendingCommit(); err != nil || pending != nil {
+		t.Fatalf("belief rewrite must fail before pending: pending=%+v err=%v", pending, err)
+	}
+}
+
 func TestCommitChapterRejectsRevealingUnknownKnowledgeBeforePending(t *testing.T) {
 	s := store.NewStore(t.TempDir())
 	if err := s.Init(); err != nil {
@@ -237,6 +421,83 @@ func TestCommitChapterRevealsKnowledgeToReader(t *testing.T) {
 	}
 	if len(entries) != 1 || entries[0].ReaderRevealedAt != 2 || len(entries[0].KnownBy) != 0 {
 		t.Fatalf("commit reader reveal wrong: %+v", entries)
+	}
+}
+
+func TestCommitChapterRecordsCharacterFalseBelief(t *testing.T) {
+	s := store.NewStore(t.TempDir())
+	if err := s.Init(); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Progress.Init(2); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Progress.UpdatePhase(domain.PhaseWriting); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.World.UpdateKnowledge(1, []domain.KnowledgeUpdate{{
+		ID: "k_shadow", Action: "establish", Truth: "黑影是林墨失踪多年的兄长",
+	}}); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Progress.MarkChapterComplete(1, 1000, "", ""); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Drafts.SaveDraft(2, "第二章正文，林墨认定黑影就是杀兄仇人，并据此决定追杀对方。这个误解明确改变了他的行动。 "); err != nil {
+		t.Fatal(err)
+	}
+
+	args, _ := json.Marshal(map[string]any{
+		"chapter": 2, "title": "第二章", "summary": "林墨误认黑影身份",
+		"characters": []string{"林墨"}, "key_events": []string{"林墨形成错误认知"},
+		"knowledge_updates": []map[string]any{{
+			"id": "k_shadow", "action": "believe", "character": "林墨", "belief": "黑影是杀兄仇人",
+		}},
+	})
+	if _, err := newTestCommitChapterTool(s).Execute(context.Background(), args); err != nil {
+		t.Fatalf("execute belief: %v", err)
+	}
+	entries, err := s.World.LoadKnowledgeState()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(entries) != 1 || len(entries[0].BelievedBy) != 1 || entries[0].BelievedBy[0].FormedAt != 2 || len(entries[0].KnownBy) != 0 {
+		t.Fatalf("commit did not record false belief: %+v", entries)
+	}
+}
+
+func TestCommitChapterEstablishesBeliefAndLearningInSamePayload(t *testing.T) {
+	s := store.NewStore(t.TempDir())
+	if err := s.Init(); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Progress.Init(1); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Progress.UpdatePhase(domain.PhaseWriting); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Drafts.SaveDraft(1, "第一章正文先建立黑影真实身份，让林墨误认其为仇人，随后又通过证据得知黑影其实是兄长。认知变化完整发生。 "); err != nil {
+		t.Fatal(err)
+	}
+	args, _ := json.Marshal(map[string]any{
+		"chapter": 1, "title": "第一章", "summary": "林墨由误解转为获知真相",
+		"characters": []string{"林墨"}, "key_events": []string{"形成误解并获知真相"},
+		"knowledge_updates": []map[string]any{
+			{"id": "k_shadow", "action": "establish", "truth": "黑影是兄长"},
+			{"id": "k_shadow", "action": "believe", "character": "林墨", "belief": "黑影是仇人"},
+			{"id": "k_shadow", "action": "learn", "character": "林墨"},
+		},
+	})
+	if _, err := newTestCommitChapterTool(s).Execute(context.Background(), args); err != nil {
+		t.Fatalf("execute establish-believe-learn: %v", err)
+	}
+	entries, err := s.World.LoadKnowledgeState()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(entries) != 1 || len(entries[0].KnownBy) != 1 || len(entries[0].BelievedBy) != 1 || entries[0].BelievedBy[0].CorrectedAt != 1 {
+		t.Fatalf("same-payload knowledge state wrong: %+v", entries)
 	}
 }
 
@@ -727,6 +988,14 @@ func TestCommitChapterRewriteRejectsRemovingKnowledgeRequiredByLaterChapterBefor
 			later: domain.KnowledgeUpdate{ID: "k_shadow", Action: "reveal_to_reader"},
 			projection: domain.KnowledgeEntry{
 				ID: "k_shadow", Truth: "黑影是林墨的兄长", EstablishedAt: 1, ReaderRevealedAt: 3,
+			},
+		},
+		{
+			name:  "later character belief",
+			later: domain.KnowledgeUpdate{ID: "k_shadow", Action: "believe", Character: "林墨", Belief: "黑影是仇人"},
+			projection: domain.KnowledgeEntry{
+				ID: "k_shadow", Truth: "黑影是林墨的兄长", EstablishedAt: 1,
+				BelievedBy: []domain.KnowledgeBelief{{Character: "林墨", Content: "黑影是仇人", FormedAt: 3}},
 			},
 		},
 	}
@@ -1364,6 +1633,7 @@ func TestCommitChapterReplayDoesNotDuplicateKnowledgeState(t *testing.T) {
 	}
 	updates := []domain.KnowledgeUpdate{
 		{ID: "k_shadow", Action: "establish", Truth: "黑影是林墨失踪多年的兄长"},
+		{ID: "k_shadow", Action: "believe", Character: "林墨", Belief: "黑影是杀兄仇人"},
 		{ID: "k_shadow", Action: "learn", Character: "林墨"},
 	}
 	if err := s.World.UpdateKnowledge(1, updates); err != nil {
@@ -1399,7 +1669,8 @@ func TestCommitChapterReplayDoesNotDuplicateKnowledgeState(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(entries) != 1 || entries[0].EstablishedAt != 1 || len(entries[0].KnownBy) != 1 || entries[0].KnownBy[0].LearnedAt != 1 {
+	if len(entries) != 1 || entries[0].EstablishedAt != 1 || len(entries[0].KnownBy) != 1 || entries[0].KnownBy[0].LearnedAt != 1 ||
+		len(entries[0].BelievedBy) != 1 || entries[0].BelievedBy[0].FormedAt != 1 || entries[0].BelievedBy[0].CorrectedAt != 1 {
 		t.Fatalf("knowledge changed after replay: %+v", entries)
 	}
 	if pending, err := s.Signals.LoadPendingCommit(); err != nil || pending != nil {

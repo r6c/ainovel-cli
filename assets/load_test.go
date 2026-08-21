@@ -53,14 +53,14 @@ func TestLoad_NoOverrides(t *testing.T) {
 
 func TestKnowledgePromptsDescribeTruthAndLearningBoundaries(t *testing.T) {
 	writer := mustRead(promptsFS, "prompts/writer.md")
-	for _, phrase := range []string{"knowledge_boundaries", "establish", "learn", "reveal_to_reader", "越权知情", "读者已知"} {
+	for _, phrase := range []string{"knowledge_boundaries", "establish", "believe", "learn", "reveal_to_reader", "越权知情", "读者已知", "错误信念", "纠正"} {
 		if !strings.Contains(writer, phrase) {
 			t.Fatalf("Writer 提示缺少知识边界纪律 %q", phrase)
 		}
 	}
 
 	editor := mustRead(promptsFS, "prompts/editor.md")
-	for _, phrase := range []string{"knowledge_boundaries", "越权知情", "提前泄底", "重复揭秘"} {
+	for _, phrase := range []string{"knowledge_boundaries", "越权知情", "错误信念", "已纠正", "提前泄底", "重复揭秘"} {
 		if !strings.Contains(editor, phrase) {
 			t.Fatalf("Editor 提示缺少知识一致性检查 %q", phrase)
 		}
@@ -70,7 +70,7 @@ func TestKnowledgePromptsDescribeTruthAndLearningBoundaries(t *testing.T) {
 		"revision": mustRead(promptsFS, "prompts/revision-analyze.md"),
 		"import":   mustRead(promptsFS, "prompts/import-analyze.md"),
 	} {
-		for _, phrase := range []string{"establish", "learn", "reveal_to_reader", "正文明确"} {
+		for _, phrase := range []string{"establish", "believe", "learn", "reveal_to_reader", "正文明确", "怀疑"} {
 			if !strings.Contains(prompt, phrase) {
 				t.Fatalf("%s 提示缺少知识事实提取纪律 %q", name, phrase)
 			}

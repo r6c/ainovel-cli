@@ -14,7 +14,7 @@
 - `hook_type` ∈ crisis / mystery / desire / emotion / choice。
 - `dominant_strand` ∈ quest / fire / constellation。
 - `foreshadow_updates[].action` ∈ plant / advance / reinforce / partial_payoff / resolve；`plant` 必须带 `description`。
-- `knowledge_updates[].action` ∈ establish / learn / reveal_to_reader；正文明确确立客观真相时用 `establish`，正文明确让角色获知已有真相时才用 `learn`，正文明确向读者揭示完整 Truth 时才用 `reveal_to_reader`。三者彼此独立；不要把一般世界设定、模糊暗示或伏笔部分兑现自动当成角色已知或完整读者揭示。
+- `knowledge_updates[].action` ∈ establish / believe / learn / reveal_to_reader；正文明确确立客观真相时用 `establish`，角色形成明确、稳定且影响行动的错误信念时用 `believe`，正文明确让角色获知已有 Truth 时才用 `learn`，正文明确向读者揭示完整 Truth 时才用 `reveal_to_reader`。不要把一般世界设定自动当成角色已知，也不要把暂时怀疑、猜测、反问、一闪而过的念头或角色故意说谎判成 `believe`；模糊暗示或伏笔部分兑现不等于完整读者揭示。
 - `summary` 与 `core_event` 不能为空。
 
 ## 纪律

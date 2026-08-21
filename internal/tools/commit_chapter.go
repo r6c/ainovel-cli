@@ -126,7 +126,9 @@ func (t *CommitChapterTool) Execute(_ context.Context, args json.RawMessage) (js
 		}
 		return t.finishPendingCommit(*existingPending, progress)
 	}
-	if existingPending == nil || existingPending.Stage == domain.CommitStageStarted {
+	// 语义前置条件只在冻结提交意图前校验。started 恢复时状态增量可能已经部分或
+	// 完整落盘；再次用当前投影校验历史 payload 会把合法的幂等重放误判为非法。
+	if existingPending == nil {
 		if err := t.validateCommitArgs(a); err != nil {
 			return nil, err
 		}

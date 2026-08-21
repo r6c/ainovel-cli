@@ -305,6 +305,9 @@ func (s *WorldStore) UpdateKnowledge(chapter int, updates []domain.KnowledgeUpda
 				if strings.TrimSpace(update.Truth) == "" {
 					return fmt.Errorf("establish knowledge %q requires truth", update.ID)
 				}
+				if strings.TrimSpace(update.Character) != "" || strings.TrimSpace(update.Belief) != "" {
+					return fmt.Errorf("establish knowledge %q only accepts id and truth", update.ID)
+				}
 				if i, ok := idx[update.ID]; ok {
 					if entries[i].Truth != update.Truth {
 						return fmt.Errorf("knowledge %q truth conflicts with established truth", update.ID)
@@ -316,7 +319,7 @@ func (s *WorldStore) UpdateKnowledge(chapter int, updates []domain.KnowledgeUpda
 					ID: update.ID, Truth: update.Truth, EstablishedAt: chapter,
 				})
 			case "reveal_to_reader":
-				if strings.TrimSpace(update.Truth) != "" || strings.TrimSpace(update.Character) != "" {
+				if strings.TrimSpace(update.Truth) != "" || strings.TrimSpace(update.Character) != "" || strings.TrimSpace(update.Belief) != "" {
 					return fmt.Errorf("reveal knowledge %q to reader only accepts id", update.ID)
 				}
 				i, ok := idx[update.ID]
@@ -326,9 +329,51 @@ func (s *WorldStore) UpdateKnowledge(chapter int, updates []domain.KnowledgeUpda
 				if entries[i].ReaderRevealedAt == 0 {
 					entries[i].ReaderRevealedAt = chapter
 				}
+			case "believe":
+				if strings.TrimSpace(update.Character) == "" || strings.TrimSpace(update.Belief) == "" {
+					return fmt.Errorf("believe knowledge %q requires character and belief", update.ID)
+				}
+				if strings.TrimSpace(update.Truth) != "" {
+					return fmt.Errorf("believe knowledge %q cannot include truth", update.ID)
+				}
+				i, ok := idx[update.ID]
+				if !ok {
+					return fmt.Errorf("believe unknown knowledge %q", update.ID)
+				}
+				if strings.TrimSpace(update.Belief) == strings.TrimSpace(entries[i].Truth) {
+					return fmt.Errorf("belief for knowledge %q must differ from objective truth", update.ID)
+				}
+				repeated := false
+				for _, belief := range entries[i].BelievedBy {
+					if belief.Character != update.Character {
+						continue
+					}
+					if belief.Content != update.Belief {
+						return fmt.Errorf("character %q already has a belief for knowledge %q", update.Character, update.ID)
+					}
+					if belief.CorrectedAt == 0 || (belief.FormedAt == chapter && belief.CorrectedAt == chapter) {
+						repeated = true
+						break
+					}
+					return fmt.Errorf("character %q already has a corrected belief for knowledge %q", update.Character, update.ID)
+				}
+				if repeated {
+					continue
+				}
+				for _, holder := range entries[i].KnownBy {
+					if holder.Character == update.Character {
+						return fmt.Errorf("character %q already knows knowledge %q", update.Character, update.ID)
+					}
+				}
+				entries[i].BelievedBy = append(entries[i].BelievedBy, domain.KnowledgeBelief{
+					Character: update.Character, Content: update.Belief, FormedAt: chapter,
+				})
 			case "learn":
 				if strings.TrimSpace(update.Character) == "" {
 					return fmt.Errorf("learn knowledge %q requires character", update.ID)
+				}
+				if strings.TrimSpace(update.Truth) != "" || strings.TrimSpace(update.Belief) != "" {
+					return fmt.Errorf("learn knowledge %q only accepts id and character", update.ID)
 				}
 				i, ok := idx[update.ID]
 				if !ok {
@@ -339,6 +384,11 @@ func (s *WorldStore) UpdateKnowledge(chapter int, updates []domain.KnowledgeUpda
 					if holder.Character == update.Character {
 						known = true
 						break
+					}
+				}
+				for j := range entries[i].BelievedBy {
+					if entries[i].BelievedBy[j].Character == update.Character && entries[i].BelievedBy[j].CorrectedAt == 0 {
+						entries[i].BelievedBy[j].CorrectedAt = chapter
 					}
 				}
 				if known {
@@ -688,6 +738,20 @@ func renderKnowledge(entries []domain.KnowledgeEntry) string {
 					b.WriteString("、")
 				}
 				fmt.Fprintf(&b, "%s（第 %d 章获知）", holder.Character, holder.LearnedAt)
+			}
+		}
+		if len(entry.BelievedBy) > 0 {
+			b.WriteString("；错误信念：")
+			for i, belief := range entry.BelievedBy {
+				if i > 0 {
+					b.WriteString("、")
+				}
+				fmt.Fprintf(&b, "%s误信“%s”（第 %d 章形成", belief.Character, belief.Content, belief.FormedAt)
+				if belief.CorrectedAt > 0 {
+					fmt.Fprintf(&b, "，第 %d 章纠正）", belief.CorrectedAt)
+				} else {
+					b.WriteString("，尚未纠正）")
+				}
 			}
 		}
 		b.WriteByte('\n')

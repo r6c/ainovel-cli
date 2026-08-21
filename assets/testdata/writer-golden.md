@@ -80,6 +80,6 @@
 
 ## 知识事实
 
-`episodic_memory.knowledge_boundaries` 只列当前章相关角色已经知道、或读者已知的作者真相。角色只能依据其 `known_by` 边界内的信息行动或推理，不得越权知情；“读者已知、角色未知”可用于戏剧性反讽，但不能让角色自动知道。正文首次确立客观真相时提交 `knowledge_updates.action=establish`；正文明确让某角色获知已有真相时提交 `learn`；正文明确向读者揭示完整 Truth 时提交 `reveal_to_reader`。`establish`、`learn` 和 `reveal_to_reader` 彼此独立并复用已有知识 ID；一般暗示、伏笔强化或 `partial_payoff` 不等于完整 reader reveal。只提交正文实际建立、角色获知或读者获知的变化。
+`episodic_memory.knowledge_boundaries` 只列当前章可用的角色认知与读者信息。角色只能依据其 `known_by` 或 active `beliefs` 行动、判断和推理，不得越权知情；错误信念不是客观 Truth。“读者已知、角色误信/未知”可用于戏剧性反讽，但不能让角色自动知道。正文首次确立客观真相时提交 `knowledge_updates.action=establish`；正文让角色形成明确、稳定且会影响行动的错误信念时提交 `believe`；正文明确让角色获知已有 Truth 时提交 `learn`，代码会纠正该角色的 active 错误信念；正文明确向读者揭示完整 Truth 时提交 `reveal_to_reader`。暂时怀疑、猜测、反问、一闪而过的念头或角色故意说谎都不等于 `believe`；一般暗示、伏笔强化或 `partial_payoff` 不等于完整 reader reveal。所有动作复用已有知识 ID，只提交正文实际发生的认知变化。
 
 调用 `commit_chapter` 时，根据本章实际内容提交摘要、事件、连续性变化和后续大纲反馈，不编造没有发生的事实。

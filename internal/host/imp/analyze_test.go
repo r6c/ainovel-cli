@@ -106,6 +106,24 @@ func TestBuildLedgerIncludesReaderRevealState(t *testing.T) {
 	}
 }
 
+func TestBuildLedgerTracksActiveAndCorrectedBeliefs(t *testing.T) {
+	active := buildLedger([]ImportedChapterFacts{
+		{Chapter: 1, KnowledgeUpdates: []domain.KnowledgeUpdate{{ID: "k", Action: "establish", Truth: "黑影是兄长"}}},
+		{Chapter: 2, KnowledgeUpdates: []domain.KnowledgeUpdate{{ID: "k", Action: "believe", Character: "林墨", Belief: "黑影是仇人"}}},
+	})
+	if !strings.Contains(active, "林墨误信：黑影是仇人") {
+		t.Fatalf("ledger missing active belief:\n%s", active)
+	}
+	corrected := buildLedger([]ImportedChapterFacts{
+		{Chapter: 1, KnowledgeUpdates: []domain.KnowledgeUpdate{{ID: "k", Action: "establish", Truth: "黑影是兄长"}}},
+		{Chapter: 2, KnowledgeUpdates: []domain.KnowledgeUpdate{{ID: "k", Action: "believe", Character: "林墨", Belief: "黑影是仇人"}}},
+		{Chapter: 3, KnowledgeUpdates: []domain.KnowledgeUpdate{{ID: "k", Action: "learn", Character: "林墨"}}},
+	})
+	if strings.Contains(corrected, "林墨误信") || !strings.Contains(corrected, "已知角色：林墨") {
+		t.Fatalf("learn did not clear active belief in ledger:\n%s", corrected)
+	}
+}
+
 func TestBuildLedgerIncludesKnowledgeContinuity(t *testing.T) {
 	ledger := buildLedger([]ImportedChapterFacts{
 		{Chapter: 1, KnowledgeUpdates: []domain.KnowledgeUpdate{{
@@ -158,6 +176,34 @@ func TestValidateBatchReaderRevealContinuity(t *testing.T) {
 	}}}
 	if err := validateBatch(unknown, seg, 0, 1); err == nil {
 		t.Fatal("revealing unknown knowledge should fail validation")
+	}
+}
+
+func TestValidateBatchBeliefContinuityAndFields(t *testing.T) {
+	_, seg := analyzeFixture(t, 1)
+	base := func(updates []domain.KnowledgeUpdate) *AnalysisBatchResult {
+		return &AnalysisBatchResult{Chapters: []ImportedChapterFacts{{
+			Chapter: 1, Summary: "认知变化", CoreEvent: "形成并纠正误解", HookType: "mystery", DominantStrand: "quest",
+			KnowledgeUpdates: updates,
+		}}}
+	}
+	valid := base([]domain.KnowledgeUpdate{
+		{ID: "k", Action: "establish", Truth: "真相"},
+		{ID: "k", Action: "believe", Character: "林墨", Belief: "误解"},
+		{ID: "k", Action: "learn", Character: "林墨"},
+	})
+	if err := validateBatch(valid, seg, 0, 1); err != nil {
+		t.Fatalf("valid belief lifecycle rejected: %v", err)
+	}
+	invalid := [][]domain.KnowledgeUpdate{
+		{{ID: "missing", Action: "believe", Character: "林墨", Belief: "误解"}},
+		{{ID: "k", Action: "establish", Truth: "真相"}, {ID: "k", Action: "believe", Character: "林墨", Belief: "真相"}},
+		{{ID: "k", Action: "establish", Truth: "真相"}, {ID: "k", Action: "believe", Character: "林墨", Belief: "误解", Truth: "多余"}},
+	}
+	for _, updates := range invalid {
+		if err := validateBatch(base(updates), seg, 0, 1); err == nil {
+			t.Fatalf("invalid belief updates accepted: %+v", updates)
+		}
 	}
 }
 
@@ -279,7 +325,7 @@ func TestAnalyzedChaptersInvalidatesPreviousAnalysisSchemaVersion(t *testing.T) 
 	var old strings.Builder
 	old.WriteString("analyze\x00")
 	old.WriteString("v1")
-	old.WriteString("\x00v3\x00")
+	old.WriteString("\x00v4\x00")
 	old.WriteString("segid")
 	old.WriteString("\x00ch1\x00")
 	old.WriteString(seg.Content(norm, 0))

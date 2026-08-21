@@ -23,7 +23,7 @@ func TestPublishChaptersPersistsKnowledgeState(t *testing.T) {
 	if err := st.Init(); err != nil {
 		t.Fatal(err)
 	}
-	if err := st.Progress.Init(2); err != nil {
+	if err := st.Progress.Init(3); err != nil {
 		t.Fatal(err)
 	}
 	if err := st.Progress.UpdatePhase(domain.PhaseWriting); err != nil {
@@ -37,7 +37,14 @@ func TestPublishChaptersPersistsKnowledgeState(t *testing.T) {
 			KnowledgeUpdates: []domain.KnowledgeUpdate{{ID: "k_shadow", Action: "establish", Truth: "黑影是林墨的兄长"}},
 		},
 		{
-			Chapter: 2, Title: "第二章", Summary: "角色获知", KeyEvents: []string{"承认身份"},
+			Chapter: 2, Title: "第二章", Summary: "角色误解", KeyEvents: []string{"误认身份"},
+			HookType: "mystery", DominantStrand: "quest",
+			KnowledgeUpdates: []domain.KnowledgeUpdate{
+				{ID: "k_shadow", Action: "believe", Character: "林墨", Belief: "黑影是杀兄仇人"},
+			},
+		},
+		{
+			Chapter: 3, Title: "第三章", Summary: "角色获知", KeyEvents: []string{"承认身份"},
 			HookType: "mystery", DominantStrand: "quest",
 			KnowledgeUpdates: []domain.KnowledgeUpdate{
 				{ID: "k_shadow", Action: "learn", Character: "林墨"},
@@ -55,7 +62,8 @@ func TestPublishChaptersPersistsKnowledgeState(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(entries) != 1 || entries[0].EstablishedAt != 1 || len(entries[0].KnownBy) != 1 || entries[0].KnownBy[0].LearnedAt != 2 || entries[0].ReaderRevealedAt != 2 {
+	if len(entries) != 1 || entries[0].EstablishedAt != 1 || len(entries[0].KnownBy) != 1 || entries[0].KnownBy[0].LearnedAt != 3 ||
+		entries[0].ReaderRevealedAt != 3 || len(entries[0].BelievedBy) != 1 || entries[0].BelievedBy[0].FormedAt != 2 || entries[0].BelievedBy[0].CorrectedAt != 3 {
 		t.Fatalf("published knowledge state wrong: %+v", entries)
 	}
 }

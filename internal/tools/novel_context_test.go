@@ -131,6 +131,118 @@ func TestContextToolDoesNotExposeTruthUntilAfterReaderRevealChapter(t *testing.T
 	}
 }
 
+func TestContextToolExposesActiveBeliefWithoutLeakingHiddenTruth(t *testing.T) {
+	st := store.NewStore(t.TempDir())
+	if err := st.Init(); err != nil {
+		t.Fatal(err)
+	}
+	if err := st.Progress.Init(10); err != nil {
+		t.Fatal(err)
+	}
+	if err := st.Outline.SaveOutline([]domain.OutlineEntry{{
+		Chapter: 4, Title: "林墨追杀黑影", CoreEvent: "林墨按自己的误解追击黑影",
+	}}); err != nil {
+		t.Fatal(err)
+	}
+	if err := st.Characters.Save([]domain.Character{{Name: "林墨", Role: "主角"}}); err != nil {
+		t.Fatal(err)
+	}
+	if err := st.World.SaveKnowledgeState([]domain.KnowledgeEntry{{
+		ID: "k_shadow", Truth: "黑影是林墨的兄长", EstablishedAt: 1,
+		BelievedBy: []domain.KnowledgeBelief{{Character: "林墨", Content: "黑影是杀兄仇人", FormedAt: 2}},
+	}}); err != nil {
+		t.Fatal(err)
+	}
+	raw, err := newTestContextTool(st, References{}, "default").Execute(context.Background(), json.RawMessage(`{"chapter":4}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var payload struct {
+		Episodic map[string]json.RawMessage `json:"episodic_memory"`
+	}
+	if err := json.Unmarshal(raw, &payload); err != nil {
+		t.Fatal(err)
+	}
+	var boundaries []map[string]any
+	if err := json.Unmarshal(payload.Episodic["knowledge_boundaries"], &boundaries); err != nil {
+		t.Fatalf("decode knowledge boundaries: %v; raw=%s", err, raw)
+	}
+	if len(boundaries) != 1 {
+		t.Fatalf("want one belief boundary, got %#v", boundaries)
+	}
+	if _, exists := boundaries[0]["truth"]; exists {
+		t.Fatalf("hidden objective truth leaked into belief-only boundary: %#v", boundaries[0])
+	}
+	beliefs, ok := boundaries[0]["beliefs"].([]any)
+	if !ok || len(beliefs) != 1 {
+		t.Fatalf("active belief missing from boundary: %#v", boundaries[0])
+	}
+}
+
+func TestContextToolSanitizesBeliefBoundariesByReaderCharacterAndTime(t *testing.T) {
+	st := store.NewStore(t.TempDir())
+	if err := st.Init(); err != nil {
+		t.Fatal(err)
+	}
+	if err := st.Progress.Init(10); err != nil {
+		t.Fatal(err)
+	}
+	if err := st.Outline.SaveOutline([]domain.OutlineEntry{{Chapter: 4, Title: "林墨追查", CoreEvent: "林墨重新判断黑影"}}); err != nil {
+		t.Fatal(err)
+	}
+	if err := st.Characters.Save([]domain.Character{{Name: "林墨", Role: "主角"}, {Name: "苏晚", Role: "盟友"}}); err != nil {
+		t.Fatal(err)
+	}
+	if err := st.World.SaveKnowledgeState([]domain.KnowledgeEntry{
+		{ID: "k_irony", Truth: "黑影是兄长", EstablishedAt: 1, ReaderRevealedAt: 2,
+			KnownBy:    []domain.KnowledgeHolder{{Character: "林墨", LearnedAt: 4}},
+			BelievedBy: []domain.KnowledgeBelief{{Character: "林墨", Content: "黑影是仇人", FormedAt: 2, CorrectedAt: 4}}},
+		{ID: "k_other", Truth: "密令来自城主", EstablishedAt: 1,
+			BelievedBy: []domain.KnowledgeBelief{{Character: "苏晚", Content: "密令来自皇帝", FormedAt: 2}}},
+		{ID: "k_learned", Truth: "钥匙在塔顶", EstablishedAt: 1,
+			KnownBy:    []domain.KnowledgeHolder{{Character: "林墨", LearnedAt: 3}},
+			BelievedBy: []domain.KnowledgeBelief{{Character: "林墨", Content: "钥匙在地窖", FormedAt: 2, CorrectedAt: 3}}},
+		{ID: "k_future", Truth: "门后是空城", EstablishedAt: 1,
+			BelievedBy: []domain.KnowledgeBelief{{Character: "林墨", Content: "门后是敌军", FormedAt: 4}}},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	raw, err := newTestContextTool(st, References{}, "default").Execute(context.Background(), json.RawMessage(`{"chapter":4}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var payload struct {
+		Episodic map[string]json.RawMessage `json:"episodic_memory"`
+	}
+	if err := json.Unmarshal(raw, &payload); err != nil {
+		t.Fatal(err)
+	}
+	var boundaries []map[string]any
+	if err := json.Unmarshal(payload.Episodic["knowledge_boundaries"], &boundaries); err != nil {
+		t.Fatal(err)
+	}
+	byID := map[string]map[string]any{}
+	for _, boundary := range boundaries {
+		byID[boundary["id"].(string)] = boundary
+	}
+	if got := byID["k_irony"]; got == nil || got["truth"] != "黑影是兄长" || len(got["beliefs"].([]any)) != 1 {
+		t.Fatalf("reader-known dramatic irony boundary wrong: %#v", got)
+	} else if belief := got["beliefs"].([]any)[0].(map[string]any); belief["corrected_at"] != nil {
+		t.Fatalf("current/future correction chapter leaked into active belief: %#v", belief)
+	}
+	if _, ok := byID["k_other"]; ok {
+		t.Fatalf("unrelated belief leaked: %#v", byID["k_other"])
+	}
+	if got := byID["k_learned"]; got == nil || got["truth"] != "钥匙在塔顶" {
+		t.Fatalf("learned truth missing: %#v", got)
+	} else if _, ok := got["beliefs"]; ok {
+		t.Fatalf("corrected belief remained active: %#v", got)
+	}
+	if _, ok := byID["k_future"]; ok {
+		t.Fatalf("current-chapter belief leaked early: %#v", byID["k_future"])
+	}
+}
+
 func TestContextToolExposesReaderKnownTruthWithoutTeachingCurrentCharacter(t *testing.T) {
 	st := store.NewStore(t.TempDir())
 	if err := st.Init(); err != nil {

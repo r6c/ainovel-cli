@@ -8,7 +8,7 @@
 - `revised_content` 是完整新正文；`changed_excerpt` 只包含去掉相同首尾后的旧片段和新片段，用于判断修改意图。
 - 只提取正文能够支持的事实，不补写正文中不存在的情节。
 - 伏笔操作必须沿用 `previous_facts` 中仍然成立的 ID；删除的事件不得继续保留。
-- `knowledge_updates` 只记录修改后正文明确支持的知识事实：首次确立作者真相用 `establish`，正文明确让角色获知已有真相用 `learn`，正文明确向读者揭示完整 Truth 用 `reveal_to_reader`；三者彼此独立，不得把作者真相或读者已知自动视为角色已知。一般暗示和部分兑现不算完整 reader reveal。
+- `knowledge_updates` 只记录修改后正文明确支持的认知事实：首次确立作者真相用 `establish`；角色形成明确、稳定且影响行动的错误信念用 `believe`；角色明确获知已有 Truth 用 `learn`；正文明确向读者揭示完整 Truth 用 `reveal_to_reader`。不得把作者真相或读者已知自动视为角色已知，也不得把暂时怀疑、猜测、反问、一闪而过的念头或角色故意说谎判成 `believe`。一般暗示和部分兑现不算完整 reader reveal。
 - `style_delta` 只记录用户主动修改体现出的可复用偏好。错别字、专名修正和单纯剧情变化不算风格偏好。
 - `story_changed` 表示正文事实是否发生变化；只有变化影响尚未发生的计划时才返回 `outline_impact`，否则为 null。
 - `downstream_issues` 只列与已完成后续章节的具体冲突，没有则返回空数组。

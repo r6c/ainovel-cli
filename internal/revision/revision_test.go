@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"testing"
 	"time"
 
@@ -164,6 +165,110 @@ func TestProjectorRejectsConflictingKnowledgeTruth(t *testing.T) {
 
 	if err := NewProjector(st).Apply(records); err == nil {
 		t.Fatal("expected projector to reject conflicting knowledge truth")
+	}
+}
+
+func TestProjectorRebuildsAndCorrectsCharacterBelief(t *testing.T) {
+	st := newRevisionTestStore(t, 5)
+	now := time.Now()
+	records := []domain.ChapterRecord{
+		testRecord(1, "正文一", domain.ChapterFacts{Title: "第一章", Summary: "建立真相", KeyEvents: []string{"确认身份"},
+			KnowledgeUpdates: []domain.KnowledgeUpdate{{ID: "k_shadow", Action: "establish", Truth: "黑影是兄长"}}}, domain.StyleDelta{}, now),
+		testRecord(2, "正文二", domain.ChapterFacts{Title: "第二章", Summary: "形成误解", KeyEvents: []string{"误认身份"},
+			KnowledgeUpdates: []domain.KnowledgeUpdate{{ID: "k_shadow", Action: "believe", Character: "林墨", Belief: "黑影是仇人"}}}, domain.StyleDelta{}, now.Add(time.Minute)),
+		testRecord(5, "正文五", domain.ChapterFacts{Title: "第五章", Summary: "获知真相", KeyEvents: []string{"身份揭晓"},
+			KnowledgeUpdates: []domain.KnowledgeUpdate{{ID: "k_shadow", Action: "learn", Character: "林墨"}}}, domain.StyleDelta{}, now.Add(2*time.Minute)),
+	}
+	if err := NewProjector(st).Apply(records); err != nil {
+		t.Fatalf("project belief lifecycle: %v", err)
+	}
+	entries, err := st.World.LoadKnowledgeState()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(entries) != 1 || len(entries[0].KnownBy) != 1 || len(entries[0].BelievedBy) != 1 {
+		t.Fatalf("projected belief lifecycle wrong: %+v", entries)
+	}
+	belief := entries[0].BelievedBy[0]
+	if belief.Character != "林墨" || belief.Content != "黑影是仇人" || belief.FormedAt != 2 || belief.CorrectedAt != 5 || entries[0].KnownBy[0].LearnedAt != 5 {
+		t.Fatalf("projected belief timing wrong: belief=%+v known=%+v", belief, entries[0].KnownBy)
+	}
+}
+
+func TestProjectorRejectsBeliefAfterCharacterLearnsTruth(t *testing.T) {
+	st := newRevisionTestStore(t, 3)
+	now := time.Now()
+	records := []domain.ChapterRecord{
+		testRecord(1, "正文一", domain.ChapterFacts{Title: "第一章", Summary: "建立真相", KeyEvents: []string{"建立"},
+			KnowledgeUpdates: []domain.KnowledgeUpdate{{ID: "k", Action: "establish", Truth: "真相"}}}, domain.StyleDelta{}, now),
+		testRecord(2, "正文二", domain.ChapterFacts{Title: "第二章", Summary: "获知真相", KeyEvents: []string{"获知"},
+			KnowledgeUpdates: []domain.KnowledgeUpdate{{ID: "k", Action: "learn", Character: "林墨"}}}, domain.StyleDelta{}, now.Add(time.Minute)),
+		testRecord(3, "正文三", domain.ChapterFacts{Title: "第三章", Summary: "错误信念", KeyEvents: []string{"误解"},
+			KnowledgeUpdates: []domain.KnowledgeUpdate{{ID: "k", Action: "believe", Character: "林墨", Belief: "误解"}}}, domain.StyleDelta{}, now.Add(2*time.Minute)),
+	}
+	if err := NewProjector(st).Apply(records); err == nil {
+		t.Fatal("expected projector to reject belief after learn")
+	}
+}
+
+func TestProjectorDeduplicatesRepeatedBeliefAndRejectsRewrite(t *testing.T) {
+	now := time.Now()
+	base := []domain.ChapterRecord{
+		testRecord(1, "正文一", domain.ChapterFacts{Title: "第一章", Summary: "建立", KeyEvents: []string{"建立"},
+			KnowledgeUpdates: []domain.KnowledgeUpdate{{ID: "k", Action: "establish", Truth: "真相"}}}, domain.StyleDelta{}, now),
+		testRecord(2, "正文二", domain.ChapterFacts{Title: "第二章", Summary: "误解", KeyEvents: []string{"误解"},
+			KnowledgeUpdates: []domain.KnowledgeUpdate{{ID: "k", Action: "believe", Character: "林墨", Belief: "误解一"}}}, domain.StyleDelta{}, now.Add(time.Minute)),
+	}
+	t.Run("same content is idempotent", func(t *testing.T) {
+		st := newRevisionTestStore(t, 3)
+		records := append(slices.Clone(base), testRecord(3, "正文三", domain.ChapterFacts{Title: "第三章", Summary: "重提", KeyEvents: []string{"重提"},
+			KnowledgeUpdates: []domain.KnowledgeUpdate{{ID: "k", Action: "believe", Character: "林墨", Belief: "误解一"}}}, domain.StyleDelta{}, now.Add(2*time.Minute)))
+		if err := NewProjector(st).Apply(records); err != nil {
+			t.Fatal(err)
+		}
+		entries, err := st.World.LoadKnowledgeState()
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(entries) != 1 || len(entries[0].BelievedBy) != 1 || entries[0].BelievedBy[0].FormedAt != 2 {
+			t.Fatalf("belief replay drifted: %+v", entries)
+		}
+	})
+	t.Run("different content is rejected", func(t *testing.T) {
+		st := newRevisionTestStore(t, 3)
+		records := append(slices.Clone(base), testRecord(3, "正文三", domain.ChapterFacts{Title: "第三章", Summary: "改写", KeyEvents: []string{"改写"},
+			KnowledgeUpdates: []domain.KnowledgeUpdate{{ID: "k", Action: "believe", Character: "林墨", Belief: "误解二"}}}, domain.StyleDelta{}, now.Add(2*time.Minute)))
+		if err := NewProjector(st).Apply(records); err == nil {
+			t.Fatal("expected belief rewrite rejection")
+		}
+	})
+}
+
+func TestProjectorRestoresActiveBeliefWhenLearnIsRemoved(t *testing.T) {
+	st := newRevisionTestStore(t, 2)
+	if err := st.World.SaveKnowledgeState([]domain.KnowledgeEntry{{
+		ID: "k", Truth: "真相", EstablishedAt: 1,
+		KnownBy:    []domain.KnowledgeHolder{{Character: "林墨", LearnedAt: 3}},
+		BelievedBy: []domain.KnowledgeBelief{{Character: "林墨", Content: "误解", FormedAt: 2, CorrectedAt: 3}},
+	}}); err != nil {
+		t.Fatal(err)
+	}
+	now := time.Now()
+	records := []domain.ChapterRecord{
+		testRecord(1, "正文一", domain.ChapterFacts{Title: "第一章", Summary: "建立", KeyEvents: []string{"建立"},
+			KnowledgeUpdates: []domain.KnowledgeUpdate{{ID: "k", Action: "establish", Truth: "真相"}}}, domain.StyleDelta{}, now),
+		testRecord(2, "正文二", domain.ChapterFacts{Title: "第二章", Summary: "误解", KeyEvents: []string{"误解"},
+			KnowledgeUpdates: []domain.KnowledgeUpdate{{ID: "k", Action: "believe", Character: "林墨", Belief: "误解"}}}, domain.StyleDelta{}, now.Add(time.Minute)),
+	}
+	if err := NewProjector(st).Apply(records); err != nil {
+		t.Fatal(err)
+	}
+	entries, err := st.World.LoadKnowledgeState()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(entries) != 1 || len(entries[0].KnownBy) != 0 || len(entries[0].BelievedBy) != 1 || entries[0].BelievedBy[0].CorrectedAt != 0 {
+		t.Fatalf("removed learn did not restore active belief: %+v", entries)
 	}
 }
 

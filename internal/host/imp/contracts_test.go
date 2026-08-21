@@ -35,14 +35,18 @@ func TestAnalysisContractAcceptsKnowledgeActions(t *testing.T) {
 	updateItems := knowledge["items"].(map[string]any)
 	updateProps := updateItems["properties"].(map[string]any)
 	action := updateProps["action"].(map[string]any)
-	if fmt.Sprint(action["enum"]) != "[establish learn reveal_to_reader]" {
+	if fmt.Sprint(action["enum"]) != "[establish believe learn reveal_to_reader]" {
 		t.Fatalf("knowledge action enum = %#v", action["enum"])
+	}
+	if _, ok := updateProps["belief"].(map[string]any); !ok {
+		t.Fatalf("knowledge belief field missing: %#v", updateProps["belief"])
 	}
 
 	updates := []map[string]any{
-		{"id": "k_shadow", "action": "establish", "truth": "黑影是林墨的兄长", "character": nil},
-		{"id": "k_shadow", "action": "learn", "truth": nil, "character": "林墨"},
-		{"id": "k_shadow", "action": "reveal_to_reader", "truth": nil, "character": nil},
+		{"id": "k_shadow", "action": "establish", "truth": "黑影是林墨的兄长", "character": nil, "belief": nil},
+		{"id": "k_shadow", "action": "believe", "truth": nil, "character": "林墨", "belief": "黑影是杀兄仇人"},
+		{"id": "k_shadow", "action": "learn", "truth": nil, "character": "林墨", "belief": nil},
+		{"id": "k_shadow", "action": "reveal_to_reader", "truth": nil, "character": nil, "belief": nil},
 	}
 	for _, update := range updates {
 		t.Run(update["action"].(string), func(t *testing.T) {

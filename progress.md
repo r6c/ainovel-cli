@@ -1,9 +1,9 @@
-# 伏笔生命周期闭环修复进度
+# ainovel-cli 分阶段能力演进进度
 
 ## 会话信息
 
-- 任务：根据代码审查结果生成可执行修复计划
-- 当前状态：全部阶段完成
+- 任务：伏笔、知识状态、读者揭示与角色错误信念分阶段闭环
+- 当前状态：里程碑 A、B、C1、C2a 全部完成
 - 执行原则：严格 TDD，红→绿，单切片推进
 - 项目根：`ainovel-cli`
 
@@ -488,6 +488,95 @@ git diff --check
 ```
 
 全部通过。范围审计为 24 个文件、732+ / 101-；未新增 Service、Repository、状态机、数据库或格式迁移，未实现 belief、reader_belief、unreveal、conceal 或多读者模型。
+
+### 阶段 24 开始
+
+基线确认：HEAD=`03bf271`，生产代码无改动，仅三份规划文件有变更；现有 `TestKnowledge_*` 全绿。首个接缝为 `WorldStore.UpdateKnowledge/LoadKnowledgeState`。
+
+### 阶段 24 首个红灯
+
+`establish@1 → 林墨 believe@2` 编译红灯：缺少 `KnowledgeUpdate.Belief` 与 `KnowledgeEntry.BelievedBy`，符合预期。首个绿灯仅增加领域字段和 Store believe 分支。
+
+### 阶段 24 完成
+
+Store tracer bullet 已绿：Truth 保留、林墨错误信念记录于第 2 章、KnownBy 不受影响；全部 `TestKnowledge_*` 通过。
+
+### 阶段 31 完成
+
+最终审计补齐两项：
+
+1. 直接 Store 调用严格执行四动作字段矩阵，不再静默忽略多余 Truth/Character/Belief；领域动作注释同步四动作。
+2. Context 的 active belief 使用更窄私有 DTO，不输出 `CorrectedAt`，避免本章或未来纠正时间提前泄漏。
+
+最终验证：
+
+```text
+go test ./... -timeout=5m 通过
+go vet ./... 通过
+git diff --check 通过
+```
+
+范围扫描确认没有 `correct_belief/doubt/suspect/forget/reader_belief`，没有新增 Service、Repository、数据库或格式迁移。C2a 待按中文提交信息收尾。
+
+### 阶段 30 完成
+
+Writer/Editor/Revision/Import Prompt 已同步 belief 纪律：稳定且影响行动的错误认知才用 believe；角色按 active belief 行动；learn 后不得继续按已纠正信念行动；暂时怀疑、猜测、反问、一闪而过的念头和故意说谎不等于 believe。Writer golden 与资源契约全绿。
+
+### 阶段 29 完成
+
+Context 已改用私有净化 `knowledgeBoundary` DTO，而非直接序列化完整 KnowledgeEntry。JSON 级测试证明：角色只有 active belief 且读者未知时输出 belief、不含 truth 键；ReaderKnown + 错误信念同时输出以支持戏剧性反讽；无关角色、已纠正 belief、当前章/未来 belief 均不泄漏。旧 CharacterKnown/ReaderKnown、8 条上限、预算裁剪和 `_trimmed` 全部保持通过。
+
+### 阶段 28 完成
+
+Import 严格 Schema/DTO 已支持 belief 字段和四动作；validateBatch 支持首批/同批次 `establish→believe→learn`，拒绝未知 belief、真信念、非法字段和同批次认知冲突。跨批次 ledger 显示 active belief，并在 learn 后移除该角色当前误信。真实三章发布保留 FormedAt/CorrectedAt；分析缓存版本从 4 提升到 5，整个 Import 包通过。
+
+### 阶段 27 完成
+
+Projector 已重建 `establish→believe→learn`：FormedAt、CorrectedAt、LearnedAt 均按历史章节恢复；已知 Truth 后 believe、真信念、不同内容改写被拒绝，相同 active belief 重放保留首次形成章。删除 learn 后全量投影自然恢复 active belief。Rewrite 候选记录验证已扩展后续 belief 引用：删除唯一 establish 时在 Pending 前拒绝。整个 revision 包通过。
+
+测试首次使用 `slices.Clone` 时漏掉 import，先修正测试编译错误后取得同内容复制/不同内容静默追加的真实红灯。
+
+### 阶段 26 完成
+
+ChapterFacts 严格 Schema/Validate 已扩展为四动作字段矩阵；Commit 正常 believe、未知引用、真信念、已知后 believe、同 payload learn→believe、冲突 belief 均有公开回归测试，非法请求在 PendingCommit 前拒绝。合法 `establish→believe→learn` 同 payload 通过。
+
+started 重放测试发现两层 Saga 问题：
+
+1. 恢复冻结 payload 时，入口会用已经部分应用后的当前投影重复做前置校验，导致历史 believe 被误判；现改为语义前置校验只在首次冻结 PendingCommit 前执行。
+2. Store 对“同章形成并同章纠正”的同内容 belief 不具备完整 payload 重放幂等；现仅对该同章形态开放幂等，跨章纠正后再次 believe 继续拒绝。
+
+`chapterfacts`、`tools`、`store` 三包全部通过。
+
+### C2a 会话恢复与阶段 25 完成
+
+开始本会话时发现生产工作区已有未同步的 C2a Store 改动，而不是规划时的纯净状态：
+
+```text
+internal/domain/tracking.go
+internal/store/world.go
+internal/store/world_test.go
+```
+
+阶段 24 与阶段 25 的 JSON 行为测试及实现已经存在；定向 Store 测试的唯一红灯是 Markdown 尚未投影 active/corrected belief。没有覆盖或回退这些改动，而是从该真实红灯继续。
+
+最小修复只扩展 `renderKnowledge`：显示错误信念形成章、尚未纠正/纠正章。随后 `TestKnowledge_*` 和整个 Store 包通过。旧 Knowledge JSON 兼容断言同步覆盖缺少 `believed_by` 时为空切片。
+
+### C2a 规划会话
+
+恢复结果：
+
+- `session-catchup.py` 未报告未同步上下文；
+- 工作区开始时干净；
+- 最近提交为 `03bf271 功能：追踪读者揭示与信息差状态`；
+- task_plan 头部残留的“Knowledge 批次未提交”描述已修正。
+
+下一里程碑选择 **C2a 最小角色错误信念**，只新增 `believe`。不新增 `correct_belief`：角色执行现有 `learn` 后，代码将其对同一 Knowledge ID 的活跃错误信念标记为已纠正。
+
+规划阶段为 24—31：Store 首切片、Store 不变量/learn 纠正、ChapterFacts/Commit、Revision/Rewrite、Import、Context 净化视图、Prompt、全量验证与中文提交门禁。
+
+关键安全决策：Writer Context 不得继续直接序列化完整 KnowledgeEntry；必须使用净化 DTO，确保“角色只持有错误 belief、读者未知”时只输出 belief、不输出隐藏 Truth。
+
+本次只修改 `task_plan.md`、`findings.md`、`progress.md`，没有开始 belief 生产代码。
 
 ### C1 规划校验
 

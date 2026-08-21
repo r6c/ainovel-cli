@@ -586,6 +586,247 @@ func TestKnowledge_EstablishRequiresIDAndTruth(t *testing.T) {
 	}
 }
 
+func TestKnowledge_RejectsBeliefForUnknownTruth(t *testing.T) {
+	s := newTestStore(t)
+	if err := s.World.UpdateKnowledge(2, []domain.KnowledgeUpdate{{
+		ID: "k_missing", Action: "believe", Character: "林墨", Belief: "黑影是仇人",
+	}}); err == nil {
+		t.Fatal("expected belief for unknown truth to fail")
+	}
+	entries, err := s.World.LoadKnowledgeState()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(entries) != 0 {
+		t.Fatalf("rejected belief changed state: %+v", entries)
+	}
+}
+
+func TestKnowledge_BelieveRequiresCharacterAndContent(t *testing.T) {
+	tests := []domain.KnowledgeUpdate{
+		{ID: "k_shadow", Action: "believe", Belief: "黑影是仇人"},
+		{ID: "k_shadow", Action: "believe", Character: "林墨"},
+	}
+	for _, update := range tests {
+		t.Run(update.Character+update.Belief, func(t *testing.T) {
+			s := newTestStore(t)
+			if err := s.World.UpdateKnowledge(1, []domain.KnowledgeUpdate{{ID: "k_shadow", Action: "establish", Truth: "黑影是兄长"}}); err != nil {
+				t.Fatal(err)
+			}
+			if err := s.World.UpdateKnowledge(2, []domain.KnowledgeUpdate{update}); err == nil {
+				t.Fatalf("expected incomplete belief to fail: %+v", update)
+			}
+			entries, err := s.World.LoadKnowledgeState()
+			if err != nil {
+				t.Fatal(err)
+			}
+			if len(entries) != 1 || len(entries[0].BelievedBy) != 0 {
+				t.Fatalf("rejected belief changed state: %+v", entries)
+			}
+		})
+	}
+}
+
+func TestKnowledge_RejectsExtraFieldsForKnowledgeActions(t *testing.T) {
+	tests := []domain.KnowledgeUpdate{
+		{ID: "k_shadow", Action: "establish", Truth: "黑影是兄长", Character: "林墨"},
+		{ID: "k_shadow", Action: "establish", Truth: "黑影是兄长", Belief: "多余"},
+		{ID: "k_shadow", Action: "believe", Character: "林墨", Belief: "黑影是仇人", Truth: "多余"},
+		{ID: "k_shadow", Action: "learn", Character: "林墨", Truth: "多余"},
+		{ID: "k_shadow", Action: "learn", Character: "林墨", Belief: "多余"},
+	}
+	for _, update := range tests {
+		t.Run(update.Action+update.Character+update.Belief, func(t *testing.T) {
+			s := newTestStore(t)
+			if update.Action != "establish" {
+				if err := s.World.UpdateKnowledge(1, []domain.KnowledgeUpdate{{ID: "k_shadow", Action: "establish", Truth: "黑影是兄长"}}); err != nil {
+					t.Fatal(err)
+				}
+			}
+			if err := s.World.UpdateKnowledge(2, []domain.KnowledgeUpdate{update}); err == nil {
+				t.Fatalf("expected extra knowledge fields to fail: %+v", update)
+			}
+		})
+	}
+}
+
+func TestKnowledge_RejectsBeliefEqualToObjectiveTruth(t *testing.T) {
+	s := newTestStore(t)
+	if err := s.World.UpdateKnowledge(1, []domain.KnowledgeUpdate{{ID: "k_shadow", Action: "establish", Truth: "黑影是林墨的兄长"}}); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.World.UpdateKnowledge(2, []domain.KnowledgeUpdate{{
+		ID: "k_shadow", Action: "believe", Character: "林墨", Belief: "黑影是林墨的兄长",
+	}}); err == nil {
+		t.Fatal("expected belief equal to objective truth to fail")
+	}
+	entries, err := s.World.LoadKnowledgeState()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(entries) != 1 || len(entries[0].BelievedBy) != 0 {
+		t.Fatalf("rejected true belief changed state: %+v", entries)
+	}
+}
+
+func TestKnowledge_ReplayingSameBeliefKeepsFirstChapter(t *testing.T) {
+	s := newTestStore(t)
+	if err := s.World.UpdateKnowledge(1, []domain.KnowledgeUpdate{{ID: "k_shadow", Action: "establish", Truth: "黑影是兄长"}}); err != nil {
+		t.Fatal(err)
+	}
+	update := []domain.KnowledgeUpdate{{ID: "k_shadow", Action: "believe", Character: "林墨", Belief: "黑影是仇人"}}
+	if err := s.World.UpdateKnowledge(2, update); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.World.UpdateKnowledge(4, update); err != nil {
+		t.Fatalf("replay same belief: %v", err)
+	}
+	entries, err := s.World.LoadKnowledgeState()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(entries) != 1 || len(entries[0].BelievedBy) != 1 || entries[0].BelievedBy[0].FormedAt != 2 {
+		t.Fatalf("belief replay changed first formation: %+v", entries)
+	}
+}
+
+func TestKnowledge_RejectsChangingActiveBeliefContent(t *testing.T) {
+	s := newTestStore(t)
+	if err := s.World.UpdateKnowledge(1, []domain.KnowledgeUpdate{{ID: "k_shadow", Action: "establish", Truth: "黑影是兄长"}}); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.World.UpdateKnowledge(2, []domain.KnowledgeUpdate{{ID: "k_shadow", Action: "believe", Character: "林墨", Belief: "黑影是仇人"}}); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.World.UpdateKnowledge(3, []domain.KnowledgeUpdate{{ID: "k_shadow", Action: "believe", Character: "林墨", Belief: "黑影是陌生人"}}); err == nil {
+		t.Fatal("expected changing active belief content to fail")
+	}
+	entries, err := s.World.LoadKnowledgeState()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(entries) != 1 || len(entries[0].BelievedBy) != 1 || entries[0].BelievedBy[0].Content != "黑影是仇人" {
+		t.Fatalf("rejected belief rewrite changed state: %+v", entries)
+	}
+}
+
+func TestKnowledge_RejectsBeliefAfterCharacterLearnsTruth(t *testing.T) {
+	s := newTestStore(t)
+	if err := s.World.UpdateKnowledge(1, []domain.KnowledgeUpdate{{ID: "k_shadow", Action: "establish", Truth: "黑影是兄长"}}); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.World.UpdateKnowledge(2, []domain.KnowledgeUpdate{{ID: "k_shadow", Action: "learn", Character: "林墨"}}); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.World.UpdateKnowledge(3, []domain.KnowledgeUpdate{{ID: "k_shadow", Action: "believe", Character: "林墨", Belief: "黑影是仇人"}}); err == nil {
+		t.Fatal("expected known character belief to fail")
+	}
+	entries, err := s.World.LoadKnowledgeState()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(entries) != 1 || len(entries[0].KnownBy) != 1 || len(entries[0].BelievedBy) != 0 {
+		t.Fatalf("rejected post-learn belief changed state: %+v", entries)
+	}
+}
+
+func TestKnowledge_LearningTruthCorrectsActiveBelief(t *testing.T) {
+	s := newTestStore(t)
+	if err := s.World.UpdateKnowledge(1, []domain.KnowledgeUpdate{{ID: "k_shadow", Action: "establish", Truth: "黑影是兄长"}}); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.World.UpdateKnowledge(2, []domain.KnowledgeUpdate{{ID: "k_shadow", Action: "believe", Character: "林墨", Belief: "黑影是仇人"}}); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.World.UpdateKnowledge(4, []domain.KnowledgeUpdate{{ID: "k_shadow", Action: "learn", Character: "林墨"}}); err != nil {
+		t.Fatal(err)
+	}
+	entries, err := s.World.LoadKnowledgeState()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(entries) != 1 || len(entries[0].KnownBy) != 1 || entries[0].KnownBy[0].LearnedAt != 4 {
+		t.Fatalf("learn did not record objective truth: %+v", entries)
+	}
+	if len(entries[0].BelievedBy) != 1 || entries[0].BelievedBy[0].CorrectedAt != 4 {
+		t.Fatalf("learn did not correct active belief: %+v", entries[0].BelievedBy)
+	}
+}
+
+func TestKnowledge_ReplayingLearnKeepsBeliefCorrectionChapter(t *testing.T) {
+	s := newTestStore(t)
+	if err := s.World.UpdateKnowledge(1, []domain.KnowledgeUpdate{{ID: "k_shadow", Action: "establish", Truth: "黑影是兄长"}}); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.World.UpdateKnowledge(2, []domain.KnowledgeUpdate{{ID: "k_shadow", Action: "believe", Character: "林墨", Belief: "黑影是仇人"}}); err != nil {
+		t.Fatal(err)
+	}
+	learn := []domain.KnowledgeUpdate{{ID: "k_shadow", Action: "learn", Character: "林墨"}}
+	if err := s.World.UpdateKnowledge(4, learn); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.World.UpdateKnowledge(6, learn); err != nil {
+		t.Fatal(err)
+	}
+	entries, err := s.World.LoadKnowledgeState()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(entries) != 1 || len(entries[0].KnownBy) != 1 || entries[0].KnownBy[0].LearnedAt != 4 || len(entries[0].BelievedBy) != 1 || entries[0].BelievedBy[0].CorrectedAt != 4 {
+		t.Fatalf("learn replay changed first correction: %+v", entries)
+	}
+}
+
+func TestKnowledge_RejectsBeliefAfterCorrection(t *testing.T) {
+	s := newTestStore(t)
+	if err := s.World.UpdateKnowledge(1, []domain.KnowledgeUpdate{{ID: "k", Action: "establish", Truth: "真相"}}); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.World.UpdateKnowledge(2, []domain.KnowledgeUpdate{{ID: "k", Action: "believe", Character: "林墨", Belief: "误解"}}); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.World.UpdateKnowledge(3, []domain.KnowledgeUpdate{{ID: "k", Action: "learn", Character: "林墨"}}); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.World.UpdateKnowledge(4, []domain.KnowledgeUpdate{{ID: "k", Action: "believe", Character: "林墨", Belief: "误解"}}); err == nil {
+		t.Fatal("expected belief after correction to fail")
+	}
+}
+
+func TestKnowledge_RecordsCharacterFalseBelief(t *testing.T) {
+	s := newTestStore(t)
+
+	if err := s.World.UpdateKnowledge(1, []domain.KnowledgeUpdate{{
+		ID: "k_shadow", Action: "establish", Truth: "黑影是林墨的兄长",
+	}}); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.World.UpdateKnowledge(2, []domain.KnowledgeUpdate{{
+		ID: "k_shadow", Action: "believe", Character: "林墨", Belief: "黑影是杀兄仇人",
+	}}); err != nil {
+		t.Fatalf("record false belief: %v", err)
+	}
+
+	entries, err := s.World.LoadKnowledgeState()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(entries) != 1 {
+		t.Fatalf("want 1 knowledge entry, got %d: %+v", len(entries), entries)
+	}
+	got := entries[0]
+	if got.Truth != "黑影是林墨的兄长" || got.EstablishedAt != 1 || len(got.KnownBy) != 0 {
+		t.Fatalf("belief changed objective truth or knowledge holders: %+v", got)
+	}
+	if len(got.BelievedBy) != 1 {
+		t.Fatalf("want 1 false belief, got %+v", got.BelievedBy)
+	}
+	belief := got.BelievedBy[0]
+	if belief.Character != "林墨" || belief.Content != "黑影是杀兄仇人" || belief.FormedAt != 2 || belief.CorrectedAt != 0 {
+		t.Fatalf("false belief recorded incorrectly: %+v", belief)
+	}
+}
+
 func TestKnowledge_LoadsLegacyEntryWithoutReaderRevealField(t *testing.T) {
 	s := newTestStore(t)
 	legacy := `[{"id":"k_shadow","truth":"黑影是林墨的兄长","established_at":1,"known_by":[]}]`
@@ -596,8 +837,8 @@ func TestKnowledge_LoadsLegacyEntryWithoutReaderRevealField(t *testing.T) {
 	if err != nil {
 		t.Fatalf("load legacy knowledge entry: %v", err)
 	}
-	if len(entries) != 1 || entries[0].ReaderRevealedAt != 0 {
-		t.Fatalf("legacy reader reveal should decode as zero: %+v", entries)
+	if len(entries) != 1 || entries[0].ReaderRevealedAt != 0 || len(entries[0].BelievedBy) != 0 {
+		t.Fatalf("legacy knowledge fields should decode as zero values: %+v", entries)
 	}
 }
 
@@ -803,6 +1044,35 @@ func TestKnowledge_RevealsEstablishedTruthToReader(t *testing.T) {
 	}
 	if len(got.KnownBy) != 0 {
 		t.Fatalf("reader reveal must not teach any character: %+v", got.KnownBy)
+	}
+}
+
+func TestKnowledge_ProjectionShowsActiveAndCorrectedBeliefs(t *testing.T) {
+	s := newTestStore(t)
+	if err := s.World.UpdateKnowledge(1, []domain.KnowledgeUpdate{{ID: "k_shadow", Action: "establish", Truth: "黑影是兄长"}}); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.World.UpdateKnowledge(2, []domain.KnowledgeUpdate{
+		{ID: "k_shadow", Action: "believe", Character: "林墨", Belief: "黑影是仇人"},
+		{ID: "k_shadow", Action: "believe", Character: "苏晚", Belief: "黑影是刺客"},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.World.UpdateKnowledge(4, []domain.KnowledgeUpdate{{ID: "k_shadow", Action: "learn", Character: "林墨"}}); err != nil {
+		t.Fatal(err)
+	}
+	data, err := os.ReadFile(filepath.Join(s.Dir(), "knowledge_state.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := string(data)
+	for _, phrase := range []string{
+		"林墨误信“黑影是仇人”（第 2 章形成，第 4 章纠正）",
+		"苏晚误信“黑影是刺客”（第 2 章形成，尚未纠正）",
+	} {
+		if !strings.Contains(got, phrase) {
+			t.Fatalf("knowledge projection missing belief %q:\n%s", phrase, got)
+		}
 	}
 }
 

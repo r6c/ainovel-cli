@@ -512,3 +512,72 @@ ReaderRevealedAt
 `reveal_to_reader` 已完成全链路实现。它是单调、幂等的首次完整揭示记录：只引用已有知识 ID，不修改角色 KnownBy，也不接受 Truth/Character 作为附加输入。Context 只在 `ReaderRevealedAt < currentChapter` 时将读者已知 Truth 暴露给 Writer，因此当前章揭示不会提前泄漏。
 
 C1 没有把伏笔 `partial_payoff` 自动映射为读者完整获知：部分兑现可能只揭开局部答案，完整 Truth 仍需独立 `reveal_to_reader`。错误信念、撤销揭示和多读者模型继续留给后续独立里程碑。
+
+---
+
+# C1 后续规划盘点
+
+## 当前状态修正
+
+- C1 已由提交 `03bf271 功能：追踪读者揭示与信息差状态` 隔离。
+- 工作区干净。
+- 规划头部仍残留“Knowledge 批次未提交”的旧描述，需要在下一计划中修正。
+
+## C2 错误信念的关键风险
+
+错误信念不能直接复用通用 `StateChange`：
+
+```text
+Entity=林墨, Field=believes:k_shadow, NewValue=黑影是仇人
+```
+
+仍无法保证 `k_shadow` 已建立、同一角色是否有多个冲突信念、何时纠正，也无法由 Projector 稳定重建。
+
+但错误信念也不能简单把 `Belief` 加到 `KnowledgeEntry` 后将整条 Entry 注入 Writer Context。若当前角色只相信错误内容，而读者和角色都不知道客观 Truth，序列化整个 `KnowledgeEntry` 会泄露隐藏 Truth。
+
+因此若选择 C2，必须坚持：
+
+1. Store/ChapterRecord 中保留客观 Truth 与信念事实；
+2. Writer Context 使用经过净化的认知边界投影；
+3. 当前角色只看到自己的 belief 内容；
+4. 客观 Truth 只有在当前角色已知或读者已知时才进入 Context；
+5. 不通过 Prompt 约束来掩盖 Truth 泄漏。
+
+这意味着 C2 的最小可交付范围应单独设计，而不能把 belief/correction 与更多认知状态一次性加入。
+
+## 与 Prose Lint 的优先级比较
+
+当前 `rules.Lint` 已有两个确定性检查：
+
+- `markdown_residue`
+- `non_cjk_fragments`
+
+Commit 与 Revision Projector 都会运行同一个 `rules.Lint`，因此未来增加重复段落等规则的接缝已经成熟，适合后续单独的小里程碑。
+
+但错误信念是已完成 Knowledge 主链中仍缺失的最后一个核心认知维度，而且会直接影响角色一致性。下一步仍优先做 C2a，但必须缩为：
+
+```text
+believe：角色形成一个与客观 Truth 不同的明确认知
+learn：沿用现有动作；角色获知客观 Truth 时纠正其活跃错误信念
+```
+
+不新增 `correct_belief` 动作。原因是现有 `learn` 已有明确语义：角色确实获知客观 Truth；此时该角色对同一 Knowledge ID 的错误信念必然不再是当前认知。这样可避免引入第二种“纠正但是否知道真相”的模糊动作。
+
+第一版仍不支持：
+
+- 一个角色对同一 Truth 同时持有多个错误信念；
+- 错误信念内容的中途改写；
+- 纠正后再次相信错误内容；
+- 不可靠读者信念；
+- `forget`、`doubt`、`suspect`。
+
+## C2a 实施结论
+
+C2a 已按最小范围闭环：新增 `KnowledgeBelief` 与 `believe`，复用 `learn` 标记 `CorrectedAt`。Store、ChapterFacts、Commit Saga、Projector、Rewrite、Import、Context 与四份 Prompt 均同步。
+
+实现期间发现两类重要边界：
+
+1. `CommitStageStarted` 恢复不能用已部分应用后的当前投影重复校验冻结 payload，否则合法历史 belief 会被误判；语义校验现只发生在首次创建 PendingCommit 前。
+2. Context 不能序列化完整 KnowledgeEntry/KnowledgeBelief；净化 DTO 既隐藏当前角色与读者均未知的 Truth，也去除本章/未来 `CorrectedAt`，避免提前泄露认知纠正。
+
+最终审计还补齐了直接 Store 入口的四动作字段矩阵，避免多余 Truth/Character/Belief 被静默忽略。Import 分析缓存版本已从 4 提升到 5。全量测试、vet 与 diff check 均通过。

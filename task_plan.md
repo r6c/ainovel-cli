@@ -3,11 +3,11 @@
 ## 规划总览
 
 - 总体状态：`complete`
-- 当前执行阶段：里程碑 C1 已完成
-- 已完成领域里程碑：A 伏笔生命周期；B 作者真相 + 角色获知
-- 下一领域里程碑：C1 读者揭示状态
+- 当前执行阶段：阶段 31 已完成，等待提交收尾
+- 已完成领域里程碑：A 伏笔生命周期；B 作者真相 + 角色获知；C1 读者揭示 + 信息差；C2a 最小角色错误信念
+- 下一候选里程碑：Prose Lint 重复段落检测（尚未规划执行）
 - 规划原则：先复用既有 ChapterFacts/Commit Saga/WorldStore/Projector/Context，再增加最小领域数据；不从参考项目移植运行架构
-- 当前工作区：Knowledge 批次尚未提交，共 31 个文件、1675+ / 38-；伏笔批次已由提交 `13a775b` 隔离
+- 当前工作区：C2a 代码、测试、Prompt 与规划文件已完成最终验证，待中文提交
 
 ## 路线决策摘要
 
@@ -838,16 +838,343 @@ git diff --check
 6. Import 分析 Schema 升级为 v4，旧 v3 缓存失效；旧 KnowledgeEntry 缺字段时兼容为 0。
 7. 全量测试、vet、diff check 和范围扫描全部通过。
 
-## 后续候选里程碑（C1 之后，不进入当前执行范围）
+---
+
+## 里程碑 C2a：最小角色错误信念
+
+### 目标
+
+在现有 Knowledge 主链中表达：
+
+```text
+客观 Truth 已建立
+→ 某角色形成一个明确但错误的认知
+→ 该角色后来 learn 客观 Truth
+→ 错误信念被标记为已纠正
+```
+
+C2a 只增加 `believe` 动作，不新增 `correct_belief`。现有 `learn` 表示角色确实获知客观 Truth，因此同时纠正该角色对同一 Knowledge ID 的活跃错误信念。
+
+### 最小领域模型
+
+建议在现有类型上增量扩展：
+
+```go
+type KnowledgeBelief struct {
+    Character   string `json:"character"`
+    Content     string `json:"content"`
+    FormedAt    int    `json:"formed_at"`
+    CorrectedAt int    `json:"corrected_at,omitempty"`
+}
+
+type KnowledgeEntry struct {
+    ID               string
+    Truth            string
+    EstablishedAt    int
+    KnownBy          []KnowledgeHolder
+    BelievedBy       []KnowledgeBelief
+    ReaderRevealedAt int
+}
+
+type KnowledgeUpdate struct {
+    ID        string
+    Action    string // establish / believe / learn / reveal_to_reader
+    Truth     string
+    Character string
+    Belief    string
+}
+```
+
+### 动作与不变量
+
+`believe`：
+
+- 必须引用已建立的 Knowledge ID；
+- Character 和 Belief 必填，Truth 为空；
+- Belief 必须与客观 Truth 不同；
+- 已经在 KnownBy 的角色不能形成该错误信念；
+- 同角色、同内容重复 believe 幂等，保留首次 FormedAt；
+- 同角色、不同内容的后续 believe 第一版拒绝，不做中途改写；
+- 已纠正后不能再次 believe。
+
+`learn`：
+
+- 继续沿用现有获知客观 Truth 语义；
+- 首次 learn 添加 KnownBy；
+- 同时将该角色的活跃错误信念 `CorrectedAt` 设为当前章；
+- 重复 learn 幂等，不漂移 LearnedAt/CorrectedAt。
+
+同 payload 合法序列：
+
+```text
+establish → believe
+establish → believe → learn
+```
+
+### Context 安全边界
+
+不得继续把完整 `KnowledgeEntry` 直接作为 Writer 的 `knowledge_boundaries`。C2a 必须引入仅用于序列化的净化视图，而不是新事实源：
+
+```go
+type knowledgeBoundary struct {
+    ID          string
+    Truth       string // 仅当前角色已知或读者已知时输出
+    ReaderKnown bool
+    KnownBy     []KnowledgeHolder
+    Beliefs     []KnowledgeBelief // 仅当前大纲涉及角色的活跃 belief
+}
+```
+
+规则：
+
+1. 当前角色只相信错误内容、读者也未知 Truth 时：输出 belief，不输出 Truth；
+2. 读者已知 Truth、角色仍错误相信时：同时输出 Truth + belief，支持戏剧性反讽；
+3. 角色 learn 后：输出 Truth，不再把已纠正 belief 作为当前认知；
+4. 无关角色 belief 不进入当前章 Context；
+5. 当前章或未来才形成/纠正的认知不提前注入；
+6. 仍使用 8 条上限、预算裁剪和 `_trimmed`。
+
+`knowledgeBoundary` 只是 Context Adapter DTO；Domain/Store 中的 `KnowledgeEntry` 仍是事实投影。
+
+### 本里程碑明确不做
+
+- 不新增 `correct_belief`、`doubt`、`suspect`、`forget`；
+- 不允许同一角色对同一 ID 同时持有多个错误信念；
+- 不允许错误信念中途改写或纠正后再次形成；
+- 不追踪读者错误信念或不可靠叙述；
+- 不实现多读者群体；
+- 不新增 Service、Repository、数据库或通用认知状态机；
+- 不把 belief 塞进通用 `StateChange.Field`；
+- 不提升 ChapterRecord/workspace 格式版本，除非兼容测试证明必须。
+
+### 已确认公共接缝
+
+1. `WorldStore.UpdateKnowledge` / `LoadKnowledgeState`
+2. `chapterfacts.Properties` / `Validate`
+3. `CommitChapterTool.Execute`
+4. `revision.ValidateRecordSet` / `Projector.Apply`
+5. Import `analysisContract → validateBatch → buildLedger → publishChapter`
+6. `ContextTool.Execute`
+7. Writer / Editor / Revision / Import Prompt
+
+---
+
+### 阶段 24：基线与 Store 首个 believe 切片
+
+状态：`complete`
+
+- [x] 确认生产代码无改动（允许三份规划文件）且基线为 `03bf271`
+- [x] 定向运行现有 Knowledge Store 测试
+- [x] 首个失败测试：
+  ```text
+  establish@1 → 林墨 believe@2 "黑影是杀兄仇人"
+  ```
+- [x] 断言 Truth 保留、BelievedBy 仅一条、FormedAt=2、CorrectedAt=0、KnownBy 为空
+- [x] 只增加 `KnowledgeBelief`、`KnowledgeUpdate.Belief` 与 Store believe 分支
+- [x] 不先修改 ChapterFacts、Commit、Projector 或 Prompt
+
+---
+
+### 阶段 25：Store 不变量与 learn 纠正
+
+状态：`complete`
+
+严格 TDD 覆盖：
+
+1. 未知 Knowledge ID 不能 believe；
+2. believe 缺 Character/Belief 拒绝；
+3. Belief 与 Truth 相同拒绝；
+4. 同角色同内容重复 believe 幂等；
+5. 同角色不同内容后续 believe 拒绝；
+6. 已知 Truth 的角色不能 believe；
+7. `believe@2 → learn@4` 后：
+   ```text
+   LearnedAt = 4
+   CorrectedAt = 4
+   ```
+8. 重复 learn 不漂移；
+9. 纠正后再次 believe 拒绝；
+10. Markdown 分别显示活跃错误信念与已纠正章节；
+11. 旧 KnowledgeEntry 缺 `believed_by` 时解码为空。
+
+---
+
+### 阶段 26：ChapterFacts 与 Commit Saga
+
+状态：`complete`
+
+1. 严格 Schema 动作枚举扩展为：
+   ```text
+   establish / believe / learn / reveal_to_reader
+   ```
+2. 字段纪律：
+   - establish：Truth 必填，其余空；
+   - believe：Character + Belief 必填，Truth 空；
+   - learn：Character 必填，Truth/Belief 空；
+   - reveal_to_reader：只接受 ID。
+3. 提交前临时状态按 payload 顺序模拟 Belief/KnownBy：
+   - 支持 `establish → believe → learn`；
+   - 拒绝未知引用、真信念、已知后 believe、冲突 belief；
+   - 所有非法请求在 PendingCommit 前拒绝。
+4. started 重放不复制 Belief，不漂移 FormedAt/CorrectedAt。
+5. 不改变现有 Commit Saga 阶段。
+
+---
+
+### 阶段 27：Revision、Projector 与 Rewrite
+
+状态：`complete`
+
+Projector 路径：
+
+```text
+establish@1 → believe@2 → learn@5
+```
+
+断言：
+
+- Belief FormedAt=2；
+- CorrectedAt=5；
+- KnownBy LearnedAt=5；
+- 重复历史动作幂等；
+- 非法 believe 历史记录拒绝。
+
+Rewrite 安全：
+
+- 删除唯一 establish、后续仍 believe 时 Pending 前拒绝；
+- 删除 believe 本身允许；
+- 删除 learn 后，原 belief 恢复为活跃状态；
+- 修改 belief 内容通过候选记录集重新投影，不保留旧内容；
+- 不新增 `RestoreOwnBelief`。
+
+---
+
+### 阶段 28：Import 契约、连续性与缓存
+
+状态：`complete`
+
+1. Import Schema/DTO 支持 `believe` 和 `belief` 字段；
+2. 首批与同批次 `establish → believe → learn` 校验；
+3. 跨批次 ledger 显示：客观 Truth、读者知情、角色已知、活跃错误信念；
+4. Import Prompt 只有正文明确呈现角色相信某个具体错误内容时才输出 believe；
+5. publish 真实落盘并由 learn 纠正；
+6. `analysisSchemaVersion 4 → 5`，旧 v4 缓存失效；
+7. 不提升 workspace/ChapterRecord 版本。
+
+---
+
+### 阶段 29：Writer Context 净化视图
+
+状态：`complete`
+
+这是 C2a 的阻塞安全阶段。
+
+TDD 矩阵：
+
+| 场景 | Context 输出 |
+|---|---|
+| 林墨只持有错误 belief，读者未知 | 输出 belief；不输出 Truth |
+| 林墨持有错误 belief，读者已知 | 输出 belief + Truth + ReaderKnown |
+| 苏晚独有 belief，当前章只涉及林墨 | 不输出苏晚 belief 或对应隐藏 Truth |
+| 林墨已 learn | 输出 Truth；活跃 beliefs 为空 |
+| belief/learn 发生在当前章或未来 | 不提前输出 |
+
+实现要求：
+
+- Context 改为净化后的 `knowledgeBoundary` DTO；
+- 不在 DTO 中暴露无权看到的 Truth；
+- 不改变 Store 事实结构；
+- 保持最多 8 条、最近优先、预算裁剪和 `_trimmed`；
+- 增加 JSON 级测试，不能只用字符串 contains 证明无泄漏。
+
+---
+
+### 阶段 30：Writer / Editor / Revision / Import 纪律
+
+状态：`complete`
+
+Writer：
+
+- 角色按自己的 active belief 行动，但不得把 belief 当成客观 Truth；
+- ReaderKnown Truth 可与角色错误 belief 构成戏剧性反讽；
+- 只有正文明确让角色相信具体错误内容时提交 believe；
+- 角色确知 Truth 时提交 learn，代码负责纠正 belief。
+
+Editor：
+
+- 检查角色行为是否符合其 active belief；
+- 检查已纠正后是否仍按旧 belief 行动；
+- 检查叙述是否把角色误解写成作者事实；
+- 检查隐藏 Truth 是否提前泄漏。
+
+Revision/Import：
+
+- 仅提取正文明确支持的具体信念；
+- 不把怀疑、猜测或一闪而过的念头当成 believe；
+- 同步 Writer golden 与资源契约。
+
+---
+
+### 阶段 31：全量验证、范围审计与提交门禁
+
+状态：`complete`
+
+验证矩阵：
+
+| 接缝 | 必须覆盖 |
+|---|---|
+| Store | believe、输入约束、幂等、learn 纠正、Markdown |
+| ChapterFacts | 四动作 Schema、字段纪律 |
+| Commit | 正常提交、同 payload、Pending 前拒绝、started 重放 |
+| Projector | 重建、纠正、非法历史、Rewrite 恢复 |
+| Import | Schema、ledger、publish、v4 缓存失效 |
+| Context | Truth 净化、角色过滤、时间边界、有界裁剪 |
+| Prompt | Writer/Editor/Revision/Import belief 纪律 |
+| Compatibility | 旧 JSON 缺 believed_by/belief 字段 |
+
+最终命令：
+
+```bash
+gofmt -w <本批 Go 文件>
+go test ./internal/store -run 'Knowledge|Belief' -count=1
+go test ./internal/tools -run 'Knowledge|Belief|ContextTool' -count=1
+go test ./internal/revision -run 'Knowledge|Belief' -count=1
+go test ./internal/host/imp -run 'Knowledge|Belief|AnalysisSchemaVersion' -count=1
+go test ./assets -count=1
+go test ./... -timeout=5m
+go vet ./...
+git diff --check
+```
+
+范围审计：
+
+- [x] 不新增 correction/doubt/suspect/forget 动作
+- [x] 不实现读者错误信念、多 belief 或 belief 再激活
+- [x] 不泄漏当前角色和读者均未知的 Truth
+- [x] 不新增 Service、Repository、数据库或格式迁移
+- [x] 不用 Prompt 代替引用、幂等、纠正和 Saga 校验
+- [x] 与 establish/learn/reveal_to_reader 完整兼容
+
+提交门禁：
+
+- 只有阶段 24—31 全部完成且最终验证通过，才允许提交；
+- 提交信息必须使用中文，例如：
+  ```text
+  功能：追踪角色错误信念与纠正状态
+  ```
+
+---
+
+## 后续候选里程碑（C2a 之后，不进入当前执行范围）
 
 优先级按当前仓库增量价值调整为：
 
-1. **知识阶段 C2：角色错误信念**——只在 C1 读者揭示稳定后单独设计 belief/correction 语义。
-2. **Prose Lint 增量**——在 `rules.Lint` 中优先做重复段落、异常标点或章节截断，每条规则独立评估误报率。
-3. **具体题材/平台资源试点**——在现有 References/覆盖层中先落一个题材或 rubric，不先建 Pack 框架。
-4. **cocreate 阶段化访谈**——扩展现有共创对话，不先加第三启动模式。
-5. **评审商业维度**——利用现有 ChapterContract/Review Dimensions 增加平台适配或商业节奏 rubric。
-6. **扫榜与拆文**——保持独立命令和抽象产物，不侵入主写作 Engine。
+1. **Prose Lint 增量**——优先做重复段落，独立评估短段、对白、回环修辞的误报率。
+2. **具体题材/平台资源试点**——在现有 References/覆盖层中先落一个题材或 rubric，不先建 Pack 框架。
+3. **cocreate 阶段化访谈**——扩展现有共创对话，不先加第三启动模式。
+4. **评审商业维度**——利用现有 ChapterContract/Review Dimensions 增加平台适配或商业节奏 rubric。
+5. **扫榜与拆文**——保持独立命令和抽象产物，不侵入主写作 Engine。
+6. **更复杂认知状态**——只有出现真实需求后再讨论 doubt/suspect/forget、belief 改写、读者错误信念或多读者模型。
 
 明确暂缓：
 

@@ -6,21 +6,31 @@ type KnowledgeHolder struct {
 	LearnedAt int    `json:"learned_at"`
 }
 
+// KnowledgeBelief 记录角色对某项作者真相形成的错误认知及其纠正章节。
+type KnowledgeBelief struct {
+	Character   string `json:"character"`
+	Content     string `json:"content"`
+	FormedAt    int    `json:"formed_at"`
+	CorrectedAt int    `json:"corrected_at,omitempty"`
+}
+
 // KnowledgeEntry 是作者真相及其角色知情范围的当前投影。
 type KnowledgeEntry struct {
 	ID               string            `json:"id"`
 	Truth            string            `json:"truth"`
 	EstablishedAt    int               `json:"established_at"`
 	KnownBy          []KnowledgeHolder `json:"known_by"`
+	BelievedBy       []KnowledgeBelief `json:"believed_by,omitempty"`
 	ReaderRevealedAt int               `json:"reader_revealed_at,omitempty"`
 }
 
 // KnowledgeUpdate 是章节对知识状态的增量操作。
 type KnowledgeUpdate struct {
 	ID        string `json:"id"`
-	Action    string `json:"action"` // establish / learn / reveal_to_reader
+	Action    string `json:"action"` // establish / believe / learn / reveal_to_reader
 	Truth     string `json:"truth,omitempty"`
 	Character string `json:"character,omitempty"`
+	Belief    string `json:"belief,omitempty"`
 }
 
 // StateChange 角色/实体状态变化记录。
