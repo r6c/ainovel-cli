@@ -748,12 +748,16 @@ func (t *ContextTool) selectStoryThreads(state contextBuildState) []domain.Recal
 	// 2. 账龄回填：与当前章无关、但久挂未回收的伏笔（最旧优先），补足剩余名额。
 	//    补的是相关性召回天然的盲区——独自悬挂太久、却没在本章撞上关键词的那根线。
 	for _, entry := range agingForeshadow(state.foreshadow, state.chapter, picked) {
+		lastAdvanced := entry.PlantedAt
+		if entry.LastAdvancedAt > 0 {
+			lastAdvanced = entry.LastAdvancedAt
+		}
 		add(domain.RecallItem{
 			Kind:    "story_thread",
 			Key:     entry.ID,
 			Chapter: entry.PlantedAt,
-			Reason:  "伏笔久挂未回收，注意适时推进或回收",
-			Summary: fmt.Sprintf("伏笔“%s”埋于第%d章，已 %d 章未回收：%s", entry.ID, entry.PlantedAt, state.chapter-entry.PlantedAt, truncateRunes(entry.Description, 30)),
+			Reason:  "伏笔久挂未推进，注意适时推进或回收",
+			Summary: fmt.Sprintf("伏笔“%s”埋于第%d章，已 %d 章未推进：%s", entry.ID, entry.PlantedAt, state.chapter-lastAdvanced, truncateRunes(entry.Description, 30)),
 		})
 		if len(items) >= maxThreads {
 			break
@@ -763,21 +767,32 @@ func (t *ContextTool) selectStoryThreads(state contextBuildState) []domain.Recal
 	return items
 }
 
-// agingForeshadow 返回账龄 ≥ foreshadowAgingChapters 的未回收伏笔，按最旧优先排序，
-// 跳过 picked 中已被相关性召回选中的。入参 all 已是 active（未回收）列表，故无需再过滤状态。
+// agingForeshadow 返回最近推进距今 ≥ foreshadowAgingChapters 的未回收伏笔，
+// 按最久未推进优先排序。入参 all 已是 active（未回收）列表，故无需再过滤状态。
 func agingForeshadow(all []domain.ForeshadowEntry, chapter int, picked map[string]struct{}) []domain.ForeshadowEntry {
 	var aging []domain.ForeshadowEntry
 	for _, e := range all {
 		if _, ok := picked[e.ID]; ok {
 			continue
 		}
-		if e.PlantedAt <= 0 || chapter-e.PlantedAt < foreshadowAgingChapters {
+		lastAdvanced := e.PlantedAt
+		if e.LastAdvancedAt > 0 {
+			lastAdvanced = e.LastAdvancedAt
+		}
+		if lastAdvanced <= 0 || chapter-lastAdvanced < foreshadowAgingChapters {
 			continue
 		}
 		aging = append(aging, e)
 	}
 	sort.SliceStable(aging, func(i, j int) bool {
-		return aging[i].PlantedAt < aging[j].PlantedAt
+		left, right := aging[i].PlantedAt, aging[j].PlantedAt
+		if aging[i].LastAdvancedAt > 0 {
+			left = aging[i].LastAdvancedAt
+		}
+		if aging[j].LastAdvancedAt > 0 {
+			right = aging[j].LastAdvancedAt
+		}
+		return left < right
 	})
 	return aging
 }

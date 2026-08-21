@@ -240,6 +240,248 @@ func TestTimeline_LoadRecent(t *testing.T) {
 
 // ── Foreshadow ──
 
+func TestForeshadow_ReinforcesPlantedEntry(t *testing.T) {
+	s := newTestStore(t)
+
+	if err := s.World.UpdateForeshadow(1, []domain.ForeshadowUpdate{
+		{ID: "f1", Action: "plant", Description: "黑影"},
+	}); err != nil {
+		t.Fatalf("plant foreshadow: %v", err)
+	}
+	if err := s.World.UpdateForeshadow(3, []domain.ForeshadowUpdate{
+		{ID: "f1", Action: "reinforce"},
+	}); err != nil {
+		t.Fatalf("reinforce foreshadow: %v", err)
+	}
+
+	all, err := s.World.LoadForeshadowLedger()
+	if err != nil {
+		t.Fatalf("load foreshadow ledger: %v", err)
+	}
+	if len(all) != 1 {
+		t.Fatalf("want 1 entry, got %d", len(all))
+	}
+	got := all[0]
+	if got.Status != "reinforced" {
+		t.Errorf("want reinforced, got %s", got.Status)
+	}
+	if got.PlantedAt != 1 {
+		t.Errorf("want planted_at 1, got %d", got.PlantedAt)
+	}
+	if got.LastAdvancedAt != 3 {
+		t.Errorf("want last_advanced_at 3, got %d", got.LastAdvancedAt)
+	}
+	if got.Description != "黑影" {
+		t.Errorf("want description preserved, got %q", got.Description)
+	}
+}
+
+func TestForeshadow_RejectsReinforcingResolvedEntry(t *testing.T) {
+	s := newTestStore(t)
+
+	if err := s.World.UpdateForeshadow(1, []domain.ForeshadowUpdate{
+		{ID: "f1", Action: "plant", Description: "黑影"},
+	}); err != nil {
+		t.Fatalf("plant foreshadow: %v", err)
+	}
+	if err := s.World.UpdateForeshadow(3, []domain.ForeshadowUpdate{
+		{ID: "f1", Action: "resolve"},
+	}); err != nil {
+		t.Fatalf("resolve foreshadow: %v", err)
+	}
+	if err := s.World.UpdateForeshadow(5, []domain.ForeshadowUpdate{
+		{ID: "f1", Action: "reinforce"},
+	}); err == nil {
+		t.Fatal("expected reinforcing resolved foreshadow to fail")
+	}
+
+	all, err := s.World.LoadForeshadowLedger()
+	if err != nil {
+		t.Fatalf("load foreshadow ledger: %v", err)
+	}
+	if len(all) != 1 {
+		t.Fatalf("want 1 entry, got %d", len(all))
+	}
+	if all[0].Status != "resolved" || all[0].ResolvedAt != 3 {
+		t.Fatalf("rejected update changed resolved entry: %+v", all[0])
+	}
+}
+
+func TestForeshadow_RejectsAdvancingResolvedEntry(t *testing.T) {
+	s := newTestStore(t)
+
+	if err := s.World.UpdateForeshadow(1, []domain.ForeshadowUpdate{
+		{ID: "f1", Action: "plant", Description: "黑影"},
+		{ID: "f1", Action: "resolve"},
+	}); err != nil {
+		t.Fatalf("plant and resolve foreshadow: %v", err)
+	}
+	if err := s.World.UpdateForeshadow(3, []domain.ForeshadowUpdate{
+		{ID: "f1", Action: "advance"},
+	}); err == nil {
+		t.Fatal("expected advancing resolved foreshadow to fail")
+	}
+
+	all, err := s.World.LoadForeshadowLedger()
+	if err != nil {
+		t.Fatalf("load foreshadow ledger: %v", err)
+	}
+	if len(all) != 1 || all[0].Status != "resolved" || all[0].ResolvedAt != 1 {
+		t.Fatalf("rejected advance changed resolved entry: %+v", all)
+	}
+}
+
+func TestForeshadow_PartiallyPaysOffReinforcedEntry(t *testing.T) {
+	s := newTestStore(t)
+
+	if err := s.World.UpdateForeshadow(1, []domain.ForeshadowUpdate{
+		{ID: "f1", Action: "plant", Description: "断剑来历"},
+	}); err != nil {
+		t.Fatalf("plant foreshadow: %v", err)
+	}
+	if err := s.World.UpdateForeshadow(3, []domain.ForeshadowUpdate{
+		{ID: "f1", Action: "reinforce"},
+	}); err != nil {
+		t.Fatalf("reinforce foreshadow: %v", err)
+	}
+	if err := s.World.UpdateForeshadow(5, []domain.ForeshadowUpdate{
+		{ID: "f1", Action: "partial_payoff"},
+	}); err != nil {
+		t.Fatalf("partially pay off foreshadow: %v", err)
+	}
+
+	all, err := s.World.LoadForeshadowLedger()
+	if err != nil {
+		t.Fatalf("load foreshadow ledger: %v", err)
+	}
+	if len(all) != 1 {
+		t.Fatalf("want 1 entry, got %d", len(all))
+	}
+	if all[0].Status != "partially_paid" || all[0].LastAdvancedAt != 5 {
+		t.Fatalf("want partially_paid@5, got %+v", all[0])
+	}
+	if all[0].ResolvedAt != 0 {
+		t.Fatalf("partial payoff must not resolve entry, got resolved_at %d", all[0].ResolvedAt)
+	}
+}
+
+func TestForeshadow_MarkdownShowsPartialPayoffAndLastAdvance(t *testing.T) {
+	s := newTestStore(t)
+
+	if err := s.World.UpdateForeshadow(1, []domain.ForeshadowUpdate{
+		{ID: "f1", Action: "plant", Description: "断剑来历"},
+	}); err != nil {
+		t.Fatalf("plant foreshadow: %v", err)
+	}
+	if err := s.World.UpdateForeshadow(3, []domain.ForeshadowUpdate{
+		{ID: "f1", Action: "partial_payoff"},
+	}); err != nil {
+		t.Fatalf("partially pay off foreshadow: %v", err)
+	}
+
+	markdown, err := os.ReadFile(filepath.Join(s.Dir(), "foreshadow_ledger.md"))
+	if err != nil {
+		t.Fatalf("read foreshadow projection: %v", err)
+	}
+	got := string(markdown)
+	if !strings.Contains(got, "状态：部分兑现") {
+		t.Fatalf("projection missing partial payoff status:\n%s", got)
+	}
+	if !strings.Contains(got, "最近推进于第 3 章") {
+		t.Fatalf("projection missing last advance chapter:\n%s", got)
+	}
+}
+
+func TestForeshadow_ResolvesPartiallyPaidEntry(t *testing.T) {
+	s := newTestStore(t)
+
+	if err := s.World.UpdateForeshadow(1, []domain.ForeshadowUpdate{
+		{ID: "f1", Action: "plant", Description: "断剑来历"},
+	}); err != nil {
+		t.Fatalf("plant foreshadow: %v", err)
+	}
+	if err := s.World.UpdateForeshadow(3, []domain.ForeshadowUpdate{
+		{ID: "f1", Action: "partial_payoff"},
+	}); err != nil {
+		t.Fatalf("partially pay off foreshadow: %v", err)
+	}
+	if err := s.World.UpdateForeshadow(5, []domain.ForeshadowUpdate{
+		{ID: "f1", Action: "resolve"},
+	}); err != nil {
+		t.Fatalf("resolve foreshadow: %v", err)
+	}
+
+	all, err := s.World.LoadForeshadowLedger()
+	if err != nil {
+		t.Fatalf("load foreshadow ledger: %v", err)
+	}
+	if len(all) != 1 {
+		t.Fatalf("want 1 entry, got %d", len(all))
+	}
+	got := all[0]
+	if got.Status != "resolved" || got.ResolvedAt != 5 {
+		t.Fatalf("want resolved@5, got %+v", got)
+	}
+	if got.LastAdvancedAt != 3 {
+		t.Fatalf("resolve changed last advancement chapter: %+v", got)
+	}
+}
+
+func TestForeshadow_ReplayingResolveInSameChapterIsIdempotent(t *testing.T) {
+	s := newTestStore(t)
+
+	if err := s.World.UpdateForeshadow(1, []domain.ForeshadowUpdate{{
+		ID: "f1", Action: "plant", Description: "断剑来历",
+	}}); err != nil {
+		t.Fatal(err)
+	}
+	resolve := []domain.ForeshadowUpdate{{ID: "f1", Action: "resolve"}}
+	if err := s.World.UpdateForeshadow(3, resolve); err != nil {
+		t.Fatalf("resolve foreshadow: %v", err)
+	}
+	if err := s.World.UpdateForeshadow(3, resolve); err != nil {
+		t.Fatalf("replay resolve foreshadow: %v", err)
+	}
+
+	all, err := s.World.LoadForeshadowLedger()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(all) != 1 || all[0].Status != "resolved" || all[0].ResolvedAt != 3 {
+		t.Fatalf("resolve replay changed foreshadow: %+v", all)
+	}
+}
+
+func TestForeshadow_AdvanceRecordsLastAdvancedChapter(t *testing.T) {
+	s := newTestStore(t)
+
+	if err := s.World.UpdateForeshadow(1, []domain.ForeshadowUpdate{
+		{ID: "f1", Action: "plant", Description: "黑影"},
+	}); err != nil {
+		t.Fatalf("plant foreshadow: %v", err)
+	}
+	if err := s.World.UpdateForeshadow(3, []domain.ForeshadowUpdate{
+		{ID: "f1", Action: "advance"},
+	}); err != nil {
+		t.Fatalf("advance foreshadow: %v", err)
+	}
+
+	all, err := s.World.LoadForeshadowLedger()
+	if err != nil {
+		t.Fatalf("load foreshadow ledger: %v", err)
+	}
+	if len(all) != 1 {
+		t.Fatalf("want 1 entry, got %d", len(all))
+	}
+	got := all[0]
+	if got.Status != "advanced" || got.LastAdvancedAt != 3 {
+		t.Fatalf("want advanced@3, got %+v", got)
+	}
+	if got.PlantedAt != 1 || got.Description != "黑影" {
+		t.Fatalf("advance changed planted entry: %+v", got)
+	}
+}
+
 func TestForeshadow_UpdateLifecycle(t *testing.T) {
 	s := newTestStore(t)
 

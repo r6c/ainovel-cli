@@ -2,6 +2,7 @@ package imp
 
 import (
 	"context"
+	"encoding/json"
 	"strings"
 	"testing"
 
@@ -15,6 +16,27 @@ func TestStructuredContractsAreStrictReady(t *testing.T) {
 		if err := llmcontract.ValidateStrictReady(contract.Schema); err != nil {
 			t.Fatalf("%s: %v", contract.Name, err)
 		}
+	}
+}
+
+func TestAnalysisContractAcceptsForeshadowLifecycleActions(t *testing.T) {
+	for _, action := range []string{"reinforce", "partial_payoff"} {
+		t.Run(action, func(t *testing.T) {
+			var facts map[string]any
+			if err := json.Unmarshal([]byte(factsJSON(1, "第一章")), &facts); err != nil {
+				t.Fatal(err)
+			}
+			facts["foreshadow_updates"] = []any{map[string]any{
+				"id": "f1", "action": action, "description": nil,
+			}}
+			body, err := json.Marshal(map[string]any{"chapters": []any{facts}})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := llmcontract.ValidateJSON(analysisContract.Schema, body); err != nil {
+				t.Fatalf("analysis contract rejected %s: %v", action, err)
+			}
+		})
 	}
 }
 

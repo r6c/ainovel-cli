@@ -200,9 +200,33 @@ func (s *WorldStore) UpdateForeshadow(chapter int, updates []domain.ForeshadowUp
 				})
 			case "advance":
 				if i, ok := idx[u.ID]; ok {
+					if entries[i].Status == "resolved" {
+						return fmt.Errorf("advance resolved foreshadow %q", u.ID)
+					}
 					entries[i].Status = "advanced"
+					entries[i].LastAdvancedAt = chapter
 				} else {
 					return fmt.Errorf("advance unknown foreshadow %q", u.ID)
+				}
+			case "reinforce":
+				if i, ok := idx[u.ID]; ok {
+					if entries[i].Status == "resolved" {
+						return fmt.Errorf("reinforce resolved foreshadow %q", u.ID)
+					}
+					entries[i].Status = "reinforced"
+					entries[i].LastAdvancedAt = chapter
+				} else {
+					return fmt.Errorf("reinforce unknown foreshadow %q", u.ID)
+				}
+			case "partial_payoff":
+				if i, ok := idx[u.ID]; ok {
+					if entries[i].Status == "resolved" {
+						return fmt.Errorf("partially pay off resolved foreshadow %q", u.ID)
+					}
+					entries[i].Status = "partially_paid"
+					entries[i].LastAdvancedAt = chapter
+				} else {
+					return fmt.Errorf("partially pay off unknown foreshadow %q", u.ID)
 				}
 			case "resolve":
 				if i, ok := idx[u.ID]; ok {
@@ -532,11 +556,18 @@ func renderForeshadow(entries []domain.ForeshadowEntry) string {
 	b.WriteString("# 伏笔账本\n\n")
 	for _, e := range entries {
 		status := e.Status
+		if status == "partially_paid" {
+			status = "部分兑现"
+		}
 		if e.ResolvedAt > 0 {
 			status = fmt.Sprintf("已回收（第 %d 章）", e.ResolvedAt)
 		}
-		fmt.Fprintf(&b, "- **[%s]** %s — 埋设于第 %d 章，状态：%s\n",
-			e.ID, e.Description, e.PlantedAt, status)
+		advanced := ""
+		if e.LastAdvancedAt > 0 {
+			advanced = fmt.Sprintf("，最近推进于第 %d 章", e.LastAdvancedAt)
+		}
+		fmt.Fprintf(&b, "- **[%s]** %s — 埋设于第 %d 章，状态：%s%s\n",
+			e.ID, e.Description, e.PlantedAt, status, advanced)
 	}
 	return b.String()
 }

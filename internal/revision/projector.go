@@ -120,7 +120,29 @@ func projectWorld(records []domain.ChapterRecord) ([]domain.TimelineEvent, []dom
 				if !exists {
 					return nil, nil, nil, nil, fmt.Errorf("第 %d 章推进未知伏笔 %q", chapter, update.ID)
 				}
+				if ledger[idx].Status == "resolved" {
+					return nil, nil, nil, nil, fmt.Errorf("第 %d 章不能推进已回收伏笔 %q", chapter, update.ID)
+				}
 				ledger[idx].Status = "advanced"
+				ledger[idx].LastAdvancedAt = chapter
+			case "reinforce":
+				if !exists {
+					return nil, nil, nil, nil, fmt.Errorf("第 %d 章强化未知伏笔 %q", chapter, update.ID)
+				}
+				if ledger[idx].Status == "resolved" {
+					return nil, nil, nil, nil, fmt.Errorf("第 %d 章不能强化已回收伏笔 %q", chapter, update.ID)
+				}
+				ledger[idx].Status = "reinforced"
+				ledger[idx].LastAdvancedAt = chapter
+			case "partial_payoff":
+				if !exists {
+					return nil, nil, nil, nil, fmt.Errorf("第 %d 章部分兑现未知伏笔 %q", chapter, update.ID)
+				}
+				if ledger[idx].Status == "resolved" {
+					return nil, nil, nil, nil, fmt.Errorf("第 %d 章不能部分兑现已回收伏笔 %q", chapter, update.ID)
+				}
+				ledger[idx].Status = "partially_paid"
+				ledger[idx].LastAdvancedAt = chapter
 			case "resolve":
 				if !exists {
 					return nil, nil, nil, nil, fmt.Errorf("第 %d 章回收未知伏笔 %q", chapter, update.ID)

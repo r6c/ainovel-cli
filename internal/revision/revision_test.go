@@ -144,6 +144,116 @@ func TestChangedExcerptOmitsUnchangedPrefixAndSuffix(t *testing.T) {
 	}
 }
 
+func TestProjectorRebuildsForeshadowLifecycleFromChapterRecords(t *testing.T) {
+	st := newRevisionTestStore(t, 4)
+	now := time.Now()
+	records := []domain.ChapterRecord{
+		testRecord(1, "正文一", domain.ChapterFacts{
+			Title: "第一章", Summary: "埋下断剑来历", KeyEvents: []string{"发现断剑"},
+			ForeshadowUpdates: []domain.ForeshadowUpdate{{ID: "broken_sword", Action: "plant", Description: "断剑的真正来历"}},
+		}, domain.StyleDelta{}, now),
+		testRecord(2, "正文二", domain.ChapterFacts{
+			Title: "第二章", Summary: "再次强调断剑异常", KeyEvents: []string{"断剑共鸣"},
+			ForeshadowUpdates: []domain.ForeshadowUpdate{{ID: "broken_sword", Action: "reinforce"}},
+		}, domain.StyleDelta{}, now.Add(time.Minute)),
+		testRecord(3, "正文三", domain.ChapterFacts{
+			Title: "第三章", Summary: "揭开断剑部分来历", KeyEvents: []string{"认出铸剑铭文"},
+			ForeshadowUpdates: []domain.ForeshadowUpdate{{ID: "broken_sword", Action: "partial_payoff"}},
+		}, domain.StyleDelta{}, now.Add(2*time.Minute)),
+		testRecord(4, "正文四", domain.ChapterFacts{
+			Title: "第四章", Summary: "完整揭晓断剑来历", KeyEvents: []string{"找到铸剑者"},
+			ForeshadowUpdates: []domain.ForeshadowUpdate{{ID: "broken_sword", Action: "resolve"}},
+		}, domain.StyleDelta{}, now.Add(3*time.Minute)),
+	}
+
+	if err := NewProjector(st).Apply(records); err != nil {
+		t.Fatalf("project foreshadow lifecycle: %v", err)
+	}
+	ledger, err := st.World.LoadForeshadowLedger()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(ledger) != 1 {
+		t.Fatalf("want 1 foreshadow entry, got %d: %+v", len(ledger), ledger)
+	}
+	got := ledger[0]
+	if got.ID != "broken_sword" || got.Description != "断剑的真正来历" || got.PlantedAt != 1 {
+		t.Fatalf("projector changed planted foreshadow identity: %+v", got)
+	}
+	if got.Status != "resolved" || got.LastAdvancedAt != 3 || got.ResolvedAt != 4 {
+		t.Fatalf("want resolved with last advance at 3 and payoff at 4, got %+v", got)
+	}
+}
+
+func TestProjectorRejectsAdvancingResolvedForeshadow(t *testing.T) {
+	st := newRevisionTestStore(t, 3)
+	now := time.Now()
+	records := []domain.ChapterRecord{
+		testRecord(1, "正文一", domain.ChapterFacts{
+			Title: "第一章", Summary: "埋下伏笔", KeyEvents: []string{"发现断剑"},
+			ForeshadowUpdates: []domain.ForeshadowUpdate{{ID: "f1", Action: "plant", Description: "断剑来历"}},
+		}, domain.StyleDelta{}, now),
+		testRecord(2, "正文二", domain.ChapterFacts{
+			Title: "第二章", Summary: "回收伏笔", KeyEvents: []string{"揭晓断剑来历"},
+			ForeshadowUpdates: []domain.ForeshadowUpdate{{ID: "f1", Action: "resolve"}},
+		}, domain.StyleDelta{}, now.Add(time.Minute)),
+		testRecord(3, "正文三", domain.ChapterFacts{
+			Title: "第三章", Summary: "错误推进伏笔", KeyEvents: []string{"再次推进断剑"},
+			ForeshadowUpdates: []domain.ForeshadowUpdate{{ID: "f1", Action: "advance"}},
+		}, domain.StyleDelta{}, now.Add(2*time.Minute)),
+	}
+
+	if err := NewProjector(st).Apply(records); err == nil {
+		t.Fatal("expected projector to reject advancing resolved foreshadow")
+	}
+}
+
+func TestProjectorRejectsReinforcingResolvedForeshadow(t *testing.T) {
+	st := newRevisionTestStore(t, 3)
+	now := time.Now()
+	records := []domain.ChapterRecord{
+		testRecord(1, "正文一", domain.ChapterFacts{
+			Title: "第一章", Summary: "埋下伏笔", KeyEvents: []string{"发现断剑"},
+			ForeshadowUpdates: []domain.ForeshadowUpdate{{ID: "f1", Action: "plant", Description: "断剑来历"}},
+		}, domain.StyleDelta{}, now),
+		testRecord(2, "正文二", domain.ChapterFacts{
+			Title: "第二章", Summary: "回收伏笔", KeyEvents: []string{"揭晓断剑来历"},
+			ForeshadowUpdates: []domain.ForeshadowUpdate{{ID: "f1", Action: "resolve"}},
+		}, domain.StyleDelta{}, now.Add(time.Minute)),
+		testRecord(3, "正文三", domain.ChapterFacts{
+			Title: "第三章", Summary: "错误强化伏笔", KeyEvents: []string{"再次强调断剑"},
+			ForeshadowUpdates: []domain.ForeshadowUpdate{{ID: "f1", Action: "reinforce"}},
+		}, domain.StyleDelta{}, now.Add(2*time.Minute)),
+	}
+
+	if err := NewProjector(st).Apply(records); err == nil {
+		t.Fatal("expected projector to reject reinforcing resolved foreshadow")
+	}
+}
+
+func TestProjectorRejectsPartiallyPayingOffResolvedForeshadow(t *testing.T) {
+	st := newRevisionTestStore(t, 3)
+	now := time.Now()
+	records := []domain.ChapterRecord{
+		testRecord(1, "正文一", domain.ChapterFacts{
+			Title: "第一章", Summary: "埋下伏笔", KeyEvents: []string{"发现断剑"},
+			ForeshadowUpdates: []domain.ForeshadowUpdate{{ID: "f1", Action: "plant", Description: "断剑来历"}},
+		}, domain.StyleDelta{}, now),
+		testRecord(2, "正文二", domain.ChapterFacts{
+			Title: "第二章", Summary: "回收伏笔", KeyEvents: []string{"揭晓断剑来历"},
+			ForeshadowUpdates: []domain.ForeshadowUpdate{{ID: "f1", Action: "resolve"}},
+		}, domain.StyleDelta{}, now.Add(time.Minute)),
+		testRecord(3, "正文三", domain.ChapterFacts{
+			Title: "第三章", Summary: "错误部分兑现伏笔", KeyEvents: []string{"再次揭晓断剑"},
+			ForeshadowUpdates: []domain.ForeshadowUpdate{{ID: "f1", Action: "partial_payoff"}},
+		}, domain.StyleDelta{}, now.Add(2*time.Minute)),
+	}
+
+	if err := NewProjector(st).Apply(records); err == nil {
+		t.Fatal("expected projector to reject partially paying off resolved foreshadow")
+	}
+}
+
 func TestProjectorRebuildsWorldStateFromChapterRecords(t *testing.T) {
 	st := newRevisionTestStore(t, 2)
 	if err := st.World.SaveTimeline([]domain.TimelineEvent{{Chapter: 1, Time: "旧", Event: "应被删除"}}); err != nil {

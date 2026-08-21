@@ -21,7 +21,7 @@ func Properties(includeFeedback bool) []schema.Prop {
 	)
 	foreshadow := schema.Object(
 		schema.Property("id", schema.String("伏笔 ID")).Required(),
-		schema.Property("action", schema.Enum("操作", "plant", "advance", "resolve")).Required(),
+		schema.Property("action", schema.Enum("操作", "plant", "advance", "reinforce", "partial_payoff", "resolve")).Required(),
 		schema.Property("description", llmcontract.Nullable(schema.String("plant 描述，其它操作为 null"))).Required(),
 	)
 	relationship := schema.Object(
@@ -97,7 +97,7 @@ func Validate(facts domain.ChapterFacts) error {
 			if strings.TrimSpace(update.Description) == "" {
 				return fmt.Errorf("foreshadow_updates[%d] plant requires description", i)
 			}
-		case "advance", "resolve":
+		case "advance", "reinforce", "partial_payoff", "resolve":
 		default:
 			return fmt.Errorf("foreshadow_updates[%d].action invalid: %q", i, update.Action)
 		}

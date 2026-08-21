@@ -17,12 +17,16 @@ func StaleForeshadow(snap *Snapshot) []Finding {
 
 	var stale []string
 	for _, f := range snap.Foreshadow {
-		if f.Status != "planted" {
+		if f.Status == "resolved" {
 			continue
 		}
-		gap := latest - f.PlantedAt
+		lastAdvanced := f.PlantedAt
+		if f.LastAdvancedAt > 0 {
+			lastAdvanced = f.LastAdvancedAt
+		}
+		gap := latest - lastAdvanced
 		if gap > threshold {
-			stale = append(stale, fmt.Sprintf("%s(ch%d埋下,已过%d章)", f.ID, f.PlantedAt, gap))
+			stale = append(stale, fmt.Sprintf("%s(ch%d最近推进,已过%d章)", f.ID, lastAdvanced, gap))
 		}
 	}
 	if len(stale) == 0 {

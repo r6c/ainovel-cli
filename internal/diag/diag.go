@@ -118,9 +118,13 @@ func buildStats(snap *Snapshot) Stats {
 	// 伏笔统计
 	latest := snap.LatestCompleted()
 	for _, f := range snap.Foreshadow {
-		if f.Status == "planted" || f.Status == "advanced" {
+		if f.Status != "resolved" {
 			st.ForeshadowOpen++
-			if f.Status == "planted" && latest-f.PlantedAt > staleForeshadowThreshold(st.CompletedChapters) {
+			lastAdvanced := f.PlantedAt
+			if f.LastAdvancedAt > 0 {
+				lastAdvanced = f.LastAdvancedAt
+			}
+			if latest-lastAdvanced > staleForeshadowThreshold(st.CompletedChapters) {
 				st.ForeshadowStale++
 			}
 		}

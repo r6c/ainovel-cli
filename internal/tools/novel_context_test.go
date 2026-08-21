@@ -659,10 +659,11 @@ func TestContextToolSelectedMemorySurfacesAgingForeshadow(t *testing.T) {
 	if err := s.Progress.Init(60); err != nil {
 		t.Fatalf("InitProgress: %v", err)
 	}
-	// 6 条满足召回阈值；前两条账龄 ≥30（久挂），后四条账龄 <30（近期）。
+	// 两条最近推进章距当前 ≥30（久挂）；其余条目近期才埋下或刚刚推进。
 	if err := s.World.SaveForeshadowLedger([]domain.ForeshadowEntry{
+		{ID: "recently_reinforced", Description: "刚刚强化的古老预言", PlantedAt: 2, Status: "reinforced", LastAdvancedAt: 49},
 		{ID: "ancient_seal", Description: "上古封印的裂隙", PlantedAt: 3, Status: "planted"},
-		{ID: "lost_bloodline", Description: "主角失落的血脉来历", PlantedAt: 5, Status: "advanced"},
+		{ID: "lost_bloodline", Description: "主角失落的血脉来历", PlantedAt: 5, Status: "advanced", LastAdvancedAt: 8},
 		{ID: "market_feud", Description: "昨夜集市的口角", PlantedAt: 47, Status: "planted"},
 		{ID: "rumor_a", Description: "近日传闻甲", PlantedAt: 48, Status: "planted"},
 		{ID: "rumor_b", Description: "近日传闻乙", PlantedAt: 48, Status: "planted"},
@@ -690,17 +691,20 @@ func TestContextToolSelectedMemorySurfacesAgingForeshadow(t *testing.T) {
 		t.Fatalf("Unmarshal: %v", err)
 	}
 
-	// 两条久挂伏笔应被回填，且带"未回收"账龄标注。
+	// 两条久挂伏笔应被回填，且带“未推进”账龄标注。
 	if !containsRecallSummary(payload.Selected.StoryThreads, "上古封印的裂隙") {
 		t.Fatalf("expected aging foreshadow to surface despite no relevance, got %+v", payload.Selected.StoryThreads)
 	}
 	if !containsRecallSummary(payload.Selected.StoryThreads, "失落的血脉") {
 		t.Fatalf("expected second aging foreshadow to surface, got %+v", payload.Selected.StoryThreads)
 	}
-	if !containsRecallSummary(payload.Selected.StoryThreads, "未回收") {
+	if !containsRecallSummary(payload.Selected.StoryThreads, "未推进") {
 		t.Fatalf("expected aging item to carry overdue annotation, got %+v", payload.Selected.StoryThreads)
 	}
-	// 近期伏笔（账龄 <30 且不相关）不应被回填。
+	if containsRecallSummary(payload.Selected.StoryThreads, "刚刚强化的古老预言") {
+		t.Fatalf("recently reinforced foreshadow must not be labeled overdue, got %+v", payload.Selected.StoryThreads)
+	}
+	// 近期伏笔（最近推进距当前 <30 且不相关）不应被回填。
 	if containsRecallSummary(payload.Selected.StoryThreads, "昨夜集市的口角") {
 		t.Fatalf("recent foreshadow must not be labeled overdue, got %+v", payload.Selected.StoryThreads)
 	}

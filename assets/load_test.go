@@ -51,6 +51,22 @@ func TestLoad_NoOverrides(t *testing.T) {
 	}
 }
 
+func TestForeshadowPromptsDescribeLifecycleActions(t *testing.T) {
+	writer := mustRead(promptsFS, "prompts/writer.md")
+	for _, phrase := range []string{"reinforce", "partial_payoff", "部分兑现", "resolve"} {
+		if !strings.Contains(writer, phrase) {
+			t.Fatalf("Writer 提示缺少伏笔生命周期指引 %q", phrase)
+		}
+	}
+
+	importAnalyze := mustRead(promptsFS, "prompts/import-analyze.md")
+	for _, action := range []string{"plant", "advance", "reinforce", "partial_payoff", "resolve"} {
+		if !strings.Contains(importAnalyze, action) {
+			t.Fatalf("导入分析提示缺少伏笔动作 %q", action)
+		}
+	}
+}
+
 func TestInterventionPromptsKeepScopeContract(t *testing.T) {
 	prompts := loadPrompts()
 	for _, phrase := range []string{"上下文不等于修改授权", "最小充分范围", "分析范围不等于修改范围"} {

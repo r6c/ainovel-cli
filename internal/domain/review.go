@@ -10,17 +10,18 @@ type TimelineEvent struct {
 
 // ForeshadowEntry 伏笔条目。
 type ForeshadowEntry struct {
-	ID          string `json:"id"`
-	Description string `json:"description"`
-	PlantedAt   int    `json:"planted_at"`
-	Status      string `json:"status"` // planted / advanced / resolved
-	ResolvedAt  int    `json:"resolved_at,omitempty"`
+	ID             string `json:"id"`
+	Description    string `json:"description"`
+	PlantedAt      int    `json:"planted_at"`
+	Status         string `json:"status"` // planted / advanced / reinforced / partially_paid / resolved
+	LastAdvancedAt int    `json:"last_advanced_at,omitempty"`
+	ResolvedAt     int    `json:"resolved_at,omitempty"`
 }
 
 // ForeshadowUpdate 伏笔增量操作。
 type ForeshadowUpdate struct {
 	ID          string `json:"id"`
-	Action      string `json:"action"` // plant / advance / resolve
+	Action      string `json:"action"` // plant / advance / reinforce / partial_payoff / resolve
 	Description string `json:"description,omitempty"`
 }
 

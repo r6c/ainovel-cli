@@ -74,6 +74,185 @@ func TestCommitChapterRejectsUnknownForeshadowReferenceBeforePending(t *testing.
 	}
 }
 
+func TestCommitChapterReinforcesForeshadow(t *testing.T) {
+	s := store.NewStore(t.TempDir())
+	if err := s.Init(); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Progress.Init(1); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Progress.UpdatePhase(domain.PhaseWriting); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.World.UpdateForeshadow(1, []domain.ForeshadowUpdate{
+		{ID: "f1", Action: "plant", Description: "黑影身份"},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Drafts.SaveDraft(1, "第一章正文，黑影再次出现。摘要需要再讲清楚一点。事件继续推进。"); err != nil {
+		t.Fatal(err)
+	}
+
+	args, _ := json.Marshal(map[string]any{
+		"chapter": 1, "title": "第一章", "summary": "黑影再次出现", "characters": []string{"主角"}, "key_events": []string{"黑影现身"},
+		"foreshadow_updates": []map[string]any{{"id": "f1", "action": "reinforce"}},
+	})
+	if _, err := newTestCommitChapterTool(s).Execute(context.Background(), args); err != nil {
+		t.Fatalf("Execute: %v", err)
+	}
+
+	ledger, err := s.World.LoadForeshadowLedger()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(ledger) != 1 || ledger[0].Status != "reinforced" || ledger[0].LastAdvancedAt != 1 {
+		t.Fatalf("foreshadow not reinforced by commit: %+v", ledger)
+	}
+}
+
+func TestCommitChapterRejectsAdvancingResolvedForeshadowBeforePending(t *testing.T) {
+	s := store.NewStore(t.TempDir())
+	if err := s.Init(); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Progress.Init(1); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Progress.UpdatePhase(domain.PhaseWriting); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.World.UpdateForeshadow(1, []domain.ForeshadowUpdate{
+		{ID: "f1", Action: "plant", Description: "黑影身份"},
+		{ID: "f1", Action: "resolve"},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Drafts.SaveDraft(1, "第一章正文，已回收的黑影伏笔被错误推进。摘要需要再讲清楚一点。事件继续推进。"); err != nil {
+		t.Fatal(err)
+	}
+
+	args, err := json.Marshal(map[string]any{
+		"chapter": 1, "title": "第一章", "summary": "错误推进已回收伏笔",
+		"characters": []string{"主角"}, "key_events": []string{"黑影再次出现"},
+		"foreshadow_updates": []map[string]any{{"id": "f1", "action": "advance"}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := newTestCommitChapterTool(s).Execute(context.Background(), args); err == nil {
+		t.Fatal("expected advancing resolved foreshadow to fail")
+	}
+	if pending, err := s.Signals.LoadPendingCommit(); err != nil || pending != nil {
+		t.Fatalf("invalid transition must not create pending commit: pending=%+v err=%v", pending, err)
+	}
+}
+
+func TestCommitChapterRejectsReinforcingResolvedForeshadowBeforePending(t *testing.T) {
+	s := store.NewStore(t.TempDir())
+	if err := s.Init(); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Progress.Init(1); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Progress.UpdatePhase(domain.PhaseWriting); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.World.UpdateForeshadow(1, []domain.ForeshadowUpdate{
+		{ID: "f1", Action: "plant", Description: "黑影身份"},
+		{ID: "f1", Action: "resolve"},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Drafts.SaveDraft(1, "第一章正文，黑影再次出现。摘要需要再讲清楚一点。事件继续推进。"); err != nil {
+		t.Fatal(err)
+	}
+
+	args, _ := json.Marshal(map[string]any{
+		"chapter": 1, "title": "第一章", "summary": "黑影再次出现", "characters": []string{"主角"}, "key_events": []string{"黑影现身"},
+		"foreshadow_updates": []map[string]any{{"id": "f1", "action": "reinforce"}},
+	})
+	if _, err := newTestCommitChapterTool(s).Execute(context.Background(), args); err == nil {
+		t.Fatal("expected reinforcing resolved foreshadow to fail")
+	}
+	if pending, err := s.Signals.LoadPendingCommit(); err != nil || pending != nil {
+		t.Fatalf("invalid transition must not create pending commit: pending=%+v err=%v", pending, err)
+	}
+}
+
+func TestCommitChapterRejectsActionsAfterResolveInSamePayloadBeforePending(t *testing.T) {
+	tests := []struct {
+		name    string
+		seed    bool
+		actions []map[string]any
+	}{
+		{
+			name: "resolve then reinforce existing entry", seed: true,
+			actions: []map[string]any{{"id": "f1", "action": "resolve"}, {"id": "f1", "action": "reinforce"}},
+		},
+		{
+			name: "resolve then partially pay off existing entry", seed: true,
+			actions: []map[string]any{{"id": "f1", "action": "resolve"}, {"id": "f1", "action": "partial_payoff"}},
+		},
+		{
+			name: "plant then resolve then reinforce",
+			actions: []map[string]any{
+				{"id": "f1", "action": "plant", "description": "黑影身份"},
+				{"id": "f1", "action": "resolve"},
+				{"id": "f1", "action": "reinforce"},
+			},
+		},
+		{
+			name: "resolve then repeat plant then reinforce", seed: true,
+			actions: []map[string]any{
+				{"id": "f1", "action": "resolve"},
+				{"id": "f1", "action": "plant", "description": "黑影身份"},
+				{"id": "f1", "action": "reinforce"},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			s := store.NewStore(t.TempDir())
+			if err := s.Init(); err != nil {
+				t.Fatal(err)
+			}
+			if err := s.Progress.Init(2); err != nil {
+				t.Fatal(err)
+			}
+			if err := s.Progress.UpdatePhase(domain.PhaseWriting); err != nil {
+				t.Fatal(err)
+			}
+			if tt.seed {
+				if err := s.World.UpdateForeshadow(1, []domain.ForeshadowUpdate{{
+					ID: "f1", Action: "plant", Description: "黑影身份",
+				}}); err != nil {
+					t.Fatal(err)
+				}
+			}
+			if err := s.Drafts.SaveDraft(1, "第一章正文，黑影身份已经揭晓，却又被错误推进。摘要需要足够长。事件继续推进。"); err != nil {
+				t.Fatal(err)
+			}
+
+			args, err := json.Marshal(map[string]any{
+				"chapter": 1, "title": "第一章", "summary": "黑影身份揭晓",
+				"characters": []string{"主角"}, "key_events": []string{"揭晓黑影身份"},
+				"foreshadow_updates": tt.actions,
+			})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if _, err := newTestCommitChapterTool(s).Execute(context.Background(), args); err == nil {
+				t.Fatal("expected action after resolve in the same payload to fail")
+			}
+			if pending, err := s.Signals.LoadPendingCommit(); err != nil || pending != nil {
+				t.Fatalf("invalid action sequence must not create pending commit: pending=%+v err=%v", pending, err)
+			}
+		})
+	}
+}
+
 func TestCommitChapterRejectsInvalidNestedFields(t *testing.T) {
 	s := store.NewStore(t.TempDir())
 	if err := s.Init(); err != nil {
@@ -202,6 +381,90 @@ func TestCommitChapterAllowsPendingRewrite(t *testing.T) {
 	}
 	if pending != nil {
 		t.Fatalf("expected pending commit cleared, got %+v", pending)
+	}
+}
+
+func TestCommitChapterRewriteRebuildsForeshadowLifecycle(t *testing.T) {
+	const foreshadowID = "f_broken_sword"
+	s := store.NewStore(t.TempDir())
+	if err := s.Init(); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Progress.Init(10); err != nil {
+		t.Fatal(err)
+	}
+	chapters := []struct {
+		chapter int
+		content string
+		facts   domain.ChapterFacts
+	}{
+		{chapter: 1, content: "第一章旧正文。", facts: domain.ChapterFacts{
+			Title: "第一章", Summary: "发现断剑", KeyEvents: []string{"发现断剑"},
+			ForeshadowUpdates: []domain.ForeshadowUpdate{{ID: foreshadowID, Action: "plant", Description: "断剑的真正来历"}},
+		}},
+		{chapter: 2, content: "第二章旧正文。", facts: domain.ChapterFacts{
+			Title: "第二章", Summary: "断剑再次共鸣", KeyEvents: []string{"断剑共鸣"},
+			ForeshadowUpdates: []domain.ForeshadowUpdate{{ID: foreshadowID, Action: "reinforce"}},
+		}},
+	}
+	for _, item := range chapters {
+		if _, err := s.ChapterRecords.Accept(item.chapter, domain.ChapterOriginGenerated, item.content, item.facts, domain.StyleDelta{}); err != nil {
+			t.Fatalf("accept chapter %d: %v", item.chapter, err)
+		}
+		if err := s.Drafts.SaveFinalChapter(item.chapter, item.content); err != nil {
+			t.Fatalf("save final chapter %d: %v", item.chapter, err)
+		}
+		if err := s.Progress.MarkChapterComplete(item.chapter, len([]rune(item.content)), "", ""); err != nil {
+			t.Fatalf("complete chapter %d: %v", item.chapter, err)
+		}
+	}
+	if err := s.World.SaveForeshadowLedger([]domain.ForeshadowEntry{{
+		ID: foreshadowID, Description: "断剑的真正来历", PlantedAt: 1, Status: "reinforced", LastAdvancedAt: 2,
+	}}); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Progress.SetPendingRewrites([]int{2}, "测试伏笔生命周期重建"); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Progress.SetFlow(domain.FlowRewriting); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Drafts.SaveDraft(2, "这是重写后的第二章正文，断剑再次发出共鸣。"); err != nil {
+		t.Fatal(err)
+	}
+
+	args, err := json.Marshal(map[string]any{
+		"chapter": 2, "title": "第二章", "summary": "重写后断剑再次共鸣",
+		"characters": []string{"主角"}, "key_events": []string{"断剑再次共鸣"},
+		"foreshadow_updates": []map[string]any{{"id": foreshadowID, "action": "reinforce"}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := newTestCommitChapterTool(s).Execute(context.Background(), args); err != nil {
+		t.Fatalf("rewrite chapter with reinforced foreshadow: %v", err)
+	}
+
+	ledger, err := s.World.LoadForeshadowLedger()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(ledger) != 1 || ledger[0].Status != "reinforced" || ledger[0].LastAdvancedAt != 2 {
+		t.Fatalf("rewrite rebuilt wrong foreshadow lifecycle: %+v", ledger)
+	}
+	progress, err := s.Progress.Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(progress.PendingRewrites) != 0 {
+		t.Fatalf("rewrite queue not drained: %v", progress.PendingRewrites)
+	}
+	pending, err := s.Signals.LoadPendingCommit()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if pending != nil {
+		t.Fatalf("rewrite left pending commit: %+v", pending)
 	}
 }
 
@@ -567,27 +830,31 @@ func TestCommitChapterReplayAfterPartialCommitDoesNotDuplicateWorldState(t *test
 	if err := s.Progress.Init(10); err != nil {
 		t.Fatalf("InitProgress: %v", err)
 	}
-	if err := s.Drafts.SaveDraft(1, "第一章正文，林墨遇到黑影并突破。"); err != nil {
+	if err := s.Drafts.SaveDraft(2, "第二章正文，林墨遇到黑影并突破。"); err != nil {
 		t.Fatalf("SaveDraft: %v", err)
 	}
 
 	timeline := []domain.TimelineEvent{{
-		Chapter:    1,
+		Chapter:    2,
 		Time:       "清晨",
 		Event:      "林墨遇到黑影",
 		Characters: []string{"林墨"},
 	}}
 	stateChanges := []domain.StateChange{{
-		Chapter:  1,
+		Chapter:  2,
 		Entity:   "林墨",
 		Field:    "realm",
 		OldValue: "凡人",
 		NewValue: "练气期",
 	}}
+	if err := s.World.UpdateForeshadow(1, []domain.ForeshadowUpdate{{
+		ID: "f1", Action: "plant", Description: "黑影身份",
+	}}); err != nil {
+		t.Fatalf("plant foreshadow seed: %v", err)
+	}
 	foreshadow := []domain.ForeshadowUpdate{{
-		ID:          "f1",
-		Action:      "plant",
-		Description: "黑影身份",
+		ID:     "f1",
+		Action: "reinforce",
 	}}
 
 	// 模拟 commit_chapter 已写入世界状态，但尚未 MarkChapterComplete 时进程崩溃。
@@ -597,12 +864,12 @@ func TestCommitChapterReplayAfterPartialCommitDoesNotDuplicateWorldState(t *test
 	if err := s.World.AppendStateChanges(stateChanges); err != nil {
 		t.Fatalf("AppendStateChanges seed: %v", err)
 	}
-	if err := s.World.UpdateForeshadow(1, foreshadow); err != nil {
+	if err := s.World.UpdateForeshadow(2, foreshadow); err != nil {
 		t.Fatalf("UpdateForeshadow seed: %v", err)
 	}
 	persistedArgs, _ := json.Marshal(map[string]any{
-		"chapter":            1,
-		"title":              "第一章",
+		"chapter":            2,
+		"title":              "第二章",
 		"summary":            "林墨遇到黑影并突破",
 		"characters":         []string{"林墨"},
 		"key_events":         []string{"遇到黑影", "突破"},
@@ -611,22 +878,22 @@ func TestCommitChapterReplayAfterPartialCommitDoesNotDuplicateWorldState(t *test
 		"foreshadow_updates": foreshadow,
 	})
 	if err := s.Signals.SavePendingCommit(domain.PendingCommit{
-		Chapter:      1,
+		Chapter:      2,
 		Stage:        domain.CommitStageStarted,
 		Summary:      "半提交摘要",
 		Payload:      persistedArgs,
-		DraftContent: "第一章正文，林墨遇到黑影并突破。",
+		DraftContent: "第二章正文，林墨遇到黑影并突破。",
 	}); err != nil {
 		t.Fatalf("SavePendingCommit: %v", err)
 	}
-	if err := s.Drafts.SaveDraft(1, "重启后被新 Worker 覆盖、绝不能混入旧提交的正文。"); err != nil {
+	if err := s.Drafts.SaveDraft(2, "重启后被新 Worker 覆盖、绝不能混入旧提交的正文。"); err != nil {
 		t.Fatalf("overwrite draft: %v", err)
 	}
 
 	tool := newTestCommitChapterTool(s)
 	// 模拟重启后的 Writer 重新生成了不同参数；恢复必须忽略它，使用 persistedArgs。
 	args, _ := json.Marshal(map[string]any{
-		"chapter":         1,
+		"chapter":         2,
 		"title":           "错误标题",
 		"summary":         "错误的新摘要",
 		"characters":      []string{"林墨"},
@@ -646,21 +913,21 @@ func TestCommitChapterReplayAfterPartialCommitDoesNotDuplicateWorldState(t *test
 		t.Fatalf("state changes duplicated after replay, got %d: %+v", len(changes), changes)
 	}
 	ledger, _ := s.World.LoadForeshadowLedger()
-	if len(ledger) != 1 {
-		t.Fatalf("foreshadow duplicated after replay, got %d: %+v", len(ledger), ledger)
+	if len(ledger) != 1 || ledger[0].Status != "reinforced" || ledger[0].LastAdvancedAt != 2 {
+		t.Fatalf("foreshadow reinforce changed after replay: %+v", ledger)
 	}
 	pending, _ := s.Signals.LoadPendingCommit()
 	if pending != nil {
 		t.Fatalf("pending commit should be cleared, got %+v", pending)
 	}
-	if cp := s.Checkpoints.LatestByStep(domain.ChapterScope(1), "commit"); cp == nil {
+	if cp := s.Checkpoints.LatestByStep(domain.ChapterScope(2), "commit"); cp == nil {
 		t.Fatal("commit checkpoint should be written")
 	}
-	final, err := s.Drafts.LoadChapterText(1)
+	final, err := s.Drafts.LoadChapterText(2)
 	if err != nil {
 		t.Fatalf("LoadChapterText: %v", err)
 	}
-	if final != "第一章正文，林墨遇到黑影并突破。" {
+	if final != "第二章正文，林墨遇到黑影并突破。" {
 		t.Fatalf("recovery used overwritten draft: %q", final)
 	}
 }

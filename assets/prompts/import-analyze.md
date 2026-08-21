@@ -13,7 +13,7 @@
 
 - `hook_type` ∈ crisis / mystery / desire / emotion / choice。
 - `dominant_strand` ∈ quest / fire / constellation。
-- `foreshadow_updates[].action` ∈ plant / advance / resolve；`plant` 必须带 `description`。
+- `foreshadow_updates[].action` ∈ plant / advance / reinforce / partial_payoff / resolve；`plant` 必须带 `description`。
 - `summary` 与 `core_event` 不能为空。
 
 ## 纪律

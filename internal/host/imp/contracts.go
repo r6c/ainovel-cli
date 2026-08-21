@@ -56,7 +56,7 @@ func chapterFactsSchema() map[string]any {
 	)
 	foreshadow := schema.Object(
 		schema.Property("id", schema.String("复用 ledger 中的伏笔 ID")).Required(),
-		schema.Property("action", schema.Enum("伏笔动作", "plant", "advance", "resolve")).Required(),
+		schema.Property("action", schema.Enum("伏笔动作", "plant", "advance", "reinforce", "partial_payoff", "resolve")).Required(),
 		schema.Property("description", nullableString("plant 时的伏笔说明；其他情况可为 null")).Required(),
 	)
 	relationship := schema.Object(
