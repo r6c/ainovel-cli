@@ -12,10 +12,11 @@ import (
 	"strings"
 
 	"github.com/voocel/ainovel-cli/internal/domain"
+	"github.com/voocel/ainovel-cli/internal/revision"
 )
 
 // analysisSchemaVersion 是逐章事实 schema 版本，纳入 InputDigest。
-const analysisSchemaVersion = 5
+const analysisSchemaVersion = 6
 
 // ImportedCharacterFact / ImportedWorldFact 是用于全书综合的紧凑观察，不直接写正式角色或世界规则。
 // 至少携带章节号，使综合结果有稳定来源（RFC §9.1）。
@@ -50,6 +51,49 @@ type ImportedChapterFacts struct {
 	KnowledgeUpdates    []domain.KnowledgeUpdate   `json:"knowledge_updates,omitempty"`
 	HookType            string                     `json:"hook_type"`
 	DominantStrand      string                     `json:"dominant_strand"`
+}
+
+// validateImportedFactSequence 复用正式 ChapterRecord 投影规则验证整段导入事实可按章序重放。
+func validateImportedFactSequence(facts []ImportedChapterFacts) error {
+	records := make([]domain.ChapterRecord, 0, len(facts))
+	for i, f := range facts {
+		if f.Chapter != i+1 {
+			return fmt.Errorf("导入事实第 %d 项章号 %d != %d", i, f.Chapter, i+1)
+		}
+		records = append(records, domain.ChapterRecord{
+			Version: domain.ChapterRecordVersion,
+			Chapter: f.Chapter,
+			Facts:   importedChapterFacts(f),
+		})
+	}
+	if err := revision.ValidateRecordSet(records); err != nil {
+		return fmt.Errorf("导入全书事实无法按章序重放: %w", err)
+	}
+	return nil
+}
+
+// validateWorkspaceFacts 验证工作区全书事实；失败时保留合法前缀并失效非法章及下游派生工件。
+func validateWorkspaceFacts(w *Workspace, facts []ImportedChapterFacts, total int) error {
+	replayErr := validateImportedFactSequence(facts)
+	if replayErr == nil {
+		return nil
+	}
+	firstInvalid := 1
+	for end := 1; end <= len(facts); end++ {
+		if err := validateImportedFactSequence(facts[:end]); err != nil {
+			firstInvalid = end
+			break
+		}
+	}
+	if err := discardAnalysesAfter(w, firstInvalid-1, total); err != nil {
+		return fmt.Errorf("%v；回退第 %d 章起分析失败: %w", replayErr, firstInvalid, err)
+	}
+	for _, rel := range []string{fileSynthesis, fileStoryResolve} {
+		if err := os.Remove(w.path(rel)); err != nil && !os.IsNotExist(err) {
+			return fmt.Errorf("%v；失效下游工件 %s 失败: %w", replayErr, rel, err)
+		}
+	}
+	return fmt.Errorf("第 %d 章起导入事实非法，已回退等待重分析: %w", firstInvalid, replayErr)
 }
 
 // AnalysisBatchResult 是一次批次调用的结构化返回，每元素是一章事实。
@@ -397,19 +441,28 @@ func AnalyzeNext(ctx context.Context, m callModel, systemPrompt string, w *Works
 	if start >= total {
 		return 0, nil
 	}
-	ledger := buildLedger(loadPriorFacts(w, start))
+	priorFacts := loadPriorFacts(w, start)
+	ledger := buildLedger(priorFacts)
 	end := planBatch(seg.Chapters, start, len(ledger), budget)
 
 	for {
 		payload := buildAnalyzePayload(normalized, seg, ledger, start, end)
 		res, err := callStructured[AnalysisBatchResult](ctx, m, analysisContract, systemPrompt, payload, budget.MaxOutputTokens, prof, func(r *AnalysisBatchResult) error {
-			return validateBatch(r, seg, start, end)
+			if err := validateBatch(r, seg, start, end); err != nil {
+				return err
+			}
+			return validateImportedFactSequence(slices.Concat(priorFacts, r.Chapters))
 		})
 		if err != nil {
 			var tr *errTruncated
 			if errors.As(err, &tr) {
 				// 截断优先打捞从批次首章起的最大连续合法前缀，已提交部分不重做（§9.5）。
 				if salvaged := salvagePrefix(tr.Raw, seg, start); len(salvaged) > 0 {
+					if verr := validateImportedFactSequence(slices.Concat(priorFacts, salvaged)); verr != nil {
+						w.writeFailure(FailureMeta{Stage: "analyze", Detail: fmt.Sprintf("批次 %d-%d 打捞前缀累计事实非法: %v", start+1, end, verr),
+							StopReason: "length", PrefixSalvage: "unavailable"}, tr.Raw)
+						return 0, fmt.Errorf("批次 %d-%d 打捞前缀累计事实非法: %w", start+1, end, verr)
+					}
 					for i, f := range salvaged {
 						ch := start + i + 1
 						digest := chapterInputDigest(segIdentity, promptVersion, seg, normalized, start+i)

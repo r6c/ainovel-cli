@@ -409,7 +409,7 @@ internal/
     guard/        subagent_guards.go (CheckpointDeltaGuard ×3,Worker 事实护栏)
   host/           host.go (生命周期/干预编排) + engine.go (确定性执行循环) + observer*.go
                   + events.go + usage*.go + budget.go + advance_gate.go + resume.go + cocreate.go
-    imp/          外部小说语义编译导入：ingest → segment → analyze → synthesize → publish（纯状态推导 + LLM 作函数）
+    imp/          外部小说语义编译导入：ingest → segment → analyze → synthesize → publish（纯状态推导 + LLM 作函数；候选批次累计重放 ChapterFacts，正式 Store 写入前全书复验）
     exp/          已完成章节导出：TXT / EPUB 3；纯只读
   entry/          tui (Bubble Tea) / headless / startup
   bootstrap/      config + ModelSet + provider failover + setup 向导

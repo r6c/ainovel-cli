@@ -574,6 +574,9 @@ func (r *runner) synthesize(ctx context.Context) error {
 	if len(facts) != total {
 		return fmt.Errorf("逐章分析不完整：%d/%d", len(facts), total)
 	}
+	if err := validateWorkspaceFacts(r.ws, facts, total); err != nil {
+		return err
+	}
 	r.emit(StageSynthesizing, 0, total, "分层归纳全书语义...", nil)
 	syn, err := Synthesize(ctx, r.deps.Synthesize.Model, r.deps.Prompts.Synthesize, r.deps.Prompts.Range, r.ws, facts,
 		r.deps.Budgets.SynthesizeRangeBytes, r.deps.Budgets.SynthesizeMaxTokens, r.profileFor(r.deps.Synthesize, StageSynthesizing))
@@ -605,6 +608,9 @@ func (r *runner) publish(ctx context.Context) error {
 	facts := loadPriorFacts(r.ws, total)
 	if len(facts) != total {
 		return fmt.Errorf("发布前分析不完整：%d/%d", len(facts), total)
+	}
+	if err := validateWorkspaceFacts(r.ws, facts, total); err != nil {
+		return err
 	}
 	closed, err := r.resolveStory(&synArt.Payload)
 	if err != nil {

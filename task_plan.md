@@ -3,11 +3,11 @@
 ## 规划总览
 
 - 总体状态：`complete`
-- 当前执行阶段：阶段 31 已完成，等待提交收尾
+- 当前执行阶段：阶段 32—39 全部完成
 - 已完成领域里程碑：A 伏笔生命周期；B 作者真相 + 角色获知；C1 读者揭示 + 信息差；C2a 最小角色错误信念
-- 下一候选里程碑：Prose Lint 重复段落检测（尚未规划执行）
+- 下一里程碑：D Import 发布前全书事实重放门禁（P0）
 - 规划原则：先复用既有 ChapterFacts/Commit Saga/WorldStore/Projector/Context，再增加最小领域数据；不从参考项目移植运行架构
-- 当前工作区：C2a 代码、测试、Prompt 与规划文件已完成最终验证，待中文提交
+- 当前工作区：干净；基线提交 `3ee475c 功能：追踪角色错误信念与纠正状态`；本轮仅规划文件将发生修改
 
 ## 路线决策摘要
 
@@ -1165,7 +1165,319 @@ git diff --check
 
 ---
 
-## 后续候选里程碑（C2a 之后，不进入当前执行范围）
+## 里程碑 D：Import 发布前全书事实重放门禁
+
+### 目标
+
+修复全项目 Review 发现的 P0 缺口：Import 不能只在单批次内验证事实，也不能把跨批次生命周期合法性寄托在 Prompt ledger 上。
+
+目标链路：
+
+```text
+逐章分析批次
+→ 当前批次字段/章号校验
+→ 已落盘前缀 + 当前候选批次的全书事实重放
+→ 通过后才写分析工件
+→ synthesis 前再次验证全部分析工件
+→ publish 前最后验证
+→ 通过后才修改正式 Store
+```
+
+非法跨批次事实必须：
+
+```text
+定位首个失败章 N
+→ 失效 analyses/N..end 与依赖的 synthesis/story-resolution
+→ 返回可诊断错误
+→ 下次 LoadState 得到 AnalyzedChapters=N-1
+→ NextAction 自然回到 ActionAnalyze
+```
+
+### Review 复现场景
+
+当前 `validateBatch` 每批创建空 map；`start > 0` 时未知引用会被有意放行，因此以下错误只能在正式发布时由 Commit 发现：
+
+```text
+批次 1：establish k_shadow → 林墨 learn k_shadow
+批次 2：林墨 believe k_shadow "黑影是仇人"
+```
+
+现状失败路径：
+
+```text
+分析工件全部落盘
+→ synthesis 完成
+→ publishFoundation 已修改正式 Store
+→ 前几章提交完成
+→ 错误章 Commit 拒绝
+→ NextAction 仍为 ActionPublish
+→ 重跑卡在同一章
+```
+
+### 设计决策
+
+1. **复用 `revision.ValidateRecordSet`**：它已经是 Rewrite/Migration 的纯全量事实重放接缝，第二个适配器（Import）复用后可同时覆盖 Knowledge、Foreshadow 和 ChapterFacts 字段纪律。
+2. **不在 Import 再造生命周期状态机**：`validateBatch` 保留模型返回的局部形状/章号校验；跨章领域合法性由全书 ChapterRecord 重放裁决。
+3. **统一 Import→ChapterFacts 映射**：全书门禁和 `commitArgs` 必须消费同一映射，避免“验证的是一份事实，发布的是另一份事实”。
+4. **正常路径先验证后写工件**：`AnalyzeNext` 将 prior facts 与候选 batch 合并重放，失败时当前批次不落盘，因此无需回滚。
+5. **截断打捞不可绕过门禁**：salvaged prefix 在落盘前也必须与 prior facts 合并重放。
+6. **综合/发布防御性复验**：用于发现旧工件、手工修改或历史 Bug 产物；失败时只删除可重建的 Import 派生工件，不碰源快照、切分确认或正式 Store。
+7. **缓存版本 `5 → 6`**：验证语义属于分析契约的一部分；旧 v5 工件未经跨批次重放证明，必须自然失效。
+8. **不新增 Import Action/Stage**：仍使用现有 `Facts + NextAction` 推导；失效分析尾部后自然回到 `ActionAnalyze`。
+
+### 已确认接缝
+
+1. `AnalyzeNext(...)`：候选批次与截断打捞的公开分析接缝。
+2. `revision.ValidateRecordSet(records)`：全书事实可重放接缝。
+3. `LoadState / CollectFacts / NextAction`：失效后恢复动作推导。
+4. `runner.synthesize`：综合前防御门禁。
+5. `runner.publish`：修改正式 Store 前最后门禁。
+6. `publishChapter → CommitChapterTool.Execute`：正式发布协议，保持不变。
+
+---
+
+### 阶段 32：基线、缓存版本与旧工件隔离
+
+状态：`complete`
+
+1. 确认工作区只含本轮规划文件，基线 HEAD 为 `3ee475c`。
+2. 运行现有 Import/Revision 定向测试，固定绿灯基线。
+3. 首个失败测试手工按 v5 digest 写入分析工件，要求当前版本不再复用。
+4. 最小实现：
+   ```text
+   analysisSchemaVersion 5 → 6
+   ```
+5. 不提升 `workspaceSchemaVersion` 或 `ChapterRecordVersion`。
+
+验收：旧 v5 逐章分析自然失效，`LoadState` 回到分析阶段。
+
+---
+
+### 阶段 33：统一 ImportedChapterFacts 映射与纯全书门禁
+
+状态：`complete`
+
+先建立一份映射：
+
+```text
+ImportedChapterFacts
+→ domain.ChapterFacts
+→ domain.ChapterRecord（仅用于纯验证）
+```
+
+映射必须包含：
+
+- title / summary / characters / key_events；
+- timeline / foreshadow / relationship / state / knowledge updates；
+- hook_type / dominant_strand；
+- key_events 为空时继续复用现有 `core_event` fallback；
+- 不伪造 cast_intros、feedback 或 StyleDelta。
+
+TDD 切片：
+
+1. 映射契约测试证明门禁映射与 `commitArgs` JSON round-trip 后的 ChapterFacts 一致。
+2. 纯事实序列合法：
+   ```text
+   establish@1 → believe@2 → learn@3 → reveal@4
+   ```
+3. 纯事实序列非法：
+   ```text
+   establish+learn in prior batch → believe in later batch
+   ```
+4. 再覆盖：
+   - 跨批次冲突 Truth；
+   - 跨批次未知 Knowledge 引用；
+   - 伏笔 `resolve` 后下一批 `advance/reinforce/partial_payoff`；
+   - 合法跨批次伏笔生命周期。
+5. 实现只调用 `revision.ValidateRecordSet`，不复制 Store/Projector switch。
+
+验收：同一映射同时服务全书门禁与正式发布参数。
+
+---
+
+### 阶段 34：AnalyzeNext 候选批次累计重放
+
+状态：`complete`
+
+首个公开行为测试：
+
+1. 工作区已有新鲜的批次 1 分析：
+   ```text
+   establish k_shadow → 林墨 learn
+   ```
+2. mock 模型对批次 2 返回：
+   ```text
+   林墨 believe k_shadow
+   ```
+3. 调用 `AnalyzeNext`。
+4. 断言：
+   - 返回确定性语义错误；
+   - 批次 2 的分析工件未写入；
+   - `analyzedChapters` 仍停在批次 1；
+   - 正式 Store 未发生任何修改。
+
+最小实现：
+
+```text
+validateBatch(current)
+→ validateImportedFactSequence(prior + current)
+→ 全部通过
+→ writeArtifact(current)
+```
+
+合法跨批次场景必须正常写入当前批次。
+
+不得通过扩大 Prompt、重写 ledger 或延迟到 publish 修复。
+
+---
+
+### 阶段 35：截断前缀打捞也必须经过累计门禁
+
+状态：`complete`
+
+`salvagePrefix` 当前可能在结构化输出截断后直接写入合法 JSON 前缀。新增测试：
+
+1. prior facts 已使林墨知道 Truth；
+2. 截断响应的第一份完整候选章让林墨重新 believe；
+3. JSON 形状和单章 `validateBatch` 可通过；
+4. 累计全书重放必须拒绝；
+5. 不写入任何 salvaged analysis 工件；
+6. failure metadata 保留原始响应与“累计事实非法”的诊断。
+
+合法 salvage prefix 继续可落盘，不能因门禁取消现有截断恢复能力。
+
+---
+
+### 阶段 36：首个失败章定位与派生工件失效
+
+状态：`complete`
+
+为旧工件、手工修改和历史 Bug 产物增加错误路径修复：
+
+1. 先一次性验证全部 facts；正常路径保持 O(n)。
+2. 仅在失败路径逐前缀定位首个非法章节 N；允许 O(n²)，因为只在异常修复路径执行。
+3. 复用现有：
+   ```text
+   discardAnalysesAfter(w, N-1, total)
+   ```
+4. 同时失效：
+   - `synthesis.json`
+   - `story-resolution.json`
+   - 依赖分析事实的 range digest 缓存（若现有 digest 机制已能自然失效，则用测试证明后可不删除）。
+5. 不删除：
+   - manifest / intent / source；
+   - guidance / segmentation / confirmation；
+   - N 之前已经证明合法的分析工件；
+   - 正式 Store 文件。
+6. 删除失败必须显式返回，不得宣称已回退。
+
+恢复验收：
+
+```text
+LoadState.AnalyzedChapters == N-1
+NextAction == ActionAnalyze
+```
+
+---
+
+### 阶段 37：Synthesis 前全书门禁
+
+状态：`complete`
+
+集成测试构造当前版本但跨批次非法的全部分析工件，然后调用综合流程：
+
+- 不调用 Synthesize 模型；
+- 不写新的 `synthesis.json`；
+- 定位首个失败章并失效尾部；
+- `NextAction` 回到 `ActionAnalyze`；
+- 错误包含章节号和原始领域原因。
+
+合法全书继续综合，现有 range digest 与 synthesis InputDigest 语义保持不变。
+
+---
+
+### 阶段 38：Publish 前最后门禁与正式 Store 零污染
+
+状态：`complete`
+
+防御性集成测试：
+
+1. 准备 segmentation、全部分析、synthesis 和 story resolution 工件；
+2. 分析事实含跨批次非法 Knowledge 或 Foreshadow 历史；
+3. 调用 publish 流程；
+4. 断言在以下动作前失败：
+   ```text
+   publishFoundation
+   setCompletionHold
+   publishChapter
+   ```
+5. 正式 Store 保持空：
+   - Book 未写入；
+   - Premise/Outline 未写入；
+   - CompletedChapters 为空；
+   - PendingCommit 为空；
+   - AdvanceHold 未建立。
+6. Import 派生工件按阶段 36 回退，下一次动作是 `ActionAnalyze`。
+
+合法 Import 发布和崩溃恢复测试必须保持通过。
+
+---
+
+### 阶段 39：文档、全量验证与中文提交门禁
+
+状态：`complete`
+
+文档只同步本次稳定事实：
+
+- `docs/import-pipeline.md` 增加“批次局部校验 + 累计全书重放 + 发布前门禁”；
+- `docs/architecture.md` 在 Import 描述中明确正式 Store 修改前已证明 ChapterFacts 可重放；
+- 不在本批归档历史规划文件，不顺带编写完整 Knowledge glossary。
+
+最终验证：
+
+```bash
+gofmt -w <本批 Go 文件>
+go test ./internal/host/imp -run 'Analyze|Import|Publish|Fact|Validation' -count=1 -timeout=5m
+go test ./internal/revision -run 'ValidateRecordSet|Projector' -count=1
+go test ./internal/tools -run 'CommitChapter' -count=1
+go test ./... -timeout=5m
+go vet ./...
+go test -race ./internal/host/imp ./internal/revision ./internal/tools -timeout=10m
+git diff --check
+```
+
+范围审计：
+
+- [x] 不新增 Import Action/Stage 或第二套恢复状态机；
+- [x] 不复制 Knowledge/Foreshadow 生命周期规则到 Import；
+- [x] 不修改正式 Commit Saga 阶段；
+- [x] 不引入数据库、Service、Repository 或格式迁移；
+- [x] 只有全部事实验证通过后才允许正式 Store 首次写入；
+- [x] 非法工件能够自然回到 `ActionAnalyze`，不形成永久 `ActionPublish` 循环；
+- [x] 与现有截断打捞、InputDigest、发布恢复和已发布终态兼容。
+
+建议中文提交信息：
+
+```text
+修复：导入发布前重放并验证全书事实
+```
+
+---
+
+## 里程碑 D 完成定义
+
+1. 每个新分析批次在落盘前与既有前缀共同通过 `revision.ValidateRecordSet`。
+2. 截断打捞前缀不能绕过累计事实门禁。
+3. Synthesis 与 Publish 都在副作用前复验全部分析事实。
+4. 非法旧工件会从首个失败章回退，下一动作自然变为 `ActionAnalyze`。
+5. 正式 Store 在全书事实验证通过前保持不变。
+6. v5 分析缓存自然失效；workspace/ChapterRecord 版本不变。
+7. 全量测试、race、vet、diff check 全部通过。
+8. 没有引入第二套领域规则或 Import 状态机。
+
+---
+
+## 后续候选里程碑（D 完成后，不进入当前执行范围）
 
 优先级按当前仓库增量价值调整为：
 

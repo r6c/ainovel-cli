@@ -3,6 +3,7 @@ package imp
 import (
 	"context"
 	"encoding/json"
+	"reflect"
 	"testing"
 
 	"github.com/voocel/ainovel-cli/internal/domain"
@@ -65,6 +66,38 @@ func TestPublishChaptersPersistsKnowledgeState(t *testing.T) {
 	if len(entries) != 1 || entries[0].EstablishedAt != 1 || len(entries[0].KnownBy) != 1 || entries[0].KnownBy[0].LearnedAt != 3 ||
 		entries[0].ReaderRevealedAt != 3 || len(entries[0].BelievedBy) != 1 || entries[0].BelievedBy[0].FormedAt != 2 || entries[0].BelievedBy[0].CorrectedAt != 3 {
 		t.Fatalf("published knowledge state wrong: %+v", entries)
+	}
+}
+
+func TestImportedFactsMappingMatchesPublishedCommitFacts(t *testing.T) {
+	facts := ImportedChapterFacts{
+		Chapter: 7, Title: "第七章", Summary: "真相推进", CoreEvent: "林墨确认密令",
+		Characters:          []string{"林墨", "苏晚"},
+		TimelineEvents:      []domain.TimelineEvent{{Time: "当夜", Event: "密令送达", Characters: []string{"林墨"}}},
+		ForeshadowUpdates:   []domain.ForeshadowUpdate{{ID: "f1", Action: "plant", Description: "残缺密令"}},
+		RelationshipChanges: []domain.RelationshipEntry{{CharacterA: "林墨", CharacterB: "苏晚", Relation: "暂时结盟"}},
+		StateChanges:        []domain.StateChange{{Entity: "林墨", Field: "resolve", NewValue: "坚定", Reason: "确认密令"}},
+		KnowledgeUpdates:    []domain.KnowledgeUpdate{{ID: "k1", Action: "establish", Truth: "城主下令封城"}},
+		HookType:            "mystery", DominantStrand: "quest",
+	}
+
+	mapped := importedChapterFacts(facts)
+	raw, err := json.Marshal(commitArgs(facts.Chapter, facts))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var published struct {
+		Chapter int `json:"chapter"`
+		domain.ChapterFacts
+	}
+	if err := json.Unmarshal(raw, &published); err != nil {
+		t.Fatal(err)
+	}
+	if published.Chapter != facts.Chapter || !reflect.DeepEqual(published.ChapterFacts, mapped) {
+		t.Fatalf("validation mapping differs from published facts: mapped=%+v published=%+v", mapped, published.ChapterFacts)
+	}
+	if !reflect.DeepEqual(mapped.KeyEvents, []string{facts.CoreEvent}) {
+		t.Fatalf("empty key_events must use core_event fallback, got %#v", mapped.KeyEvents)
 	}
 }
 

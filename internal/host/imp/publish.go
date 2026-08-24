@@ -199,35 +199,53 @@ func publishChapter(ctx context.Context, st *store.Store, commit ChapterCommitte
 	return nil
 }
 
-// commitArgs 把逐章事实映射为 commit_chapter 入参。
-func commitArgs(chapter int, f ImportedChapterFacts) map[string]any {
+// importedChapterFacts 是导入验证与正式发布共享的唯一 ChapterFacts 映射。
+func importedChapterFacts(f ImportedChapterFacts) domain.ChapterFacts {
 	keyEvents := f.KeyEvents
 	if len(keyEvents) == 0 {
 		keyEvents = []string{f.CoreEvent} // core_event 已校验非空
 	}
+	return domain.ChapterFacts{
+		Title:               f.Title,
+		Summary:             f.Summary,
+		Characters:          f.Characters,
+		KeyEvents:           keyEvents,
+		TimelineEvents:      f.TimelineEvents,
+		ForeshadowUpdates:   f.ForeshadowUpdates,
+		RelationshipChanges: f.RelationshipChanges,
+		StateChanges:        f.StateChanges,
+		KnowledgeUpdates:    f.KnowledgeUpdates,
+		HookType:            f.HookType,
+		DominantStrand:      f.DominantStrand,
+	}
+}
+
+// commitArgs 把逐章事实映射为 commit_chapter 入参。
+func commitArgs(chapter int, f ImportedChapterFacts) map[string]any {
+	facts := importedChapterFacts(f)
 	args := map[string]any{
 		"chapter":         chapter,
-		"title":           f.Title,
-		"summary":         f.Summary,
-		"characters":      f.Characters,
-		"key_events":      keyEvents,
-		"hook_type":       f.HookType,
-		"dominant_strand": f.DominantStrand,
+		"title":           facts.Title,
+		"summary":         facts.Summary,
+		"characters":      facts.Characters,
+		"key_events":      facts.KeyEvents,
+		"hook_type":       facts.HookType,
+		"dominant_strand": facts.DominantStrand,
 	}
-	if len(f.TimelineEvents) > 0 {
-		args["timeline_events"] = f.TimelineEvents
+	if len(facts.TimelineEvents) > 0 {
+		args["timeline_events"] = facts.TimelineEvents
 	}
-	if len(f.ForeshadowUpdates) > 0 {
-		args["foreshadow_updates"] = f.ForeshadowUpdates
+	if len(facts.ForeshadowUpdates) > 0 {
+		args["foreshadow_updates"] = facts.ForeshadowUpdates
 	}
-	if len(f.RelationshipChanges) > 0 {
-		args["relationship_changes"] = f.RelationshipChanges
+	if len(facts.RelationshipChanges) > 0 {
+		args["relationship_changes"] = facts.RelationshipChanges
 	}
-	if len(f.StateChanges) > 0 {
-		args["state_changes"] = f.StateChanges
+	if len(facts.StateChanges) > 0 {
+		args["state_changes"] = facts.StateChanges
 	}
-	if len(f.KnowledgeUpdates) > 0 {
-		args["knowledge_updates"] = f.KnowledgeUpdates
+	if len(facts.KnowledgeUpdates) > 0 {
+		args["knowledge_updates"] = facts.KnowledgeUpdates
 	}
 	return args
 }

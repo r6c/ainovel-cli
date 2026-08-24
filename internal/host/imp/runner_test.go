@@ -2,12 +2,14 @@ package imp
 
 import (
 	"context"
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/voocel/ainovel-cli/internal/domain"
 	"github.com/voocel/ainovel-cli/internal/store"
 	"github.com/voocel/ainovel-cli/internal/tools"
 )
@@ -22,6 +24,111 @@ func testDeps(st *store.Store, m callModel) Deps {
 		Analyze:       c,
 		Synthesize:    c,
 		Prompts:       Prompts{Segment: "seg", Analyze: "ana", Synthesize: "syn", Range: "range"},
+	}
+}
+
+func TestPublishRejectsInvalidFullBookFactsBeforeWritingOfficialStore(t *testing.T) {
+	dir := t.TempDir()
+	st := store.NewStore(dir)
+	if err := st.Init(); err != nil {
+		t.Fatal(err)
+	}
+	norm, seg := analyzeFixture(t, 2)
+	sourcePath := filepath.Join(dir, "book.txt")
+	if err := os.WriteFile(sourcePath, norm, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	ws, _, err := Ingest(dir, sourcePath, Intent{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := writeArtifact(ws, fileSegmentation, "digest", *seg); err != nil {
+		t.Fatal(err)
+	}
+	facts := []ImportedChapterFacts{
+		{Chapter: 1, Title: seg.Chapters[0].Title, Summary: "建立并获知", CoreEvent: "身份确认", KeyEvents: []string{"身份确认"}, HookType: "mystery", DominantStrand: "quest",
+			KnowledgeUpdates: []domain.KnowledgeUpdate{{ID: "k", Action: "establish", Truth: "真相"}, {ID: "k", Action: "learn", Character: "林墨"}}},
+		{Chapter: 2, Title: seg.Chapters[1].Title, Summary: "非法误信", CoreEvent: "误信", KeyEvents: []string{"误信"}, HookType: "mystery", DominantStrand: "quest",
+			KnowledgeUpdates: []domain.KnowledgeUpdate{{ID: "k", Action: "believe", Character: "林墨", Belief: "误解"}}},
+	}
+	for _, f := range facts {
+		if err := writeArtifact(ws, analysisPath(f.Chapter), "digest", ChapterAnalysisPayload{Facts: f}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	var synthesis BookSynthesis
+	if err := json.Unmarshal([]byte(synthesisFixtureJSON(2, storyClosed)), &synthesis); err != nil {
+		t.Fatal(err)
+	}
+	if err := writeArtifact(ws, fileSynthesis, synthesisInputDigest(facts), synthesis); err != nil {
+		t.Fatal(err)
+	}
+	r := &runner{
+		deps:   Deps{Store: st, CommitChapter: tools.NewCommitChapterTool(st, tools.NewStyleStatsIndex(st))},
+		events: make(chan Event, 32), ws: ws,
+	}
+
+	if err := r.publish(context.Background()); err == nil {
+		t.Fatal("expected invalid full-book facts to block publish")
+	}
+	if book, err := st.Book.Load(); err != nil || book != nil {
+		t.Fatalf("official book must remain empty: book=%+v err=%v", book, err)
+	}
+	if premise, err := st.Outline.LoadPremise(); err != nil || premise != "" {
+		t.Fatalf("official premise must remain empty: premise=%q err=%v", premise, err)
+	}
+	progress, err := st.Progress.Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if progress != nil && len(progress.CompletedChapters) != 0 {
+		t.Fatalf("official chapters must remain empty: %+v", progress.CompletedChapters)
+	}
+	if pending, err := st.Signals.LoadPendingCommit(); err != nil || pending != nil {
+		t.Fatalf("publish gate must not create pending commit: pending=%+v err=%v", pending, err)
+	}
+	if meta, err := st.RunMeta.Load(); err != nil || (meta != nil && meta.AdvanceHold != nil) {
+		t.Fatalf("publish gate must not create completion hold: meta=%+v err=%v", meta, err)
+	}
+	if !ws.has(analysisPath(1)) || ws.has(analysisPath(2)) || ws.has(fileSynthesis) {
+		t.Fatal("publish gate must preserve valid prefix and invalidate illegal tail plus synthesis")
+	}
+}
+
+func TestSynthesizeRejectsInvalidFullBookFactsBeforeModelCall(t *testing.T) {
+	ws := &Workspace{dir: t.TempDir()}
+	seg := Segmentation{Chapters: []ChapterSpan{{Number: 1, Title: "第一章"}, {Number: 2, Title: "第二章"}}}
+	if err := writeArtifact(ws, fileSegmentation, "digest", seg); err != nil {
+		t.Fatal(err)
+	}
+	facts := []ImportedChapterFacts{
+		{Chapter: 1, Title: "第一章", Summary: "建立并获知", CoreEvent: "身份确认", KeyEvents: []string{"身份确认"}, HookType: "mystery", DominantStrand: "quest",
+			KnowledgeUpdates: []domain.KnowledgeUpdate{{ID: "k", Action: "establish", Truth: "真相"}, {ID: "k", Action: "learn", Character: "林墨"}}},
+		{Chapter: 2, Title: "第二章", Summary: "非法误信", CoreEvent: "误信", KeyEvents: []string{"误信"}, HookType: "mystery", DominantStrand: "quest",
+			KnowledgeUpdates: []domain.KnowledgeUpdate{{ID: "k", Action: "believe", Character: "林墨", Belief: "误解"}}},
+	}
+	for _, f := range facts {
+		if err := writeArtifact(ws, analysisPath(f.Chapter), "digest", ChapterAnalysisPayload{Facts: f}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	m := &mockModel{responses: []string{synthesisFixtureJSON(2, storyClosed)}}
+	r := &runner{
+		deps:   Deps{Synthesize: Caller{Model: m}, Budgets: DefaultRunBudgets(), Prompts: Prompts{Synthesize: "syn", Range: "range"}},
+		events: make(chan Event, 16), ws: ws,
+	}
+
+	if err := r.synthesize(context.Background()); err == nil {
+		t.Fatal("expected invalid full-book facts to block synthesis")
+	}
+	if m.i != 0 {
+		t.Fatalf("synthesis model must not be called for invalid facts, calls=%d", m.i)
+	}
+	if ws.has(fileSynthesis) {
+		t.Fatal("invalid facts must not produce synthesis artifact")
+	}
+	if !ws.has(analysisPath(1)) || ws.has(analysisPath(2)) {
+		t.Fatal("synthesis gate must preserve valid prefix and invalidate illegal tail")
 	}
 }
 

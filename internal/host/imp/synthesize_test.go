@@ -33,6 +33,16 @@ func itoa(n int) string {
 	return string(b)
 }
 
+func TestRangeDigestIdentityIgnoresFactsItDoesNotConsume(t *testing.T) {
+	base := ImportedChapterFacts{Chapter: 1, Title: "第一章", Summary: "摘要", CoreEvent: "事件", Characters: []string{"林墨"}}
+	changed := base
+	changed.KnowledgeUpdates = []domain.KnowledgeUpdate{{ID: "k", Action: "establish", Truth: "真相"}}
+	changed.ForeshadowUpdates = []domain.ForeshadowUpdate{{ID: "f", Action: "plant", Description: "线索"}}
+	if rangeInputDigest([]ImportedChapterFacts{base}) != rangeInputDigest([]ImportedChapterFacts{changed}) {
+		t.Fatal("range digest consumes only compact narrative evidence; tracking-only changes must not invalidate it")
+	}
+}
+
 func TestValidateStructure(t *testing.T) {
 	ok := []ImportedVolumeRange{{Title: "卷一", Arcs: []ImportedArcRange{{StartChapter: 1, EndChapter: 3}}}}
 	if err := validateStructure(ok, 3); err != nil {

@@ -7,6 +7,123 @@
 - 执行原则：严格 TDD，红→绿，单切片推进
 - 项目根：`ainovel-cli`
 
+## 2026-08-24：全项目 Review 后里程碑 D 规划
+
+### 基线
+
+- 工作区开始时干净；
+- HEAD：`3ee475c 功能：追踪角色错误信念与纠正状态`；
+- `session-catchup.py` 未报告未同步上下文；
+- 全项目 Review 已通过全量测试、vet 和关键包 race；
+- 本次只更新 `task_plan.md`、`findings.md`、`progress.md`，不修改生产代码。
+
+### 规划结论
+
+下一里程碑确定为 **D：Import 发布前全书事实重放门禁**，优先修复跨批次非法事实只能在正式发布中途被发现、且重跑永久停留在 ActionPublish 的风险。
+
+阶段 32—39 已写入计划：v5→v6 缓存隔离、统一事实映射、候选批次累计重放、salvage 门禁、首错章定位与派生工件失效、synthesis 门禁、publish 零污染门禁、文档与最终验证。
+
+架构边界：复用 `revision.ValidateRecordSet` 和现有 `Facts + NextAction`；不新增 Import Action/Stage，不复制 Knowledge/Foreshadow switch，不修改 Commit Saga，不顺带做领域模块重构。
+
+### 下一步
+
+用户确认执行后加载 TDD，从阶段 32 的旧 v5 分析缓存失败测试开始；首个生产改动只能是 `analysisSchemaVersion 5 → 6`。
+
+### 阶段 32 红灯
+
+将既有缓存失效契约从旧 v4 更新为旧 v5 后：
+
+```text
+go test ./internal/host/imp -run '^TestAnalyzedChaptersInvalidatesPreviousAnalysisSchemaVersion$' -count=1
+```
+
+失败为 `got 1 reusable chapters`，证明当前 `analysisSchemaVersion=5` 会继续复用未经全书重放证明的 v5 工件。
+
+### 阶段 32 绿灯
+
+只将 `analysisSchemaVersion` 从 5 提升到 6；旧 v5 缓存失效测试和既有上游摘要失效测试均通过。未提升 workspace/ChapterRecord 版本，也未提前实现事实重放。
+
+### 阶段 33 映射红灯
+
+新增 Import 事实映射与真实 `commitArgs` JSON 解码结果一致性测试；编译失败 `undefined: importedChapterFacts`，证明验证与发布尚无共享映射。
+
+### 阶段 33 映射绿灯与门禁红灯
+
+新增唯一 `importedChapterFacts` 映射，并让 `commitArgs` 从该映射取值；包含全部派生字段与 core_event fallback 的一致性测试通过。随后新增跨章 `establish+learn → believe` 测试，编译失败 `undefined: validateImportedFactSequence`，准确证明 Import 尚无全书重放门禁。
+
+### 阶段 33 绿灯
+
+`validateImportedFactSequence` 将 Import facts 转为临时 ChapterRecord 并复用 `revision.ValidateRecordSet`。合法 Knowledge/Foreshadow 生命周期通过；跨章 belief-after-learn、冲突 Truth、未知 Knowledge 引用和 resolved 后 advance 均被拒绝。
+
+### 阶段 34 红灯
+
+预写第 1 章 `establish+learn` 工件，再让 `AnalyzeNext` 的第二批返回同角色 believe。当前调用返回成功并写入第二章，因此测试失败于 `expected cumulative fact replay to reject second batch`，证明正常候选批次尚未接入全书门禁。
+
+### 阶段 34 首次绿灯尝试超时
+
+把累计门禁接入 `callStructured` 验证回调后，原测试 mock 永远返回同一非法事实，触发模型语义重试与退避，宿主命令 120 秒超时。该行为说明门禁位于正确的“模型可修正语义错误”接缝，但测试设计不应假设首次非法响应立即返回。不会原样重跑；改为首轮非法、次轮合法的顺序响应，观察非法候选未落盘且修正响应成功。
+
+### 阶段 34 绿灯
+
+顺序 mock 首轮返回非法 belief、第二轮修正为空更新；`AnalyzeNext` 恰好重问一次，只写修正后的第 2 章工件，累计前缀变为 2。正常上游失效测试保持通过。
+
+### 阶段 35 测试编写错误
+
+插入严格 Import JSON helper 时误删原 `factsJSON` 函数声明，首次运行是 Go 语法错误而非功能红灯。记录后恢复声明，再获取真实打捞行为红灯。
+
+### 阶段 35 真实红灯
+
+第 1 章已 establish+learn；长度截断响应中可解析的第 2 章让同角色 believe。现有 `salvagePrefix` 局部校验通过，`AnalyzeNext` 记录 `salvaged=1` 并返回成功，证明截断分支绕过累计全书门禁。
+
+### 阶段 35 绿灯
+
+打捞前缀在落盘前与 prior facts 一起重放。非法累计前缀返回错误、不写分析工件，并在 failures 中保留原响应及“累计事实非法”诊断；原有合法截断打捞继续通过。
+
+### 阶段 36 红灯
+
+构造第 2 章首次非法、后有第 3 章以及 synthesis/story-resolution 的工作区；编译失败 `undefined: validateWorkspaceFacts`，证明尚无首错章定位和派生工件回退行为。
+
+### 阶段 36 绿灯
+
+`validateWorkspaceFacts` 先做一次 O(n) 全书重放，失败时逐前缀定位首个非法章，复用 `discardAnalysesAfter` 删除尾部，并失效 synthesis/story-resolution。真实 source/segmentation/confirmation 测试证明回退后 `LoadState.AnalyzedChapters=1` 且 `NextAction=ActionAnalyze`。
+
+### 阶段 37 红灯
+
+给 runner.synthesize 准备两章当前版本非法 facts 和合法 synthesis 模型响应。现有流程实际调用模型、产出综合并返回成功，测试失败于 `expected invalid full-book facts to block synthesis`，证明综合前没有事实门禁。
+
+### 阶段 37 绿灯
+
+`runner.synthesize` 在 emit、range digest 和模型调用之前执行 `validateWorkspaceFacts`。非法事实不调用模型、不写 synthesis，并回退分析尾部；合法 `TestRunEndToEnd` 保持通过。
+
+### 阶段 38 红灯
+
+直接为 publish 准备非法两章 facts 和有效 synthesis。当前流程先写入 Foundation、completion Hold 和第 1 章，直到第 2 章 Commit 才失败；零污染断言发现正式 Book 已存在，完整复现 Review 中的部分发布风险。
+
+### 阶段 38 绿灯
+
+`runner.publish` 在 resolveStory、AssembleFoundation、publishFoundation、Hold 和逐章 Commit 之前执行同一全书工作区门禁。非法事实保持 Book/Premise/Completed/PendingCommit/Hold 全空并回退分析尾部；合法端到端与 Hold 测试通过。
+
+### 阶段 39 协议审计红灯
+
+全书门禁接受传入 facts `[chapter=1, chapter=3]`，因为 Revision 只按记录章号排序，不知道 Import 工件位置必须连续。该约束属于 Import 坐标，不是领域生命周期；将在 Import→ChapterRecord 适配处要求 `facts[i].Chapter == i+1`。Range digest 测试确认它只消费 compact narrative evidence，Knowledge/Foreshadow 跟踪字段变化无需主动删除 range cache。
+
+### 阶段 39 文档定位错误
+
+两次 `search_files` 将单个 Markdown 文件路径作为目录，返回 ENOTDIR。未重复该方式；改用 `read_file` 已定位 Import §9.4—9.6、§11 和 architecture 目录说明。
+
+### 阶段 39 / 里程碑 D 完成
+
+稳定文档已同步批次局部校验、累计全书重放、首错章回退与发布前零污染。最终验证：
+
+```text
+go test ./... -timeout=5m                          通过
+go vet ./...                                       通过
+go test -race ./internal/host/imp ./internal/revision ./internal/tools -timeout=10m  通过
+git diff --check                                   通过
+```
+
+范围扫描确认：`analysisSchemaVersion=6`，`workspaceSchemaVersion=1`、`ChapterRecordVersion=1`；没有新增 ActionValidate/StageFactReplay、Service、Repository、数据库或第二套生命周期规则。最终批次在提交前为 12 个文件、1017+ / 33-（其中大部分为测试与规划记录）。
+
 ## 2026-08-21：规划初始化
 
 ### 已完成

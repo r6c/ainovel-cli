@@ -433,10 +433,13 @@ type ChapterAnalysisPayload struct {
 
 ### 9.4 完整响应校验
 
-代码分两层校验结构、值域和引用，不硬编码文学质量：
+代码分三层校验结构、值域和引用，不硬编码文学质量：
 
 - 批次级：chapters 数组按预期章节号连续、无重复、无缺口，批次范围、`InputDigest` 和 schema version 匹配；
-- 逐章级：chapter/title 与源分段一致，summary/core_event 非空，hook type、strand 等正式 domain 闭集字段合法，时间线、伏笔和状态变化字段类型合法。
+- 逐章级：chapter/title 与源分段一致，summary/core_event 非空，hook type、strand 等正式 domain 闭集字段合法，时间线、伏笔和状态变化字段类型合法；
+- 累计全书级：把既有新鲜前缀与当前候选批次映射为正式 `ChapterFacts/ChapterRecord`，复用 `revision.ValidateRecordSet` 按章重放全部派生事实，确定性校验跨批次 Knowledge、伏笔等生命周期。
+
+紧凑 ledger 只帮助模型生成连续语义，不承担合法性证明。当前候选批次只有在累计全书重放通过后才能落盘；非法输出作为结构化校验错误反馈给同一模型自修复。
 
 代码不要求“必须 3～6 个事件”“必须有出场角色”“必须有三个场景”。安静章节、书信、环境章或无名人物章节都是合法文学形状。
 
@@ -450,7 +453,7 @@ type ChapterAnalysisPayload struct {
 
 1. 使用流式 JSON decoder 进入顶层 `chapters` 数组；
 2. 从批次首章开始逐个读取已经完整闭合的 JSON 对象；
-3. 每个对象独立通过 §9.4 的逐章校验，并与此前对象组成从批次首章开始的连续序列后，立即原子写入对应章节分析工件；
+3. 每个对象独立通过 §9.4 的逐章校验、组成从批次首章开始的连续序列，并与既有新鲜前缀共同通过累计全书重放后，才原子写入对应章节分析工件；
 4. 遇到第一个不完整、非法、跳号或重复对象立即停止，之后的字节一律不解释；
 5. 禁止补括号、续写半个 JSON、猜测缺失字段或从后续位置捞取非连续对象；
 6. 原始响应、StopReason、已保存前缀范围和首个失败章节全部写入 failure artifact、事件和日志；
@@ -468,7 +471,9 @@ typed-call 必须记录本次是否拿到可用部分文本：JSON Schema 等非
 - 第一份缺失或失配分析成为下一批次起点；
 - 上游语义输入变化后，无法重建相同 `InputDigest` 的分析自然失效；
 - 长度截断已经提交的连续合法前缀和正常完成的工件使用完全相同的恢复规则；
-- 不允许用户越过一个失败章节继续生成不连续的后续语义事实。
+- 不允许用户越过一个失败章节继续生成不连续的后续语义事实；
+- synthesis 与 publish 在任何模型调用或正式 Store 写入前防御性复验全部分析事实；
+- 若旧工件、手工修改或历史版本产物在第 N 章首次违反正式事实规则，保留 1..N-1 的合法前缀，失效 N 章及后续分析、synthesis 和 story resolution；`LoadState → NextAction` 随后自然回到 `ActionAnalyze`，不新增持久化阶段枚举。
 
 ## 10. 分层综合
 
@@ -548,7 +553,8 @@ type ImportedArcRange struct {
 6. 角色名、世界规则和 Compass 满足现有 domain 类型约束；
 7. PlanningTier 是合法闭集值，但选择理由来自模型而非章数阈值；
 8. closed/open 状态与 Final、Compass 的发布形状一致；
-9. Synthesis 工件的 `InputDigest` 能由当前有序分析集合重建。
+9. Synthesis 工件的 `InputDigest` 能由当前有序分析集合重建；
+10. 全部有序分析事实已经通过正式 ChapterRecord 规则重放，首个正式 Store 写入之前不存在跨批次 Knowledge、伏笔或其它派生事实冲突。
 
 违反结构约束时把具体错误反馈给模型重新生成，持续到成功或 context 取消；不落盘半成品。
 

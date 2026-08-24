@@ -581,3 +581,66 @@ C2a 已按最小范围闭环：新增 `KnowledgeBelief` 与 `believe`，复用 `
 2. Context 不能序列化完整 KnowledgeEntry/KnowledgeBelief；净化 DTO 既隐藏当前角色与读者均未知的 Truth，也去除本章/未来 `CorrectedAt`，避免提前泄露认知纠正。
 
 最终审计还补齐了直接 Store 入口的四动作字段矩阵，避免多余 Truth/Character/Belief 被静默忽略。Import 分析缓存版本已从 4 提升到 5。全量测试、vet 与 diff check 均通过。
+
+---
+
+# 全项目 Review 后续：Import 全书事实门禁（2026-08-24）
+
+## 总体判断
+
+全项目 Review 结论是宏观架构未跑偏，但发现一个 P0 恢复缺口：Import 的局部批次验证不能证明跨批次 ChapterFacts 生命周期合法。
+
+## 证据
+
+`internal/host/imp/analyze.go` 的 `validateBatch` 每批从空的 Truth/KnownBy/Belief map 开始。`start > 0` 时未知引用被有意放行，前批次状态仅以 Prompt ledger 形式提供给模型。因此下列跨批次错误不能被确定性拒绝：
+
+```text
+批次 1：establish k → 林墨 learn k
+批次 2：林墨 believe k
+```
+
+当前 runner 在 synthesis 前只检查分析工件数量，在 publish 前先执行 `publishFoundation`，再逐章走 Commit。非法事实会在正式 Store 已被部分修改后才失败。工作区分析和 synthesis 工件仍保持新鲜，`NextAction` 继续返回 `ActionPublish`，重跑会卡在同一章。
+
+## 可复用接缝
+
+- `revision.ValidateRecordSet(records)` 已是纯全书 ChapterFacts 重放接缝，当前被 Rewrite 和 Migration 复用；Import 成为第二个适配器是合理深化，不需要复制生命周期规则。
+- `discardAnalysesAfter(w, keep, total)` 已能删除某章后的分析尾部；只需补首个失败章定位与 synthesis/story-resolution 失效。
+- `LoadState → Facts → NextAction` 已按连续新鲜分析数推导动作；删除非法尾部后会自然回到 `ActionAnalyze`，无需新 Action/Stage。
+- Import 只允许导入空书，因此 publish 前失败可以证明正式 Store 零污染，不需要回滚既有作品。
+
+## 设计取舍
+
+1. 本批只解决 P0 门禁，不顺带实施 Knowledge/Foreshadow pure apply/replay 深化；后者单列下一架构里程碑，避免把故障修复扩大成跨包重构。
+2. `validateBatch` 保留批次形状、章号和本批字段校验；全书领域不变量交给 `revision.ValidateRecordSet`。
+3. 必须建立唯一 ImportedChapterFacts→ChapterFacts 映射，并让门禁与 publish 参数共享，防止验证和发布语义漂移。
+4. 候选批次和 salvage prefix 都要在落盘前与 prior facts 合并重放。
+5. synthesis/publish 仍做防御性复验，用于旧缓存、手工修改或历史 Bug 工件。
+6. 全书重放失败时，正常路径一次 O(n) 验证；只在异常路径逐前缀定位首个失败章，允许 O(n²)。
+7. 分析 Schema 版本从 5 提升到 6；workspace 与 ChapterRecord 版本保持不变。
+8. range digest 本身绑定 facts 输入；阶段 36 将先用测试证明它自然失鲜，若证明成立则不做冗余删除。
+
+## 延后事项
+
+- Knowledge/Foreshadow 生命周期规则去重；
+- PendingCommit payload/draft digest；
+- CONTEXT.md 与历史计划归档；
+- Knowledge 诊断/TUI/导出；
+- Prose Lint、平台 Rubric 和 cocreate 访谈。
+
+这些问题有价值，但均不应混入 P0 Import 修复。
+
+## 里程碑 D 实施结论
+
+P0 缺口已闭合：Import 现在把模型批次的局部 Schema/章号校验与正式 ChapterRecord 全书重放分层处理。
+
+```text
+validateBatch
+→ importedChapterFacts 唯一映射
+→ revision.ValidateRecordSet
+```
+
+正常 AnalyzeNext 的候选批次和长度截断 salvage prefix 都必须与既有前缀一起重放，只有通过后才写分析工件。Synthesis 在任何模型调用前复验，Publish 在 resolveStory/Foundation/Hold/Commit 前复验。
+
+旧工件或手工修改在第 N 章首次非法时，系统保留 1..N-1，删除 N 章及后续分析，并失效 synthesis/story-resolution；现有 LoadState/NextAction 自动回到 ActionAnalyze。Range digest 只消费 compact narrative evidence，不消费 Knowledge/Foreshadow tracking 字段，因此跟踪事实修正不要求主动删除 range cache，其 InputDigest 语义已有回归测试锁定。
+
+分析缓存版本已从 5 提升为 6；workspace 和 ChapterRecord 版本不变。全量测试、vet、关键包 race、diff check 与范围扫描全部通过。
