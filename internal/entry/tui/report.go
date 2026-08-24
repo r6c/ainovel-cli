@@ -143,6 +143,12 @@ func renderReportText(report diag.Report, width int, exportPath string, exportEr
 		}
 		b.WriteString("\n")
 	}
+	if st.KnowledgeFacts > 0 || st.KnowledgeKnownBy > 0 || st.KnowledgeReaderKnown > 0 || st.KnowledgeActiveBeliefs > 0 {
+		b.WriteString(mutedStyle.Render("知识 "))
+		b.WriteString(fmt.Sprintf("真相%d 角色知情%d 读者已知%d 活跃误信%d",
+			st.KnowledgeFacts, st.KnowledgeKnownBy, st.KnowledgeReaderKnown, st.KnowledgeActiveBeliefs))
+		b.WriteString("\n")
+	}
 	if st.PlanningTier != "" {
 		b.WriteString(mutedStyle.Render("规划 "))
 		b.WriteString(st.PlanningTier)

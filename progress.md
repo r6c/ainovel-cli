@@ -2,75 +2,73 @@
 
 ## 当前会话
 
-- 日期：2026-08-24
-- 基线：`2f6768b 文档：归档演进计划并补充领域词汇表`
-- 当前里程碑：H——确定性重复段落 Prose Lint
-- 当前阶段：阶段 69—75 全部完成
-- 公共测试接缝：`rules.Lint(text) []Violation`
+- 日期：2026-08-25
+- 基线：`83fbb92 功能：检测章节中的完全重复段落`
+- 当前里程碑：I——Knowledge 最小诊断与脱敏导出
+- 当前阶段：阶段 76——Knowledge 聚合统计红灯
+- 公共接缝：`diag.Analyze(store)`、TUI `/diag`、`diag.RenderExport`
 
 ## 基线盘点
 
-- `rules.Lint` 当前只检测 `markdown_residue` 与 `non_cjk_fragments`。
-- `CommitChapterTool.checkRules` 会把 `rules.Lint` 结果写入提交输出及 `meta/rule_violations.jsonl`。
-- `revision.Projector` 会对接纳正文重新执行 `rules.Lint`，无需新增第二条管线。
-- `Violation` 只陈述事实，不阻断提交；Editor 经现有 `rule_violations` 语义评审。
+- Knowledge 已进入 Store、Commit、Revision、Import 和 Writer Context，尚未进入 Diagnostics。
+- `diag.Snapshot` 当前加载 Foreshadow，但不加载 Knowledge。
+- `diag.Stats` 当前只有 ForeshadowOpen/ForeshadowStale，没有认知指标。
+- `host/exp` 的 TXT/EPUB 是读者成品导出，明确排除创作蓝图；本批不向其注入作者 Truth 或错误信念。
+- `diag-export.md` 是脱敏运行时报告，可安全加入聚合数量，但不得出现 Truth、Belief、角色名和 Knowledge ID。
 
-## 重复段落第一版边界
+## 第一批指标
 
 ```text
-段落 = TrimSpace 后的非空、非 # 标题单行
-完全相同
-长度 >= 24 Unicode 字符
-出现次数 >= 2
-severity = warning
-limit = 1
-actual = 出现次数
+KnowledgeFacts           KnowledgeEntry 数
+KnowledgeKnownBy         所有 KnownBy 关系数
+KnowledgeReaderKnown     ReaderRevealedAt > 0 的 Truth 数
+KnowledgeActiveBeliefs   CorrectedAt == 0 的错误信念数
 ```
-
-短对话、拟声词、标题、近似改写不报；Target 必须截断，不能复制整段正文。
 
 ## 错误记录
 
-- 搜索 Markdown 中双换行时，`search_files` 底层 rg 不接受字面换行；未重复该方式，改用正文测试夹具与写作参考确认项目按行分段惯例。
+- 一次搜索 `RenderReport|diag.Report|Analyze(st` 使用未闭合括号正则失败；未重复，改为读取真实 TUI report.go 和字面搜索。
 
-## 实施记录
+## 下一步
 
-### 阶段 69 完成
+### 阶段 76 完成
 
-首个红灯准确：重复长段落原先返回空列表。现已按首次出现顺序统计 TrimSpace 后完全相同、长度至少 24 个 Unicode 字符的非标题正文行，输出 warning、limit=1、actual=次数；既有 Lint 测试通过。
+首个红灯准确：公开 `Stats` 缺少四项 Knowledge 字段。Snapshot 现读取 `knowledge_state`，`buildStats` 聚合 Truth、KnownBy、ReaderKnown 与 active belief 数量；既有 Foreshadow 诊断不回归。
 
-### 阶段 70 完成
+### 阶段 77 完成
 
-短对话、重复标题和只差一个标点的近似段落均不报；TrimSpace 归一化首尾空白，空行和 CRLF 不影响识别，三个副本准确报告 actual=3。所有契约现有实现直接满足。
+无 `knowledge_state.json` 时统计保持零且不产生 LoadError；损坏 JSON 进入既有 LoadError Finding，Knowledge 统计不伪造。现有 Snapshot 错误语义直接满足。
 
-### 阶段 71 完成
+### 阶段 78 完成
 
-160 字重复段落曾完整复制到 Target；现仅输出前 48 个 Unicode 字符 + `…`，完整段落仍用于去重。多个重复组按首次出现顺序稳定输出，Violation 注释已同步 `duplicate_paragraph` warning。
+长期活跃 belief、近期 belief 和已纠正 belief 同时存在时，原诊断没有 Finding。现以 max(8, completed/3) 为阈值，仅长期活跃项产生中等置信 info；证据只含 ID、角色、形成章和间隔，不含 Truth/Belief 正文。
 
-### 阶段 72 集成进度
+### 阶段 79 完成
 
-- 首轮 Commit 测试停在 `phase=init`，补齐合法 `PhaseWriting` 后通过；重复段落 warning 出现在返回 JSON 和持久化规则事实中，提交不阻断。
-- Revision Projector 测试集中在 `revision_test.go`；读取不存在的 `projector_test.go` 返回 ENOENT，已停止猜测并改用真实文件。
-- Commit 与 Projector 公共集成均通过：提交返回并持久化重复段落 warning；Projector 会刷新旧违规事实而非追加。
-- Editor 资源契约红灯准确：原提示未识别 `duplicate_paragraph`。最小同步到现有 aesthetic 映射，要求区分有意复沓和复制退化，不新增评审维度。
+TUI `/diag` 概览原先完全缺少 Knowledge 指标。现增加一行真相、角色知情、读者已知、活跃误信数量；不展示任何 ID、角色名或正文内容，TUI 全包通过。
 
-### 阶段 74—75 完成
+### 阶段 80 完成
 
-- 23 个 Unicode 字符不报，24 个字符开始报告；只 TrimSpace，不归一化内部空白。
-- 范围扫描确认没有 similarity/Levenshtein/Jaccard/fuzzy 或跨章状态。
-- 关键 rules/tools/revision/assets 测试通过；`go test ./... -timeout=5m`、`go vet ./...`、`git diff --check` 通过。
-- 一次对 README 单文件路径调用 `search_files` 返回 ENOTDIR；未重复，最终审阅改用 Git diff 与直接文件工具。
+`diag-export.md` 原先没有 Knowledge 聚合。现环境段只增加四项数字；sentinel Truth、Belief、角色名和 ID 均未出包，创作类 Finding 继续只留在本地 `/diag`。
 
-## 最终验证
+### 阶段 81 进度
+
+真实 TXT/EPUB 导出在存在完整 sentinel Knowledge 投影时仍不含 Truth、Belief、角色或 ID；现有 Exporter 直接满足，无生产改动。观测手册同步作者本地投影、脱敏 diag 与读者成品三层边界，并修正旧伏笔路径。
+
+收口审计红灯发现 `buildStats` 在 Progress 缺失时提前返回，吞掉可用 Knowledge 统计。现将不依赖 Progress 的聚合移到早返回前，保持部分工件损坏时的尽力诊断语义。
+
+阶段 81 已完成：TXT/EPUB 隔离契约、CONTEXT 与观测手册均已同步；插入 Knowledge 专章后顺带修正后续章节编号和速查引用。
+
+## 阶段 82 / 最终验证
 
 ```text
-go test ./internal/rules -count=1
-go test ./internal/tools -run 'CommitChapterPersistsDuplicateParagraph|RuleViolation' -count=1 -timeout=5m
-go test ./internal/revision -run 'ProjectorRefreshesDuplicateParagraph|RuleViolation' -count=1
-go test ./assets -count=1
+go test ./internal/diag -count=1
+go test ./internal/entry/tui -run 'Diag|Report|RenderReport' -count=1
+go test ./internal/host/exp -count=1
 go test ./... -timeout=5m
 go vet ./...
+go test -race ./internal/diag ./internal/entry/tui ./internal/host/exp -timeout=10m
 git diff --check
 ```
 
-全部通过。里程碑 H 完成；下一候选为 Knowledge 最小诊断与导出投影。
+全部通过。脱敏测试先证明本地 Finding 确实包含 sentinel ID/角色，再证明可分享导出移除 ID、角色、Truth 和 Belief。里程碑 I 完成。

@@ -1,8 +1,11 @@
 package exp
 
 import (
+	"archive/zip"
+	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -81,6 +84,61 @@ func TestRun_HappyPath_DefaultsToNovelDir(t *testing.T) {
 	// premise 不进导出（创作蓝图，非读者内容）
 	if strings.Contains(text, "光与影的故事。") {
 		t.Errorf("premise must not appear in export:\n%s", text)
+	}
+}
+
+func TestRunReaderExportsNeverIncludeKnowledgeState(t *testing.T) {
+	const truth = "SENTINEL_AUTHOR_TRUTH_绝不能进入读者成品"
+	const belief = "SENTINEL_BELIEF_绝不能进入读者成品"
+	const character = "SENTINEL_CHARACTER_绝不能进入读者成品"
+	const knowledgeID = "SENTINEL_KNOWLEDGE_ID"
+
+	for _, format := range []Format{FormatTXT, FormatEPUB} {
+		t.Run(string(format), func(t *testing.T) {
+			s, dir := newTestStore(t, "光斑", []int{1})
+			if err := s.World.SaveKnowledgeState([]domain.KnowledgeEntry{{
+				ID: knowledgeID, Truth: truth, EstablishedAt: 1, ReaderRevealedAt: 1,
+				KnownBy:    []domain.KnowledgeHolder{{Character: character, LearnedAt: 1}},
+				BelievedBy: []domain.KnowledgeBelief{{Character: character, Content: belief, FormedAt: 1}},
+			}}); err != nil {
+				t.Fatal(err)
+			}
+			out := filepath.Join(dir, "reader."+string(format))
+			res, err := Run(context.Background(), Deps{Store: s}, Options{Format: format, OutPath: out})
+			if err != nil {
+				t.Fatal(err)
+			}
+			data, err := os.ReadFile(res.Path)
+			if err != nil {
+				t.Fatal(err)
+			}
+			contents := []string{string(data)}
+			if format == FormatEPUB {
+				zr, err := zip.NewReader(bytes.NewReader(data), int64(len(data)))
+				if err != nil {
+					t.Fatal(err)
+				}
+				contents = contents[:0]
+				for _, file := range zr.File {
+					rc, err := file.Open()
+					if err != nil {
+						t.Fatal(err)
+					}
+					entry, err := io.ReadAll(rc)
+					_ = rc.Close()
+					if err != nil {
+						t.Fatal(err)
+					}
+					contents = append(contents, string(entry))
+				}
+			}
+			joined := strings.Join(contents, "\n")
+			for _, secret := range []string{truth, belief, character, knowledgeID} {
+				if strings.Contains(joined, secret) {
+					t.Fatalf("%s reader export leaked knowledge content %q", format, secret)
+				}
+			}
+		})
 	}
 }
 

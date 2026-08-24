@@ -53,6 +53,10 @@ func RenderExport(rep Report, rc RuntimeCapture) []byte {
 	if st.PlanningTier != "" {
 		fmt.Fprintf(&b, "- 规划 `%s`\n", st.PlanningTier)
 	}
+	if st.KnowledgeFacts > 0 || st.KnowledgeKnownBy > 0 || st.KnowledgeReaderKnown > 0 || st.KnowledgeActiveBeliefs > 0 {
+		fmt.Fprintf(&b, "- 知识真相 %d · 角色知情 %d · 读者已知 %d · 活跃误信 %d\n",
+			st.KnowledgeFacts, st.KnowledgeKnownBy, st.KnowledgeReaderKnown, st.KnowledgeActiveBeliefs)
+	}
 	for _, m := range rc.Models {
 		fmt.Fprintf(&b, "- %s → `%s` / `%s`\n", m.Agent, orDash(m.Provider), orDash(m.Model))
 	}

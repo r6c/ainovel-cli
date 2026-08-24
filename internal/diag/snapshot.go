@@ -22,6 +22,7 @@ type Snapshot struct {
 	WorldRules    []domain.WorldRule
 	Timeline      []domain.TimelineEvent
 	Foreshadow    []domain.ForeshadowEntry
+	Knowledge     []domain.KnowledgeEntry
 	Relationships []domain.RelationshipEntry
 	StateChanges  []domain.StateChange
 	StyleRules    *domain.WritingStyleRules
@@ -68,6 +69,8 @@ func Load(s *store.Store) Snapshot {
 	check("timeline", err)
 	snap.Foreshadow, err = s.World.LoadForeshadowLedger()
 	check("foreshadow", err)
+	snap.Knowledge, err = s.World.LoadKnowledgeState()
+	check("knowledge_state", err)
 	snap.Relationships, err = s.World.LoadRelationships()
 	check("relationships", err)
 	snap.StateChanges, err = s.World.LoadStateChanges()

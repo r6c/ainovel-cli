@@ -4,10 +4,12 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 
 	"github.com/voocel/agentcore"
+	"github.com/voocel/ainovel-cli/internal/domain"
 	"github.com/voocel/ainovel-cli/internal/store"
 )
 
@@ -101,6 +103,50 @@ func TestExport_DeathLoopShape(t *testing.T) {
 
 // TestExport_NumberVsStringArg 证明标量与字符串投影能区分类型：
 // chapter:7（数字）保留为 7，chapter:"7"（字符串）保留为 "7"。
+func TestExportIncludesKnowledgeAggregatesWithoutKnowledgeContent(t *testing.T) {
+	st := store.NewStore(t.TempDir())
+	if err := st.Init(); err != nil {
+		t.Fatal(err)
+	}
+	if err := st.Progress.Init(20); err != nil {
+		t.Fatal(err)
+	}
+	for chapter := 1; chapter <= 20; chapter++ {
+		if err := st.Progress.MarkChapterComplete(chapter, 1000, "", ""); err != nil {
+			t.Fatalf("complete chapter %d: %v", chapter, err)
+		}
+	}
+	const truth = "SENTINEL_AUTHOR_TRUTH_绝不能出包"
+	const belief = "SENTINEL_BELIEF_绝不能出包"
+	const character = "SENTINEL_CHARACTER_绝不能出包"
+	const knowledgeID = "SENTINEL_KNOWLEDGE_ID"
+	if err := st.World.SaveKnowledgeState([]domain.KnowledgeEntry{{
+		ID: knowledgeID, Truth: truth, EstablishedAt: 1, ReaderRevealedAt: 4,
+		KnownBy:    []domain.KnowledgeHolder{{Character: character, LearnedAt: 3}},
+		BelievedBy: []domain.KnowledgeBelief{{Character: character, Content: belief, FormedAt: 1}},
+	}}); err != nil {
+		t.Fatal(err)
+	}
+
+	report := Analyze(st)
+	if !slices.ContainsFunc(report.Findings, func(f Finding) bool {
+		return f.Rule == "StaleKnowledgeBelief" && strings.Contains(f.Evidence, knowledgeID) && strings.Contains(f.Evidence, character)
+	}) {
+		t.Fatalf("test setup must produce local stale-belief evidence: %+v", report.Findings)
+	}
+	out := string(RenderExport(report, RuntimeCapture{GoOS: "test", GoArch: "test"}))
+	for _, want := range []string{"知识真相 1", "角色知情 1", "读者已知 1", "活跃误信 1"} {
+		if !strings.Contains(out, want) {
+			t.Fatalf("diag export missing aggregate %q:\n%s", want, out)
+		}
+	}
+	for _, secret := range []string{truth, belief, character, knowledgeID} {
+		if strings.Contains(out, secret) {
+			t.Fatalf("diag export leaked knowledge content %q:\n%s", secret, out)
+		}
+	}
+}
+
 func TestExport_NumberVsStringArg(t *testing.T) {
 	intDir := writeSession(t, filepath.Join("agents", "writer-ch07.jsonl"), []agentcore.Message{commitCall(`7`)})
 	si := store.NewStore(intDir)

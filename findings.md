@@ -110,13 +110,16 @@ ingest → segment → analyze → synthesize → publish
 
 重复段落首版已完成：按非空正文行识别段落，仅检测 TrimSpace 后完全相同且至少 24 个 Unicode 字符的内容。短句、标题和相似段落留给 Editor 语义判断；不做跨章累计或模糊相似度。Target 最多保留前 48 字加省略号，Commit 与 Revision Projector 共用同一 Lint，Editor 将 warning 映射到现有 aesthetic 维度。
 
+## Knowledge 诊断与导出边界
+
+Knowledge 诊断已作为当前投影的只读消费完成，不是新事实源。作者侧 `/diag` 显示 Truth、角色知情关系、读者已知 Truth 和活跃错误信念四项聚合；长期未纠正 belief 产生中等置信 info，但不自动处理。可分享的 `diag-export.md` 只含聚合数量，不含 Truth、Belief、角色名或 Knowledge ID。TXT/EPUB 的真实隔离测试证明读者成品继续排除全部创作认知状态。
+
 ## 后续优先级
 
 核心领域与事务已完成一轮加固。下一项建议转向低风险质量增量：
 
-1. Knowledge 最小诊断与导出。
-2. 具体平台 Rubric 试点。
-3. 扩展现有 cocreate 访谈。
-4. 扫榜与拆文独立命令。
+1. 具体平台 Rubric 试点。
+2. 扩展现有 cocreate 访谈。
+3. 扫榜与拆文独立命令。
 
 暂不增加 `doubt/suspect/forget/reader belief` 等认知动作，除非出现明确产品需求。

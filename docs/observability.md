@@ -19,7 +19,7 @@
 
 ### 报 issue：脱敏诊断导出
 
-每次 `/diag` 都会额外写出 `output/{novel}/meta/diag-export.md`——一份**已脱敏**的诊断（小说正文 / prompt / 思考已移除，仅保留行为骨架：工具名、错误串、重复次数、phase/flow、卡住的 step、日志错误分类）。遇到死循环 / 中断类问题，把这个文件贴到 GitHub issue 即可，维护者据此定位，无需用户的 `output/` 数据。
+每次 `/diag` 都会额外写出 `output/{novel}/meta/diag-export.md`——一份**已脱敏**的诊断（小说正文 / prompt / 思考已移除，仅保留行为骨架：工具名、错误串、重复次数、phase/flow、卡住的 step、日志错误分类，以及 Knowledge 的聚合数量）。它不会输出作者 Truth、错误信念正文、角色名或 Knowledge ID。遇到死循环 / 中断类问题，把这个文件贴到 GitHub issue 即可，维护者据此定位，无需用户的 `output/` 数据。
 
 ---
 
@@ -31,8 +31,9 @@
 |---|---|---|---|---|
 | 进度 | `meta/progress.json` | `phase` / `flow` / `completed_chapters` | phase 单调前进，flow 在合法集合内 | phase 倒退 / flow 卡在某状态 |
 | 指南针 | `meta/compass.json` | `last_updated` 与最新章节差距 | gap < 15 章 | gap > 15 章（CompassDrift 命中） |
-| 配角名册 | `meta/cast_ledger.json` | 条目数 / brief_role 填写率 / 名字一致性 | 见 §4 | 见 §4 |
-| 伏笔台账 | `meta/foreshadow.json` | `status="planted"` 的最长停滞章数 | < 章数/3 | > 章数/3（StaleForeshadow 命中） |
+| 配角名册 | `meta/cast_ledger.json` | 条目数 / brief_role 填写率 / 名字一致性 | 见 §5 | 见 §5 |
+| 伏笔台账 | `foreshadow_ledger.json` | 未回收条目的最近推进章 | < 动态阈值 | > max(8, 章数/3)（StaleForeshadow 命中） |
+| 知识状态 | `knowledge_state.json` | Truth / KnownBy / ReaderRevealedAt / 活跃 BelievedBy 数量 | 与正文认知变化一致 | 长期活跃误信（StaleKnowledgeBelief 命中） |
 | 大纲 | `meta/layered_outline.json` | 当前卷剩余未写章数 | 提前 1-2 章已展开 | 写到当前章但下一章无 outline（OutlineExhausted） |
 | 角色档案 | `meta/characters.json` | 是否能在最近 N 章摘要里找到 core/important 角色 | 都能找到 | 缺席（GhostCharacter 命中） |
 | 检查点 | `meta/checkpoints.jsonl` | 最近一行的 `step` 是否对应 progress | 一致 | 不一致（崩溃恢复未自愈） |
@@ -40,7 +41,34 @@
 
 ---
 
-## 3. 指南针（compass）观测
+## 3. Knowledge 认知状态观测
+
+### 看什么
+
+```bash
+cat output/{novel}/knowledge_state.md
+```
+
+`/diag` 概览显示四项聚合：
+
+```text
+真相数
+角色知情关系数
+读者已知真相数
+活跃错误信念数
+```
+
+当活跃错误信念超过 `max(8, 已完成章数/3)` 章仍未纠正，`StaleKnowledgeBelief` 会产生 info Finding。它是中等置信的剧情健康提示，不是硬错误：长期误解可能正是故事设计。证据只列 Knowledge ID、角色和形成章，不复制 Truth 或 Belief 正文，也不会自动生成 `learn` 或修改账本。
+
+### 导出边界
+
+- `knowledge_state.md` 是作者本地投影，含创作秘密，不要公开分享。
+- `meta/diag-export.md` 只含四项聚合数量，可以用于 issue。
+- TXT/EPUB 是读者成品，不包含任何 Knowledge 内部状态。
+
+---
+
+## 4. 指南针（compass）观测
 
 **修复时间**：2026-05-08（commit `fix: update_compass 工具自动填 last_updated`）
 
@@ -73,7 +101,7 @@ cat output/{novel}/meta/compass.json
 
 ---
 
-## 4. 配角名册（cast_ledger）观测
+## 5. 配角名册（cast_ledger）观测
 
 **功能落地**：2026-05-08（commit `feat: 新增配角名册自动追踪次要角色`）
 
@@ -120,7 +148,7 @@ cat output/{novel}/meta/cast_ledger.json | jq 'sort_by(-.appearance_count) | .[:
 
 ---
 
-## 5. Writer 是否在按预期工作
+## 6. Writer 是否在按预期工作
 
 跑长篇时最关心的是 **Writer 真的在按 prompt 行事吗**。最直接的观测是 session log：
 
@@ -142,7 +170,7 @@ tail -50 output/{novel}/meta/sessions/agents/writer-*.jsonl
 
 ---
 
-## 6. 长跑场景红线
+## 7. 长跑场景红线
 
 跑 100+ 章长篇时，下面任何一条命中就该停下来排查：
 
@@ -158,7 +186,7 @@ tail -50 output/{novel}/meta/sessions/agents/writer-*.jsonl
 
 ---
 
-## 7. 文档维护规范
+## 8. 文档维护规范
 
 **新增事实层工件时（新建一个 `meta/*.json` / `meta/*.jsonl`），同步：**
 

@@ -3,9 +3,9 @@
 ## 当前状态
 
 - 总体状态：`complete`
-- 当前里程碑：H——确定性重复段落 Prose Lint
-- 当前阶段：阶段 69—75 全部完成
-- 基线提交：`2f6768b 文档：归档演进计划并补充领域词汇表`
+- 当前里程碑：I——Knowledge 最小诊断与脱敏导出
+- 当前阶段：阶段 76—82 全部完成
+- 基线提交：`83fbb92 功能：检测章节中的完全重复段落`
 - 完整历史：[`docs/history/plans/2026-08-domain-saga-evolution/`](docs/history/plans/2026-08-domain-saga-evolution/)
 
 ## 已完成里程碑
@@ -21,6 +21,7 @@
 | E2 | Foreshadow 纯 Apply/Replay 规则收敛 | `429bb4a` |
 | F | PendingCommit 冻结载荷完整性 | `f5e91de` |
 | G | 稳定文档与规划历史归档 | `2f6768b` |
+| H | 确定性重复段落 Prose Lint | `83fbb92` |
 
 ## 稳定架构边界
 
@@ -147,12 +148,76 @@ git diff --check
 功能：检测章节中的完全重复段落
 ```
 
-## H 之后的候选顺序
+# 里程碑 I：Knowledge 最小诊断与脱敏导出
 
-1. I：Knowledge 最小诊断与导出投影。
-2. J：一个具体平台 Rubric 试点。
-3. K：在现有 cocreate 上增加阶段化访谈。
-4. L：扫榜与拆文独立命令。
+## 边界
+
+- 公共接缝：`diag.Analyze(store)`、TUI `/diag` 渲染、`diag.RenderExport`。
+- 统计：Truth 数、角色知情关系数、读者已知 Truth 数、活跃错误信念数。
+- `diag-export.md` 只输出聚合数字，不输出 Truth、Belief、角色名或 Knowledge ID。
+- TXT/EPUB 是读者成品导出，本批禁止加入任何 Knowledge 数据。
+- 第一批不自动修复、不新增事实源、不修改 Knowledge 生命周期。
+
+## 阶段 76：Knowledge 聚合统计
+
+状态：`complete`
+
+通过 `diag.Analyze(store)` 锁定四项聚合统计并接入 Snapshot。
+
+## 阶段 77：空数据与加载失败
+
+状态：`complete`
+
+无 knowledge_state 时保持零值；损坏文件进入既有 LoadError，不伪造统计。
+
+## 阶段 78：长期未纠正信念 Finding
+
+状态：`complete`
+
+以活跃 belief 的 FormedAt 与最新完成章计算停滞，仅输出 ID/角色到本地 Report；中等置信、仅建议、不自动处理。
+
+## 阶段 79：TUI 诊断摘要
+
+状态：`complete`
+
+在既有概览中显示聚合指标，不新增页面或交互状态。
+
+## 阶段 80：脱敏 diag export
+
+状态：`complete`
+
+只导出聚合数字；测试证明 sentinel Truth/Belief/角色名不出包。
+
+## 阶段 81：成品导出隔离与文档
+
+状态：`complete`
+
+锁定 TXT/EPUB 不含 Knowledge；同步 CONTEXT/observability，不扩展读者成品格式。
+
+## 阶段 82：全量验证与中文提交
+
+状态：`complete`
+
+```text
+go test ./internal/diag -count=1
+go test ./internal/entry/tui -run 'Diag|Report' -count=1
+go test ./internal/host/exp -count=1
+go test ./... -timeout=5m
+go vet ./...
+git diff --check
+```
+
+提交信息：
+
+```text
+功能：增加知识状态诊断与脱敏统计
+```
+
+## I 之后的候选顺序
+
+1. J：一个具体平台 Rubric 试点。
+2. K：在现有 cocreate 上增加阶段化访谈。
+3. L：扫榜与拆文独立命令。
 
 ## 本批明确不做
 
@@ -160,7 +225,7 @@ git diff --check
 - 新领域动作或状态
 - 数据库、Web 事实源、Service/Repository
 - 自动迁移或删除历史规划
-- 模糊段落相似度、跨章重复累计、Rubric、TUI 新功能
+- 模糊段落相似度、跨章重复累计、Rubric、Knowledge 生命周期新动作
 
 ## 错误记录
 

@@ -47,6 +47,7 @@ var allRules = []RuleFunc{
 	GhostCharacter,
 	TimelineGaps,
 	RelationshipStagnation,
+	StaleKnowledgeBelief,
 }
 
 // Analyze 是诊断系统的唯一入口。
@@ -80,6 +81,19 @@ func Analyze(s *store.Store) Report {
 
 func buildStats(snap *Snapshot) Stats {
 	st := Stats{}
+	// Knowledge 当前投影统计不依赖 Progress；即使进度工件缺失也尽量保留可用诊断事实。
+	st.KnowledgeFacts = len(snap.Knowledge)
+	for _, entry := range snap.Knowledge {
+		st.KnowledgeKnownBy += len(entry.KnownBy)
+		if entry.ReaderRevealedAt > 0 {
+			st.KnowledgeReaderKnown++
+		}
+		for _, belief := range entry.BelievedBy {
+			if belief.CorrectedAt == 0 {
+				st.KnowledgeActiveBeliefs++
+			}
+		}
+	}
 	if snap.Progress == nil {
 		return st
 	}

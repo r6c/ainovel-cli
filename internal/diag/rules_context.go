@@ -117,6 +117,50 @@ func TimelineGaps(snap *Snapshot) []Finding {
 	}}
 }
 
+// StaleKnowledgeBelief 检测长期未纠正的活跃错误信念。
+// 仅输出事实 ID 与角色名，不暴露作者 Truth 或错误信念正文。
+func StaleKnowledgeBelief(snap *Snapshot) []Finding {
+	if snap.Progress == nil || len(snap.Knowledge) == 0 {
+		return nil
+	}
+	latest := snap.LatestCompleted()
+	threshold := staleKnowledgeBeliefThreshold(snap.CompletedCount())
+	var stale []string
+	for _, entry := range snap.Knowledge {
+		for _, belief := range entry.BelievedBy {
+			if belief.CorrectedAt != 0 || belief.FormedAt <= 0 {
+				continue
+			}
+			gap := latest - belief.FormedAt
+			if gap > threshold {
+				stale = append(stale, fmt.Sprintf("%s/%s(ch%d形成,已过%d章)", entry.ID, belief.Character, belief.FormedAt, gap))
+			}
+		}
+	}
+	if len(stale) == 0 {
+		return nil
+	}
+	return []Finding{{
+		Rule:       "StaleKnowledgeBelief",
+		Category:   CatContext,
+		Severity:   SevInfo,
+		Confidence: ConfMedium,
+		AutoLevel:  AutoNone,
+		Target:     "context.knowledge",
+		Title:      fmt.Sprintf("错误信念长期未纠正: %d 条超过 %d 章", len(stale), threshold),
+		Evidence:   strings.Join(stale, "; "),
+		Suggestion: "检查 knowledge_state 与近期正文，确认该错误信念仍在服务剧情；如角色已经获知真相，应核对 learn 事实是否漏记。",
+	}}
+}
+
+func staleKnowledgeBeliefThreshold(completedChapters int) int {
+	threshold := completedChapters / 3
+	if threshold < 8 {
+		return 8
+	}
+	return threshold
+}
+
 // RelationshipStagnation 检测关系数据停止更新。
 func RelationshipStagnation(snap *Snapshot) []Finding {
 	if snap.Progress == nil || len(snap.Relationships) == 0 {

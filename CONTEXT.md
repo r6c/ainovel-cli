@@ -337,7 +337,15 @@ duplicate_paragraph
 
 Commit 和 Revision Projector 都必须复用同一个 `rules.Lint`，不要建立第二条 Prose Lint 管线。
 
-## 11. 常用验证
+## 11. Knowledge 诊断与导出边界
+
+作者侧 `diag.Analyze` 聚合：Truth 数、角色知情关系数、读者已知 Truth 数和活跃错误信念数。本地 `/diag` 可以显示长期未纠正 belief 的 Knowledge ID、角色与形成章，但不复制 Truth 或 Belief 正文。
+
+可分享的 `meta/diag-export.md` 只输出上述聚合数字；创作类 Finding 不进入该文件。TXT/EPUB 是读者成品，禁止包含 `knowledge_state`、作者 Truth、角色错误信念或任何内部认知元数据。
+
+Diagnostics 只是当前投影的只读 Adapter，不得修改 Knowledge、自动生成 `learn` 或成为新事实源。
+
+## 12. 常用验证
 
 ```bash
 go test ./... -timeout=5m
