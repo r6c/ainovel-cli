@@ -3,6 +3,8 @@
 > 事实层确定，语义层自主：一个串行确定性 Engine、三个自主 Worker、少数几个按需 Arbiter 函数、一个文件系统事实层。
 >
 > 2026-07-12 控制面更替完成：Coordinator LLM 长循环退役，由 Engine（确定性循环）+ Arbiter（语义裁定函数）接管。设计决策与评审记录见 `docs/engine-arbiter.md`，RFC 见 `docs/engine-rfc.md`。
+>
+> 维护者与代码 Agent 的稳定术语和代码入口速查见仓库根目录 [`CONTEXT.md`](../CONTEXT.md)。
 
 ---
 
@@ -161,6 +163,9 @@ type Checkpoint struct {
 
 Artifact 在 `store/outline.go` `drafts.go` `summaries.go` `characters.go` `world.go`。
 
+- **ChapterRecords**（`meta/chapter_records/*.json`）：最近一次已接纳正文及其完整 `ChapterFacts`；是外部正文修订的比较基线，也是 Knowledge、Foreshadow、时间线、关系和角色状态等派生投影的全量重建输入。
+- **Knowledge 当前投影**（`knowledge_state.json/.md`）：区分作者 Truth、角色 `KnownBy`、读者 `ReaderRevealedAt` 与角色 `BelievedBy`。正式生命周期由 `domain.ApplyKnowledgeUpdates` 唯一裁决；Writer 只接收净化后的 `knowledge_boundaries`，不会看到当前角色与读者均未知的 Truth。
+- **Foreshadow 当前投影**（`foreshadow_ledger.json/.md`）：记录 plant/advance/reinforce/partial_payoff/resolve 生命周期及最近推进章。正式生命周期由 `domain.ApplyForeshadowUpdates` 唯一裁决。
 - **Signals**：`PendingCommit`（commit 中断恢复）。启动/恢复时读，运行时不读。
 - **Decisions**（`meta/decisions.jsonl`）：每次 Arbiter 裁定的审计记录（facts+input+decision），可离线重放；**不是恢复数据源**（恢复只依赖 Progress/Checkpoint/RunMeta）。
 - **增长型世界事实**：时间线与角色状态变化分别以 `timeline.jsonl`、`meta/state_changes.jsonl` 追加；进程内维护去重索引，正常提交只写本章增量。旧版 JSON 数组在下一次追加时按“先原子写新日志、后删除旧文件”的幂等协议迁移，`timeline.md` 是可重建的人类可读投影。

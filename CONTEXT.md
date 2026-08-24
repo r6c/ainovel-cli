@@ -1,0 +1,340 @@
+# ainovel-cli 稳定上下文
+
+本文件面向维护者和代码 Agent，记录当前稳定术语、事实边界与代码入口。它不是任务计划；历史决策过程见 [`docs/history/plans/`](docs/history/plans/)。
+
+## 1. 产品与架构定位
+
+`ainovel-cli` 是本地、文件系统驱动、可恢复的 AI 小说创作运行时。
+
+核心纪律：
+
+```text
+模型负责开放创作与边界清晰的语义判断；
+代码负责状态、约束、事务、恢复和验证。
+```
+
+- Engine 从 Store 读取事实，经纯 Route 决定下一 Worker。
+- Architect / Writer / Editor 是三个自主创作 Worker。
+- Arbiter 只处理启动选择、用户干预、失败/僵局等开放语义裁定。
+- 章节按叙事依赖串行提交，不并行生成相邻正文。
+- 文件 Store 是事实层；CLI/TUI 是 Adapter，不是事实源。
+
+稳定架构详见 [`docs/architecture.md`](docs/architecture.md)。
+
+## 2. 事实源与投影
+
+### 2.1 章节正文与结构化事实
+
+- `chapters/*.md`：用户可编辑的章节正文工作区。
+- `meta/chapter_records/*.json`：最近一次已接纳正文及其完整 `ChapterFacts`；是判断外部正文修订的基线，也是派生事实全量重建的输入。
+- `ChapterFacts`：单章对应的结构化事实增量，包括时间线、伏笔、知识、关系、角色状态等。
+
+关键类型：
+
+```text
+internal/domain/revision.go
+  ChapterFacts
+  ChapterRecord
+  RevisionAnalysis
+```
+
+正文与记录哈希不一致时进入 Revision 管线；不要绕过接纳流程直接把派生状态当成新的章节事实。
+
+### 2.2 当前投影
+
+以下是可从 ChapterRecords 全量重建的当前状态，不是第二事实源：
+
+```text
+foreshadow_ledger.json / .md
+knowledge_state.json / .md
+timeline / relationships / state changes / cast 等
+```
+
+- JSON 是运行时当前投影。
+- Markdown sidecar 只是人类可读视图。
+- `revision.Projector` 负责按章重建投影。
+- `revision.ValidateRecordSet` 只验证整组记录能否重建，不写 Store。
+
+关键入口：
+
+```text
+internal/revision/projector.go
+internal/store/world.go
+```
+
+## 3. Knowledge 认知模型
+
+系统区分四个概念：
+
+```text
+Author Truth       作者认定的客观真相
+Character Known    角色已明确获知 Truth
+Reader Known       正文已向读者完整揭示 Truth
+Character Belief   角色对该 Truth 持有的稳定错误认知
+```
+
+它们不能互相替代：
+
+```text
+Truth ≠ KnownBy ≠ ReaderRevealedAt ≠ BelievedBy
+```
+
+### 3.1 类型与动作
+
+类型位于 `internal/domain/tracking.go`：
+
+- `KnowledgeEntry`：某项 Truth 的当前投影。
+- `KnowledgeHolder`：角色首次获知 Truth 的章节。
+- `KnowledgeBelief`：错误信念的内容、形成章和纠正章。
+- `KnowledgeUpdate`：章节知识增量。
+
+动作：
+
+```text
+establish          建立作者客观真相
+believe            角色形成稳定错误信念
+learn              角色获知客观 Truth，并纠正其活跃错误信念
+reveal_to_reader   正文向读者完整揭示 Truth
+```
+
+正式生命周期唯一实现在：
+
+```text
+internal/domain/knowledge.go
+  ApplyKnowledgeUpdates
+```
+
+Store、Commit、Projector 不得重新复制 Knowledge 生命周期 switch。
+
+### 3.2 Writer 的净化视图
+
+Writer 不直接消费完整 `KnowledgeEntry`，而消费：
+
+```text
+episodic_memory.knowledge_boundaries
+```
+
+构造位置：
+
+```text
+internal/tools/novel_context.go
+  selectKnowledgeForCurrentOutline
+```
+
+约束：
+
+- 当前角色或读者已知时才可输出 Truth。
+- 角色可以只看到自己的活跃错误信念，此时必须隐藏 Truth。
+- 不输出当前章或未来才形成、获知、揭示、纠正的信息。
+- 最多 8 条，并参与上下文预算裁剪。
+
+修改该视图时必须使用 JSON 结构级测试证明隐藏 Truth 没有泄漏。
+
+## 4. Foreshadow 伏笔模型
+
+类型位于 `internal/domain/review.go`，正式生命周期位于：
+
+```text
+internal/domain/foreshadow.go
+  ApplyForeshadowUpdates
+```
+
+动作：
+
+```text
+plant
+advance
+reinforce
+partial_payoff
+resolve
+```
+
+核心语义：
+
+- `PlantedAt` 是首次种植章。
+- `LastAdvancedAt` 是最近推进、强化或部分兑现章。
+- `ResolvedAt` 是完整回收章。
+- `resolved` 是终态；不能再 advance/reinforce/partial_payoff。
+- 同章冻结 payload 重放必须幂等。
+
+Rewrite 的 `RestoreOwnPlants` 是候选 ChapterRecord 构造策略，不属于生命周期函数本身。
+
+## 5. Chapter Commit Saga
+
+普通提交与 Rewrite 共用 `PendingCommit`：
+
+```text
+冻结完整意图
+→ 写正文、ChapterRecord 和状态投影
+→ 推进 Progress
+→ 写 checkpoint
+→ 清除中间态与 PendingCommit
+```
+
+关键代码：
+
+```text
+internal/domain/commit.go
+internal/tools/commit_chapter.go
+internal/tools/commit_validation.go
+internal/store/signals.go
+```
+
+### 5.1 两层校验
+
+首次冻结前：
+
+```text
+纯载荷校验
+＋ 当前 Store 投影语义校验
+```
+
+恢复时：
+
+```text
+密封完整性校验
+＋ 纯载荷校验
+＋ 按 Stage 幂等重放
+```
+
+恢复不能根据已部分应用后的当前投影重新裁决冻结意图。
+
+### 5.2 密封 v1
+
+`PendingCommit` 保存三个 SHA-256：
+
+- `PayloadDigest`：compact JSON payload。
+- `DraftDigest`：冻结正文 UTF-8。
+- `IntentDigest`：Chapter、Rewrite、RewriteMode。
+
+`Stage`、`Output`、`Result` 和时间戳是 Saga 可变字段，不纳入摘要。
+
+完整性失败：
+
+- 返回 `errs.ErrPendingCommitIntegrity`。
+- 保留 `meta/pending_commit.json`。
+- 不自动重签、不删除、不接受被改写内容。
+
+旧 `started/state_applied` 工件只在纯载荷通过后升级密封；`progress_marked/signal_saved` 只做后段收尾。
+
+## 6. Revision 与 Projector
+
+Revision 用于接纳外部或用户正文修改，并重建后续派生事实。
+
+关键入口：
+
+```text
+internal/revision/service.go
+internal/revision/projector.go
+internal/revision/migration.go
+```
+
+- `ValidateRecordSet`：纯验证候选记录集。
+- `Projector.Apply`：全量写入派生投影。
+- Rewrite 创建 PendingCommit 前，必须先验证候选记录集不会破坏后续事实引用。
+- 用户删除 reveal、learn、belief 等动作时允许由全量重建回退对应投影；不要强制恢复用户已删除的认知事实。
+
+## 7. Import 工作区
+
+Import 是独立的语义编译工作区：
+
+```text
+ingest → segment → analyze → synthesize → publish
+```
+
+文档：[`docs/import-pipeline.md`](docs/import-pipeline.md)
+
+关键入口：
+
+```text
+internal/host/imp/analyze.go
+  validateImportedFactSequence
+  validateWorkspaceFacts
+
+internal/host/imp/publish.go
+  importedChapterFacts
+```
+
+约束：
+
+- Import→ChapterFacts 映射只有一份，验证与正式发布共用。
+- 候选分析、截断打捞、综合和发布前均重放正式 ChapterRecord 规则。
+- 非法事实定位首错章，失效该章及后续分析与综合工件。
+- `NextAction` 通过现有状态推导自然回到 Analyze，不新增验证 Stage。
+- 发布门禁必须在正式 Foundation、Hold 或章节写入之前完成。
+
+## 8. 规则所有权
+
+| 规则 | 正式位置 |
+|---|---|
+| Knowledge 生命周期 | `internal/domain/knowledge.go` |
+| Foreshadow 生命周期 | `internal/domain/foreshadow.go` |
+| ChapterFacts 字段纪律 | `internal/chapterfacts/facts.go` |
+| 全量派生验证/重建 | `internal/revision/projector.go` |
+| Commit Saga 与密封 | `internal/tools/commit_chapter.go` |
+| Commit 当前状态前置条件 | `internal/tools/commit_validation.go` |
+| Import 全书事实门禁 | `internal/host/imp/analyze.go` |
+| Writer Knowledge 净化 | `internal/tools/novel_context.go` |
+
+动作枚举可在 Schema、Prompt、Import 局部反馈中出现，但正式跨章生命周期规则不得复制到这些 Adapter。
+
+## 9. 修改纪律
+
+### 新增或修改 ChapterFacts 字段
+
+同步检查：
+
+1. `domain.ChapterFacts`
+2. `chapterfacts.Properties` 与 `Validate`
+3. Commit strict schema
+4. Revision strict schema
+5. Import DTO/schema/publish 映射
+6. ChapterRecord/旧 JSON 兼容
+7. Projector 与 Rewrite
+8. Writer/Editor/Revision/Import Prompt
+9. Host 模拟严格响应夹具
+10. Import 分析缓存版本
+
+### 修改生命周期动作
+
+必须覆盖：
+
+```text
+Domain Apply
+WorldStore 增量
+Commit Pending 前试运行
+PendingCommit started 重放
+Projector 全量重建
+Rewrite 候选记录集
+Import 全书门禁
+Context/Diagnostics 消费
+```
+
+不要先在 Store、Commit、Projector 各写一套 switch。
+
+### 修改 PendingCommit
+
+必须区分：
+
+- 不可变冻结意图
+- Saga 正常可变 Stage/Output/Result
+- legacy 前段与后段兼容
+- 完整性错误时的零副作用与工件保留
+
+## 10. 常用验证
+
+```bash
+go test ./... -timeout=5m
+go vet ./...
+
+go test -race \
+  ./internal/store \
+  ./internal/tools \
+  ./internal/revision \
+  ./internal/host/imp \
+  -timeout=10m
+
+git diff --check
+```
+
+复杂改动继续使用根目录 `task_plan.md`、`findings.md`、`progress.md`；完成后将过程归档到 `docs/history/plans/`，根文件只保留当前工作记忆。
