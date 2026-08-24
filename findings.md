@@ -662,3 +662,11 @@ Knowledge 正式生命周期已经收敛到 `domain.ApplyKnowledgeUpdates`。Wor
 审计额外发现并修复 nil 投影形状：nil current + no updates 继续返回 nil，避免 JSON `null` 漂成 `[]`。
 
 最终审查又发现 Commit 若先过滤未来 Truth，会丢失早期返工 establish 同 ID 冲突的证据，并在 Pending 创建后才由 Store 拒绝。现已由纯 Apply 统一检查引用动作的 `EstablishedAt <= chapter`，Commit 使用完整投影试运行：未来 believe/learn/reveal 被拒绝，而早期 establish 同 ID 仍能检测冲突 Truth。
+
+## 里程碑 E2 盘点
+
+Foreshadow 正式生命周期原先分散在 `WorldStore.UpdateForeshadow`、`tools.validateCommitArgs` 与 `revision.projectWorld`。Store 的重复 plant 会补齐空 Description/PlantedAt/Status，但不会覆盖既有非空值或重新打开 resolved；resolve 会保留 LastAdvancedAt。上述语义现已收敛到 `domain.ApplyForeshadowUpdates`。
+
+Store 只负责锁和 JSON/Markdown，Projector 按章调用纯 Apply，Commit 对完整账本试运行。未来 PlantedAt、resolved 终态和同 payload 顺序由 domain 统一裁决；动作 switch 扫描确认 Store/Commit/Projector 不再维护伏笔生命周期。
+
+收口审计额外修复：nil/非 nil 空账本形状保真；Projector 无伏笔记录继续写 `[]`；同章完整推进后 resolve 的冻结 payload 可幂等重放，但孤立 `resolved→advance/reinforce/partial_payoff` 仍拒绝。

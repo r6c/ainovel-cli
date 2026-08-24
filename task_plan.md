@@ -3,11 +3,11 @@
 ## 规划总览
 
 - 总体状态：`complete`
-- 当前执行阶段：阶段 40—47 全部完成
+- 当前执行阶段：阶段 48—55 全部完成
 - 已完成领域里程碑：A 伏笔生命周期；B 作者真相 + 角色获知；C1 读者揭示 + 信息差；C2a 最小角色错误信念；D Import 全书事实重放门禁
-- 下一里程碑：E1 Knowledge 纯 Apply/Replay 规则收敛
-- 规划原则：不增加认知动作；把现有规则收敛为专用纯函数，Store/Commit/Projector 作为 IO、事务和重建适配器
-- 当前工作区：干净；基线提交 `cafb752 修复：导入发布前重放并验证全书事实`
+- 下一里程碑：E2 Foreshadow 纯 Apply/Replay 规则收敛
+- 规划原则：不增加伏笔状态；把现有规则收敛为专用纯函数，Store/Commit/Projector 作为 IO、事务和重建适配器
+- 当前工作区：干净；基线提交 `a041b5c 重构：统一知识状态的应用与重放规则`
 
 ## 路线决策摘要
 
@@ -1607,4 +1607,78 @@ git diff --check
 
 ```text
 重构：统一知识状态的应用与重放规则
+```
+
+---
+
+# 里程碑 E2：Foreshadow 纯 Apply/Replay 规则收敛
+
+## 目标
+
+将 Store、Commit、Projector 三份伏笔生命周期收敛为专用纯函数：
+
+```go
+ApplyForeshadowUpdates(current, chapter, updates) ([]ForeshadowEntry, error)
+```
+
+不修改输入；错误不返回部分状态；不负责 IO、锁、事务、Markdown、Context、Diagnostics 或 Import。
+
+## 阶段 48：跨接缝等价基线
+
+状态：`complete`
+
+真实 Store 增量与 Projector ChapterRecord 全量重建完整比较 `plant→reinforce→partial_payoff→advance→resolve` 的所有字段。
+
+## 阶段 49：纯 Apply plant
+
+状态：`complete`
+
+空投影建立、字段必填、重复 plant 兼容补全、首次 PlantedAt、输入不变、错误原子性、nil 保真。
+
+## 阶段 50：补齐 advance/reinforce/partial_payoff/resolve
+
+状态：`complete`
+
+逐动作红→绿，统一未知引用、未来 PlantedAt、resolved 终态、时间字段、同 payload 顺序和冻结重放幂等。
+
+## 阶段 51：WorldStore 接入
+
+状态：`complete`
+
+Store 只保留写锁、读取、纯 Apply、JSON/Markdown 写入；删除伏笔动作 switch。
+
+## 阶段 52：Projector 接入
+
+状态：`complete`
+
+按 ChapterRecord 章序调用纯 Apply，删除 Projector 伏笔 switch，保留章号错误上下文。
+
+## 阶段 53：Commit 前置试运行接入
+
+状态：`complete`
+
+删除 plantedAt/status 临时模拟；对完整投影调用纯 Apply。`RestoreOwnPlants` 继续留在 Rewrite 候选记录适配器。
+
+## 阶段 54：Saga、Import、Context、Diagnostics 回归
+
+状态：`complete`
+
+验证 Pending 前拒绝、started 重放、Rewrite、Import 全书门禁、久挂召回和诊断统计不回归。
+
+## 阶段 55：范围审计、全量验证与中文提交
+
+状态：`complete`
+
+```text
+go test ./internal/domain ./internal/store ./internal/tools ./internal/revision ./internal/host/imp ./internal/diag -count=1 -timeout=5m
+go test ./... -timeout=5m
+go vet ./...
+go test -race ./internal/store ./internal/tools ./internal/revision ./internal/host/imp -timeout=10m
+git diff --check
+```
+
+提交信息：
+
+```text
+重构：统一伏笔生命周期的应用与重放规则
 ```

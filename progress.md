@@ -7,6 +7,60 @@
 - 执行原则：严格 TDD，红→绿，单切片推进
 - 项目根：`ainovel-cli`
 
+## 2026-08-24：里程碑 E2 启动
+
+- HEAD：`a041b5c 重构：统一知识状态的应用与重放规则`；工作区开始时干净。
+- session-catchup 未报告未同步上下文。
+- 已确认公共接缝：domain 纯 Apply、WorldStore、CommitChapterTool、Revision Projector；Import 继续经 Revision 间接消费。
+- Store/Commit/Projector 仍各自维护伏笔生命周期；E2 不新增伏笔状态或通用状态机。
+- 下一步先锁定 Store 增量与 Projector 全量重建等价，再写纯 plant 红灯。
+
+### 阶段 48 完成
+
+新增真实双 Store 等价基线：`plant→reinforce→partial_payoff→advance→resolve` 经 WorldStore 增量与 Projector 全量重建后完整 ForeshadowEntry 完全一致。现有实现直接通过，作为重构保护保留。
+
+### 阶段 49 完成
+
+纯 plant 经红→绿锁定：建立 planted 条目、输入不变、重复 plant 不复制/不重新打开、旧投影空字段兼容补全、空 ID/Description 原子拒绝、nil 投影保真。追加测试时一次非唯一锚点编辑被拒绝，改用完整函数尾部后完成。
+
+### 阶段 50 完成
+
+advance、reinforce、partial_payoff、resolve 逐动作红→绿完成。纯规则统一未知引用、未来 PlantedAt、resolved 终态、Status/LastAdvancedAt/ResolvedAt 与同章 resolve 重放；跨章重复 resolve 保持既有赋值式语义。
+
+### 阶段 51 完成
+
+`WorldStore.UpdateForeshadow` 已只保留写锁、读取、纯 Apply 与 JSON/Markdown 写入；原动作 switch 删除。全部 Foreshadow 定向测试及 Store 全包通过。
+
+### 阶段 52 完成
+
+`revision.projectWorld` 保留 Timeline/关系/状态聚合职责，伏笔部分改为逐章调用纯 Apply 并补充章号错误上下文；原伏笔 switch 删除。Foreshadow/Projector/ValidateRecordSet 定向测试及 revision 全包通过。
+
+### 阶段 53 完成
+
+Commit 删除 plantedAt/status 临时模拟，改用完整账本纯 Apply 试运行。初次接入时两条错误文案契约红灯，通过 domain 共享可见性 helper 恢复 `unknown id` 与“种植于第 N 章”信息；Foreshadow/CommitChapter 定向测试及 tools 全包通过。
+
+### 阶段 54 收口审查
+
+回归与动作归属扫描全绿，但发现两个未覆盖边界：`append(nil, empty...)` 会让非 nil 空账本漂成 nil；同章完整 payload `plant→reinforce→partial_payoff→advance→resolve` 全部写入后，started 恢复重放会在 resolved 的 reinforce 处失败。两条纯函数测试均准确变红，现已通过 nil/空保真与受限同章 resolved payload 重放特例修复，孤立终态转换仍拒绝。
+
+进一步审查发现 Projector 原实现从非 nil 空 ledger 开始，无伏笔记录时投影 JSON 为 `[]`；接入纯函数时误改成 nil，公开测试准确变红。现已恢复非 nil 空初值；Foreshadow/Projector、Saga、Import、Context、Diagnostics 回归全部通过。
+
+新增真实 CommitStageStarted 多动作伏笔重放契约并直接通过。随后尝试规范化恢复调用 JSON 时精确替换未匹配；读取真实源码后确认参数本来就是有效 `{"chapter":1}`，无需修改，仅是工具参数转义层级不同。
+
+### 阶段 55 / 里程碑 E2 完成
+
+最终验证全部通过：
+
+```text
+go test ./internal/domain ./internal/store ./internal/tools ./internal/revision ./internal/host/imp ./internal/diag -count=1 -timeout=5m
+go test ./... -timeout=5m
+go vet ./...
+go test -race ./internal/store ./internal/tools ./internal/revision ./internal/host/imp -timeout=10m
+git diff --check
+```
+
+范围扫描确认伏笔生命周期动作 switch 只存在于 `internal/domain/foreshadow.go`。没有新增伏笔状态、通用 StateMachine、Service、Repository、数据库或格式迁移。
+
 ## 2026-08-24：里程碑 E1 启动
 
 - HEAD：`cafb752 修复：导入发布前重放并验证全书事实`；工作区开始时干净。

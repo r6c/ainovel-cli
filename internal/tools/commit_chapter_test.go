@@ -1657,6 +1657,55 @@ func TestCommitChapterReplayKeepsFirstReaderRevealChapter(t *testing.T) {
 	}
 }
 
+func TestCommitChapterReplayKeepsSameChapterAdvancedThenResolvedForeshadow(t *testing.T) {
+	s := store.NewStore(t.TempDir())
+	if err := s.Init(); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Progress.Init(1); err != nil {
+		t.Fatal(err)
+	}
+	updates := []domain.ForeshadowUpdate{
+		{ID: "f", Action: "plant", Description: "断剑来历"},
+		{ID: "f", Action: "reinforce"},
+		{ID: "f", Action: "partial_payoff"},
+		{ID: "f", Action: "advance"},
+		{ID: "f", Action: "resolve"},
+	}
+	if err := s.World.UpdateForeshadow(1, updates); err != nil {
+		t.Fatal(err)
+	}
+	payload, err := json.Marshal(map[string]any{
+		"chapter": 1, "title": "第一章", "summary": "断剑真相完整揭晓",
+		"characters": []string{"林墨"}, "key_events": []string{"回收断剑伏笔"},
+		"foreshadow_updates": updates,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Signals.SavePendingCommit(domain.PendingCommit{
+		Chapter: 1, Stage: domain.CommitStageStarted, Payload: payload,
+		DraftContent: "第一章正文连续推进并完整回收断剑来历，所有变化都发生在同一冻结提交中。",
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := newTestCommitChapterTool(s).Execute(context.Background(), json.RawMessage(`{"chapter":1}`)); err != nil {
+		t.Fatalf("replay foreshadow commit: %v", err)
+	}
+	ledger, err := s.World.LoadForeshadowLedger()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(ledger) != 1 || ledger[0].Status != "resolved" || ledger[0].PlantedAt != 1 ||
+		ledger[0].LastAdvancedAt != 1 || ledger[0].ResolvedAt != 1 {
+		t.Fatalf("foreshadow changed after replay: %+v", ledger)
+	}
+	if pending, err := s.Signals.LoadPendingCommit(); err != nil || pending != nil {
+		t.Fatalf("pending commit not cleared: pending=%+v err=%v", pending, err)
+	}
+}
+
 func TestCommitChapterReplayDoesNotDuplicateKnowledgeState(t *testing.T) {
 	s := store.NewStore(t.TempDir())
 	if err := s.Init(); err != nil {

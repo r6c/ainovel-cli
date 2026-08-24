@@ -458,6 +458,62 @@ func TestProjectorRebuildsKnowledgeFromChapterRecords(t *testing.T) {
 	}
 }
 
+func TestProjectorPreservesEmptyForeshadowLedgerShape(t *testing.T) {
+	st := newRevisionTestStore(t, 1)
+	records := []domain.ChapterRecord{testRecord(1, "正文", domain.ChapterFacts{
+		Title: "第一章", Summary: "无伏笔", KeyEvents: []string{"事件"},
+	}, domain.StyleDelta{}, time.Now())}
+	if err := NewProjector(st).Apply(records); err != nil {
+		t.Fatal(err)
+	}
+	ledger, err := st.World.LoadForeshadowLedger()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if ledger == nil || len(ledger) != 0 {
+		t.Fatalf("empty foreshadow projection must remain non-nil empty, got %#v", ledger)
+	}
+}
+
+func TestForeshadowProjectionMatchesIncrementalWorldStore(t *testing.T) {
+	now := time.Now()
+	records := []domain.ChapterRecord{
+		testRecord(1, "正文一", domain.ChapterFacts{Title: "第一章", Summary: "埋设", KeyEvents: []string{"埋设"},
+			ForeshadowUpdates: []domain.ForeshadowUpdate{{ID: "f", Action: "plant", Description: "断剑来历"}}}, domain.StyleDelta{}, now),
+		testRecord(2, "正文二", domain.ChapterFacts{Title: "第二章", Summary: "强化", KeyEvents: []string{"强化"},
+			ForeshadowUpdates: []domain.ForeshadowUpdate{{ID: "f", Action: "reinforce"}}}, domain.StyleDelta{}, now.Add(time.Minute)),
+		testRecord(3, "正文三", domain.ChapterFacts{Title: "第三章", Summary: "部分兑现", KeyEvents: []string{"部分兑现"},
+			ForeshadowUpdates: []domain.ForeshadowUpdate{{ID: "f", Action: "partial_payoff"}}}, domain.StyleDelta{}, now.Add(2*time.Minute)),
+		testRecord(4, "正文四", domain.ChapterFacts{Title: "第四章", Summary: "推进", KeyEvents: []string{"推进"},
+			ForeshadowUpdates: []domain.ForeshadowUpdate{{ID: "f", Action: "advance"}}}, domain.StyleDelta{}, now.Add(3*time.Minute)),
+		testRecord(5, "正文五", domain.ChapterFacts{Title: "第五章", Summary: "回收", KeyEvents: []string{"回收"},
+			ForeshadowUpdates: []domain.ForeshadowUpdate{{ID: "f", Action: "resolve"}}}, domain.StyleDelta{}, now.Add(4*time.Minute)),
+	}
+
+	incremental := newRevisionTestStore(t, 5)
+	for _, record := range records {
+		if err := incremental.World.UpdateForeshadow(record.Chapter, record.Facts.ForeshadowUpdates); err != nil {
+			t.Fatalf("incremental chapter %d: %v", record.Chapter, err)
+		}
+	}
+	want, err := incremental.World.LoadForeshadowLedger()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	rebuilt := newRevisionTestStore(t, 5)
+	if err := NewProjector(rebuilt).Apply(records); err != nil {
+		t.Fatalf("project records: %v", err)
+	}
+	got, err := rebuilt.World.LoadForeshadowLedger()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("projected foreshadow differs from incremental store:\nwant=%+v\ngot=%+v", want, got)
+	}
+}
+
 func TestProjectorRebuildsForeshadowLifecycleFromChapterRecords(t *testing.T) {
 	st := newRevisionTestStore(t, 4)
 	now := time.Now()

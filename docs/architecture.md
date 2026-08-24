@@ -396,7 +396,7 @@ User: "一句话需求"
 ```
 internal/
   domain/         纯数据与专用纯规则：Phase / FlowState / Progress / Checkpoint / Scope / Story / Plan /
-                  Review / StateChange / Phase-Flow 迁移；Knowledge 增量由单一 ApplyKnowledgeUpdates 驱动
+                  Review / StateChange / Phase-Flow 迁移；Knowledge 与 Foreshadow 增量分别由专用纯 Apply 驱动
   store/          文件系统持久化（tmp+rename + 幂等协调；commit 有 Saga 阶段事实）：progress / checkpoints / outline /
                   drafts / summaries / characters / world / signals / run_meta / runtime /
                   session / decisions(裁定审计)

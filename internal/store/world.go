@@ -160,84 +160,13 @@ func (s *WorldStore) LoadForeshadowLedger() ([]domain.ForeshadowEntry, error) {
 // UpdateForeshadow 批量应用伏笔增量操作。
 func (s *WorldStore) UpdateForeshadow(chapter int, updates []domain.ForeshadowUpdate) error {
 	return s.io.WithWriteLock(func() error {
-		var entries []domain.ForeshadowEntry
-		if err := s.io.ReadJSONUnlocked("foreshadow_ledger.json", &entries); err != nil {
-			if !os.IsNotExist(err) {
-				return err
-			}
+		var current []domain.ForeshadowEntry
+		if err := s.io.ReadJSONUnlocked("foreshadow_ledger.json", &current); err != nil && !os.IsNotExist(err) {
+			return err
 		}
-		idx := make(map[string]int, len(entries))
-		for i, e := range entries {
-			idx[e.ID] = i
-		}
-		for _, u := range updates {
-			if strings.TrimSpace(u.ID) == "" {
-				return fmt.Errorf("foreshadow id 不能为空")
-			}
-			switch u.Action {
-			case "plant":
-				if strings.TrimSpace(u.Description) == "" {
-					return fmt.Errorf("plant foreshadow %q requires description", u.ID)
-				}
-				if i, ok := idx[u.ID]; ok {
-					if entries[i].Description == "" {
-						entries[i].Description = u.Description
-					}
-					if entries[i].PlantedAt == 0 {
-						entries[i].PlantedAt = chapter
-					}
-					if entries[i].Status == "" {
-						entries[i].Status = "planted"
-					}
-					continue
-				}
-				idx[u.ID] = len(entries)
-				entries = append(entries, domain.ForeshadowEntry{
-					ID:          u.ID,
-					Description: u.Description,
-					PlantedAt:   chapter,
-					Status:      "planted",
-				})
-			case "advance":
-				if i, ok := idx[u.ID]; ok {
-					if entries[i].Status == "resolved" {
-						return fmt.Errorf("advance resolved foreshadow %q", u.ID)
-					}
-					entries[i].Status = "advanced"
-					entries[i].LastAdvancedAt = chapter
-				} else {
-					return fmt.Errorf("advance unknown foreshadow %q", u.ID)
-				}
-			case "reinforce":
-				if i, ok := idx[u.ID]; ok {
-					if entries[i].Status == "resolved" {
-						return fmt.Errorf("reinforce resolved foreshadow %q", u.ID)
-					}
-					entries[i].Status = "reinforced"
-					entries[i].LastAdvancedAt = chapter
-				} else {
-					return fmt.Errorf("reinforce unknown foreshadow %q", u.ID)
-				}
-			case "partial_payoff":
-				if i, ok := idx[u.ID]; ok {
-					if entries[i].Status == "resolved" {
-						return fmt.Errorf("partially pay off resolved foreshadow %q", u.ID)
-					}
-					entries[i].Status = "partially_paid"
-					entries[i].LastAdvancedAt = chapter
-				} else {
-					return fmt.Errorf("partially pay off unknown foreshadow %q", u.ID)
-				}
-			case "resolve":
-				if i, ok := idx[u.ID]; ok {
-					entries[i].Status = "resolved"
-					entries[i].ResolvedAt = chapter
-				} else {
-					return fmt.Errorf("resolve unknown foreshadow %q", u.ID)
-				}
-			default:
-				return fmt.Errorf("invalid foreshadow action %q", u.Action)
-			}
+		entries, err := domain.ApplyForeshadowUpdates(current, chapter, updates)
+		if err != nil {
+			return err
 		}
 		if err := s.io.WriteJSONUnlocked("foreshadow_ledger.json", entries); err != nil {
 			return err

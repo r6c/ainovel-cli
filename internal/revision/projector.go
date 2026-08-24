@@ -95,7 +95,6 @@ func projectWorld(records []domain.ChapterRecord) ([]domain.TimelineEvent, []dom
 	var timeline []domain.TimelineEvent
 	var changes []domain.StateChange
 	ledger := make([]domain.ForeshadowEntry, 0)
-	foreshadowIndex := make(map[string]int)
 	relationships := make(map[string]domain.RelationshipEntry)
 
 	for _, record := range records {
@@ -112,57 +111,10 @@ func projectWorld(records []domain.ChapterRecord) ([]domain.TimelineEvent, []dom
 			relation.Chapter = chapter
 			relationships[relationshipKey(relation.CharacterA, relation.CharacterB)] = relation
 		}
-		for _, update := range record.Facts.ForeshadowUpdates {
-			idx, exists := foreshadowIndex[update.ID]
-			switch update.Action {
-			case "plant":
-				if strings.TrimSpace(update.ID) == "" || strings.TrimSpace(update.Description) == "" {
-					return nil, nil, nil, nil, fmt.Errorf("第 %d 章伏笔 plant 缺少 id 或 description", chapter)
-				}
-				if exists {
-					if ledger[idx].Description == "" {
-						ledger[idx].Description = update.Description
-					}
-					continue
-				}
-				foreshadowIndex[update.ID] = len(ledger)
-				ledger = append(ledger, domain.ForeshadowEntry{ID: update.ID, Description: update.Description, PlantedAt: chapter, Status: "planted"})
-			case "advance":
-				if !exists {
-					return nil, nil, nil, nil, fmt.Errorf("第 %d 章推进未知伏笔 %q", chapter, update.ID)
-				}
-				if ledger[idx].Status == "resolved" {
-					return nil, nil, nil, nil, fmt.Errorf("第 %d 章不能推进已回收伏笔 %q", chapter, update.ID)
-				}
-				ledger[idx].Status = "advanced"
-				ledger[idx].LastAdvancedAt = chapter
-			case "reinforce":
-				if !exists {
-					return nil, nil, nil, nil, fmt.Errorf("第 %d 章强化未知伏笔 %q", chapter, update.ID)
-				}
-				if ledger[idx].Status == "resolved" {
-					return nil, nil, nil, nil, fmt.Errorf("第 %d 章不能强化已回收伏笔 %q", chapter, update.ID)
-				}
-				ledger[idx].Status = "reinforced"
-				ledger[idx].LastAdvancedAt = chapter
-			case "partial_payoff":
-				if !exists {
-					return nil, nil, nil, nil, fmt.Errorf("第 %d 章部分兑现未知伏笔 %q", chapter, update.ID)
-				}
-				if ledger[idx].Status == "resolved" {
-					return nil, nil, nil, nil, fmt.Errorf("第 %d 章不能部分兑现已回收伏笔 %q", chapter, update.ID)
-				}
-				ledger[idx].Status = "partially_paid"
-				ledger[idx].LastAdvancedAt = chapter
-			case "resolve":
-				if !exists {
-					return nil, nil, nil, nil, fmt.Errorf("第 %d 章回收未知伏笔 %q", chapter, update.ID)
-				}
-				ledger[idx].Status = "resolved"
-				ledger[idx].ResolvedAt = chapter
-			default:
-				return nil, nil, nil, nil, fmt.Errorf("第 %d 章伏笔操作非法: %q", chapter, update.Action)
-			}
+		var err error
+		ledger, err = domain.ApplyForeshadowUpdates(ledger, chapter, record.Facts.ForeshadowUpdates)
+		if err != nil {
+			return nil, nil, nil, nil, fmt.Errorf("第 %d 章伏笔状态重放失败: %w", chapter, err)
 		}
 	}
 
