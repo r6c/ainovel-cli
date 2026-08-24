@@ -7,6 +7,64 @@
 - 执行原则：严格 TDD，红→绿，单切片推进
 - 项目根：`ainovel-cli`
 
+## 2026-08-24：里程碑 E1 启动
+
+- HEAD：`cafb752 修复：导入发布前重放并验证全书事实`；工作区开始时干净。
+- session-catchup 未报告未同步上下文。
+- 已确认公共接缝：domain 纯 Apply、WorldStore、CommitChapterTool、Revision Projector；Import 只间接消费。
+- 盘点确认 Store/Commit/Projector 三份 Knowledge 生命周期规则，并记录同章 belief→learn 恢复幂等差异。
+- 阶段 40—47 已写入计划；下一步只写 domain establish 的首个失败测试。
+
+### 阶段 40 完成
+
+纯 Apply 的 establish 经过三轮红→绿：公开函数不存在、重复 establish 复制条目、冲突 Truth 被静默接受。当前实现深拷贝输入；同 Truth 幂等并保留首次 EstablishedAt；冲突返回 nil+error 且原输入不变。
+
+### 阶段 41 完成
+
+believe、learn、reveal_to_reader 逐动作红→绿完成。纯函数已锁定 belief 形成/幂等/冲突/已知后拒绝，learn 首次章节与 active belief 纠正，reader reveal 首次章节，以及同章 `establish→believe→learn` 完整冻结 payload 的二次重放幂等。
+
+### 阶段 42 完成
+
+Store 接入后字段矩阵红灯已通过迁移既有直接入口约束到纯 Apply 修复。`WorldStore.UpdateKnowledge` 现在只负责写锁、读取当前投影、调用 `domain.ApplyKnowledgeUpdates`、写 JSON/Markdown；全部 Knowledge/Belief/Reader Store 测试通过。
+
+### 阶段 43 完成
+
+`revision.projectKnowledge` 已改为从空投影逐章调用纯 Apply，删除原 Knowledge switch；错误附加当前章上下文。Knowledge/Belief/ValidateRecordSet/Projector 定向测试和 revision 全包均通过。
+
+### 阶段 44 完成
+
+Commit 前置校验删除 Knowledge truth/knownBy/beliefBy 临时 map 模拟。适配器只过滤 `EstablishedAt > 当前章` 的未来 Truth，再调用纯 Apply 试运行并包装为 `ErrToolPrecondition`。全部 Knowledge/Belief/Reader/CommitChapter 定向测试和 tools 全包通过；已冻结 PendingCommit 恢复仍跳过当前投影语义重判。
+
+### 阶段 45 完成
+
+新增真实双 Store 等价测试：同一 `establish→believe→reveal→learn` 序列经 WorldStore 逐章增量应用与 Projector ChapterRecord 全量重建，完整 KnowledgeEntry 投影完全一致。domain/store/tools/revision/import 五包、Commit Saga 和 Import 全书门禁全部通过。
+
+### 阶段 46 完成
+
+nil 投影形状红灯已通过 clone 的 nil 保真修复。依赖方向为 domain ← Store/Tools/Revision ← Import，无循环。扫描确认 Store、Commit、Projector 已无 Knowledge 生命周期 switch；剩余动作枚举仅服务 ChapterFacts 字段纪律、Import ledger/局部反馈和 domain 正式纯规则。架构文档已同步。
+
+### 阶段 47 最终审查发现
+
+Commit 适配器过滤 `EstablishedAt > 当前章` 的完整条目后再试运行，会丢失未来同 ID 的冲突证据：早期重写 `establish` 不同 Truth 可能被当作新 ID 放行，Store 才在 Pending 创建后拒绝。修复方向是把引用动作的章节可见性收进纯 Apply，并让 Commit 对完整投影试运行；这样 establish 仍能检测全局 ID 冲突，believe/learn/reveal 则统一拒绝未来 Truth。
+
+纯函数未来引用测试取得真实红灯：`believe` 被错误应用到 `EstablishedAt=5` 的 Truth（当前章 3）。Commit 测试第一次编译失败 `undefined: newCommitTestStore`，第二次因猜测 `Drafts.Save` 失败（真实 DraftStore 无此方法），两者都不作为功能红灯。按三次失败协议停止猜 API，搜索并复用同文件既有草稿写法。
+
+修正夹具后取得真实 Commit 红灯：冲突未来 Truth 的第 2 章请求留下 `PendingCommit{stage:started}`。纯 Apply 增加未来引用检查，Commit 改用完整投影试运行后，两条红灯及全部 Knowledge Commit 测试转绿。
+
+### 阶段 47 / 里程碑 E1 完成
+
+最终两轮验证均通过：
+
+```text
+go test ./internal/domain ./internal/store ./internal/tools ./internal/revision ./internal/host/imp -count=1 -timeout=5m
+go test ./... -timeout=5m
+go vet ./...
+go test -race ./internal/store ./internal/tools ./internal/revision ./internal/host/imp -timeout=10m
+git diff --check
+```
+
+范围扫描确认 Knowledge 生命周期动作 switch 只存在于 `internal/domain/knowledge.go`；没有新增认知动作、通用 StateMachine、Service、Repository、数据库或格式迁移。
+
 ## 2026-08-24：全项目 Review 后里程碑 D 规划
 
 ### 基线

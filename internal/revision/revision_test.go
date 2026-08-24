@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"reflect"
 	"slices"
 	"testing"
 	"time"
@@ -142,6 +143,43 @@ func TestChangedExcerptOmitsUnchangedPrefixAndSuffix(t *testing.T) {
 	got := changedExcerpt("相同开头\n旧内容\n相同结尾", "相同开头\n新内容\n相同结尾")
 	if got.Before != "旧内容" || got.After != "新内容" || got.BeforeStart != 2 || got.AfterStart != 2 {
 		t.Fatalf("changed excerpt = %+v", got)
+	}
+}
+
+func TestKnowledgeProjectionMatchesIncrementalWorldStore(t *testing.T) {
+	now := time.Now()
+	records := []domain.ChapterRecord{
+		testRecord(1, "正文一", domain.ChapterFacts{Title: "第一章", Summary: "建立", KeyEvents: []string{"建立"},
+			KnowledgeUpdates: []domain.KnowledgeUpdate{{ID: "k", Action: "establish", Truth: "真相"}}}, domain.StyleDelta{}, now),
+		testRecord(2, "正文二", domain.ChapterFacts{Title: "第二章", Summary: "误解", KeyEvents: []string{"误解"},
+			KnowledgeUpdates: []domain.KnowledgeUpdate{{ID: "k", Action: "believe", Character: "林墨", Belief: "错误答案"}}}, domain.StyleDelta{}, now.Add(time.Minute)),
+		testRecord(3, "正文三", domain.ChapterFacts{Title: "第三章", Summary: "读者揭示", KeyEvents: []string{"揭示"},
+			KnowledgeUpdates: []domain.KnowledgeUpdate{{ID: "k", Action: "reveal_to_reader"}}}, domain.StyleDelta{}, now.Add(2*time.Minute)),
+		testRecord(4, "正文四", domain.ChapterFacts{Title: "第四章", Summary: "角色获知", KeyEvents: []string{"获知"},
+			KnowledgeUpdates: []domain.KnowledgeUpdate{{ID: "k", Action: "learn", Character: "林墨"}}}, domain.StyleDelta{}, now.Add(3*time.Minute)),
+	}
+
+	incremental := newRevisionTestStore(t, 4)
+	for _, record := range records {
+		if err := incremental.World.UpdateKnowledge(record.Chapter, record.Facts.KnowledgeUpdates); err != nil {
+			t.Fatalf("incremental chapter %d: %v", record.Chapter, err)
+		}
+	}
+	want, err := incremental.World.LoadKnowledgeState()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	rebuilt := newRevisionTestStore(t, 4)
+	if err := NewProjector(rebuilt).Apply(records); err != nil {
+		t.Fatalf("project records: %v", err)
+	}
+	got, err := rebuilt.World.LoadKnowledgeState()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("projected knowledge differs from incremental store:\nwant=%+v\ngot=%+v", want, got)
 	}
 }
 

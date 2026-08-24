@@ -3,11 +3,11 @@
 ## 规划总览
 
 - 总体状态：`complete`
-- 当前执行阶段：阶段 32—39 全部完成
-- 已完成领域里程碑：A 伏笔生命周期；B 作者真相 + 角色获知；C1 读者揭示 + 信息差；C2a 最小角色错误信念
-- 下一里程碑：D Import 发布前全书事实重放门禁（P0）
-- 规划原则：先复用既有 ChapterFacts/Commit Saga/WorldStore/Projector/Context，再增加最小领域数据；不从参考项目移植运行架构
-- 当前工作区：干净；基线提交 `3ee475c 功能：追踪角色错误信念与纠正状态`；本轮仅规划文件将发生修改
+- 当前执行阶段：阶段 40—47 全部完成
+- 已完成领域里程碑：A 伏笔生命周期；B 作者真相 + 角色获知；C1 读者揭示 + 信息差；C2a 最小角色错误信念；D Import 全书事实重放门禁
+- 下一里程碑：E1 Knowledge 纯 Apply/Replay 规则收敛
+- 规划原则：不增加认知动作；把现有规则收敛为专用纯函数，Store/Commit/Projector 作为 IO、事务和重建适配器
+- 当前工作区：干净；基线提交 `cafb752 修复：导入发布前重放并验证全书事实`
 
 ## 路线决策摘要
 
@@ -1517,4 +1517,94 @@ git diff --check
 | Saga 夹具批量替换存在非唯一文本 | 1 | 不重复批量替换；改用包含函数上下文的唯一片段逐段编辑 |
 | 进度表追加时匹配串不一致 | 1 | 先搜索实际行，再用唯一文本追加；不重复原替换 |
 | `check-complete.sh` 未识别项目根规划文件 | 1 | 脚本返回 0 但报告未找到；不重复调用，改用搜索确认无 pending/in_progress/未勾选项 |
+| E1 阶段追加锚点已被前次收口改写 | 1 | 头部状态已成功更新；不重复旧锚点替换，读取文件末尾后用真实唯一文本追加 |
 | 大纲角色字段搜索正则未转义 `[]` | 1 | 不重复该正则；直接读取 `domain/story.go` 核对结构 |
+
+---
+
+# 里程碑 E1：Knowledge 纯 Apply/Replay 规则收敛
+
+## 目标
+
+把 Knowledge 生命周期从 Store、Commit 临时模拟和 Revision Projector 三份实现，收敛为专用纯函数：
+
+```go
+ApplyKnowledgeUpdates(current, chapter, updates) ([]KnowledgeEntry, error)
+```
+
+纯函数不做 IO、锁、事务、Prompt、Context、Markdown 或日志；输入不被修改，错误不产生部分结果。
+
+## 已确认公共接缝
+
+1. `domain.ApplyKnowledgeUpdates`：纯领域规则。
+2. `WorldStore.UpdateKnowledge/LoadKnowledgeState`：增量持久化。
+3. `CommitChapterTool.Execute`：首次冻结前试运行与冻结 payload 恢复。
+4. `revision.ValidateRecordSet/Projector.Apply`：全量重建。
+5. Import 继续通过 Revision 间接消费，不增加规则。
+
+## 阶段 40：纯 Apply establish
+
+状态：`complete`
+
+- 空投影 establish；输入不变。
+- 同 ID 同 Truth 幂等。
+- 冲突 Truth 拒绝且输入不变。
+- 首轮不接适配器。
+
+## 阶段 41：补齐 believe / learn / reveal
+
+状态：`complete`
+
+- believe 的形成、幂等、冲突、已知后拒绝。
+- learn 的首次章节与 active belief 纠正。
+- reveal 的首次章节与角色独立性。
+- 同章 `believe → learn` 冻结 payload 完整重放幂等。
+- 深拷贝和错误原子性。
+
+## 阶段 42：WorldStore 接入
+
+状态：`complete`
+
+`UpdateKnowledge` 只保留锁、读、纯 Apply、JSON/Markdown 写入；删除四动作 switch。
+
+## 阶段 43：Projector 接入
+
+状态：`complete`
+
+`projectKnowledge` 从空投影按章调用纯 Apply；删除 Knowledge switch，并保留章号错误上下文。
+
+## 阶段 44：Commit 前置试运行接入
+
+状态：`complete`
+
+首次 PendingCommit 前加载投影并调用纯 Apply；删除 truth/knownBy/beliefBy 临时模拟。恢复冻结 payload 时仍不按当前投影重新裁决。
+
+## 阶段 45：跨接缝等价与 Saga 回归
+
+状态：`complete`
+
+Store 增量、Projector 全量、Commit 同 payload/重放和 Import 全书门禁结果一致。
+
+## 阶段 46：重复规则与范围审计
+
+状态：`complete`
+
+Store、Commit、Projector 不再维护 Knowledge 生命周期 switch；字段矩阵、Import 局部反馈、Context 净化和 Markdown 保持各自职责。禁止新动作、通用状态机、Service 或 Repository。
+
+## 阶段 47：全量验证与中文提交
+
+状态：`complete`
+
+```text
+go test ./internal/domain ./internal/store ./internal/tools ./internal/revision ./internal/host/imp -count=1 -timeout=5m
+go test ./... -timeout=5m
+go vet ./...
+go test -race ./internal/store ./internal/tools ./internal/revision ./internal/host/imp -timeout=10m
+git diff --check
+```
+
+提交信息：
+
+```text
+重构：统一知识状态的应用与重放规则
+```

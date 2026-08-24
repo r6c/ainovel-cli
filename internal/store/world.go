@@ -288,118 +288,13 @@ func (s *WorldStore) LoadKnowledgeState() ([]domain.KnowledgeEntry, error) {
 // UpdateKnowledge 批量应用作者真相建立和角色获知操作。
 func (s *WorldStore) UpdateKnowledge(chapter int, updates []domain.KnowledgeUpdate) error {
 	return s.io.WithWriteLock(func() error {
-		var entries []domain.KnowledgeEntry
-		if err := s.io.ReadJSONUnlocked("knowledge_state.json", &entries); err != nil && !os.IsNotExist(err) {
+		var current []domain.KnowledgeEntry
+		if err := s.io.ReadJSONUnlocked("knowledge_state.json", &current); err != nil && !os.IsNotExist(err) {
 			return err
 		}
-		idx := make(map[string]int, len(entries))
-		for i, entry := range entries {
-			idx[entry.ID] = i
-		}
-		for _, update := range updates {
-			if strings.TrimSpace(update.ID) == "" {
-				return fmt.Errorf("knowledge id 不能为空")
-			}
-			switch update.Action {
-			case "establish":
-				if strings.TrimSpace(update.Truth) == "" {
-					return fmt.Errorf("establish knowledge %q requires truth", update.ID)
-				}
-				if strings.TrimSpace(update.Character) != "" || strings.TrimSpace(update.Belief) != "" {
-					return fmt.Errorf("establish knowledge %q only accepts id and truth", update.ID)
-				}
-				if i, ok := idx[update.ID]; ok {
-					if entries[i].Truth != update.Truth {
-						return fmt.Errorf("knowledge %q truth conflicts with established truth", update.ID)
-					}
-					continue
-				}
-				idx[update.ID] = len(entries)
-				entries = append(entries, domain.KnowledgeEntry{
-					ID: update.ID, Truth: update.Truth, EstablishedAt: chapter,
-				})
-			case "reveal_to_reader":
-				if strings.TrimSpace(update.Truth) != "" || strings.TrimSpace(update.Character) != "" || strings.TrimSpace(update.Belief) != "" {
-					return fmt.Errorf("reveal knowledge %q to reader only accepts id", update.ID)
-				}
-				i, ok := idx[update.ID]
-				if !ok {
-					return fmt.Errorf("reveal unknown knowledge %q to reader", update.ID)
-				}
-				if entries[i].ReaderRevealedAt == 0 {
-					entries[i].ReaderRevealedAt = chapter
-				}
-			case "believe":
-				if strings.TrimSpace(update.Character) == "" || strings.TrimSpace(update.Belief) == "" {
-					return fmt.Errorf("believe knowledge %q requires character and belief", update.ID)
-				}
-				if strings.TrimSpace(update.Truth) != "" {
-					return fmt.Errorf("believe knowledge %q cannot include truth", update.ID)
-				}
-				i, ok := idx[update.ID]
-				if !ok {
-					return fmt.Errorf("believe unknown knowledge %q", update.ID)
-				}
-				if strings.TrimSpace(update.Belief) == strings.TrimSpace(entries[i].Truth) {
-					return fmt.Errorf("belief for knowledge %q must differ from objective truth", update.ID)
-				}
-				repeated := false
-				for _, belief := range entries[i].BelievedBy {
-					if belief.Character != update.Character {
-						continue
-					}
-					if belief.Content != update.Belief {
-						return fmt.Errorf("character %q already has a belief for knowledge %q", update.Character, update.ID)
-					}
-					if belief.CorrectedAt == 0 || (belief.FormedAt == chapter && belief.CorrectedAt == chapter) {
-						repeated = true
-						break
-					}
-					return fmt.Errorf("character %q already has a corrected belief for knowledge %q", update.Character, update.ID)
-				}
-				if repeated {
-					continue
-				}
-				for _, holder := range entries[i].KnownBy {
-					if holder.Character == update.Character {
-						return fmt.Errorf("character %q already knows knowledge %q", update.Character, update.ID)
-					}
-				}
-				entries[i].BelievedBy = append(entries[i].BelievedBy, domain.KnowledgeBelief{
-					Character: update.Character, Content: update.Belief, FormedAt: chapter,
-				})
-			case "learn":
-				if strings.TrimSpace(update.Character) == "" {
-					return fmt.Errorf("learn knowledge %q requires character", update.ID)
-				}
-				if strings.TrimSpace(update.Truth) != "" || strings.TrimSpace(update.Belief) != "" {
-					return fmt.Errorf("learn knowledge %q only accepts id and character", update.ID)
-				}
-				i, ok := idx[update.ID]
-				if !ok {
-					return fmt.Errorf("learn unknown knowledge %q", update.ID)
-				}
-				known := false
-				for _, holder := range entries[i].KnownBy {
-					if holder.Character == update.Character {
-						known = true
-						break
-					}
-				}
-				for j := range entries[i].BelievedBy {
-					if entries[i].BelievedBy[j].Character == update.Character && entries[i].BelievedBy[j].CorrectedAt == 0 {
-						entries[i].BelievedBy[j].CorrectedAt = chapter
-					}
-				}
-				if known {
-					continue
-				}
-				entries[i].KnownBy = append(entries[i].KnownBy, domain.KnowledgeHolder{
-					Character: update.Character, LearnedAt: chapter,
-				})
-			default:
-				return fmt.Errorf("invalid knowledge action %q", update.Action)
-			}
+		entries, err := domain.ApplyKnowledgeUpdates(current, chapter, updates)
+		if err != nil {
+			return err
 		}
 		if err := s.io.WriteJSONUnlocked("knowledge_state.json", entries); err != nil {
 			return err

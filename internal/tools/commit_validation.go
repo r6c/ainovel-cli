@@ -2,7 +2,6 @@ package tools
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/voocel/ainovel-cli/internal/chapterfacts"
 	"github.com/voocel/ainovel-cli/internal/domain"
@@ -104,63 +103,10 @@ func (t *CommitChapterTool) validateCommitArgs(a commitArgs) error {
 		if err != nil {
 			return fmt.Errorf("load knowledge state: %w: %w", errs.ErrStoreRead, err)
 		}
-		establishedAt := make(map[string]int, len(entries))
-		truth := make(map[string]string, len(entries))
-		knownBy := make(map[string]map[string]bool, len(entries))
-		beliefBy := make(map[string]map[string]string, len(entries))
-		for _, entry := range entries {
-			establishedAt[entry.ID] = entry.EstablishedAt
-			truth[entry.ID] = entry.Truth
-			knownBy[entry.ID] = make(map[string]bool, len(entry.KnownBy))
-			for _, holder := range entry.KnownBy {
-				knownBy[entry.ID][holder.Character] = true
-			}
-			beliefBy[entry.ID] = make(map[string]string, len(entry.BelievedBy))
-			for _, belief := range entry.BelievedBy {
-				beliefBy[entry.ID][belief.Character] = belief.Content
-			}
-		}
-		for i, update := range a.KnowledgeUpdates {
-			switch update.Action {
-			case "establish":
-				if _, known := establishedAt[update.ID]; known {
-					if truth[update.ID] != update.Truth {
-						return fmt.Errorf("knowledge_updates[%d] 真相 %q 与已建立内容冲突: %w", i, update.ID, errs.ErrToolPrecondition)
-					}
-					continue
-				}
-				establishedAt[update.ID] = a.Chapter
-				truth[update.ID] = update.Truth
-				knownBy[update.ID] = make(map[string]bool)
-				beliefBy[update.ID] = make(map[string]string)
-			case "believe", "learn", "reveal_to_reader":
-				at, known := establishedAt[update.ID]
-				if !known {
-					return fmt.Errorf("knowledge_updates[%d] references unknown id %q: %w", i, update.ID, errs.ErrToolPrecondition)
-				}
-				if at > a.Chapter {
-					return fmt.Errorf("knowledge_updates[%d] 真相 %q 建立于第 %d 章，不能在第 %d 章获知: %w",
-						i, update.ID, at, a.Chapter, errs.ErrToolPrecondition)
-				}
-				if update.Action == "believe" {
-					if strings.TrimSpace(update.Belief) == strings.TrimSpace(truth[update.ID]) {
-						return fmt.Errorf("knowledge_updates[%d] 角色错误信念必须与真相 %q 不同: %w",
-							i, update.ID, errs.ErrToolPrecondition)
-					}
-					if knownBy[update.ID][update.Character] {
-						return fmt.Errorf("knowledge_updates[%d] 角色 %q 已知真相 %q，不能再形成错误信念: %w",
-							i, update.Character, update.ID, errs.ErrToolPrecondition)
-					}
-					if content, exists := beliefBy[update.ID][update.Character]; exists && content != update.Belief {
-						return fmt.Errorf("knowledge_updates[%d] 角色 %q 已对真相 %q 形成另一错误信念: %w",
-							i, update.Character, update.ID, errs.ErrToolPrecondition)
-					}
-					beliefBy[update.ID][update.Character] = update.Belief
-				}
-				if update.Action == "learn" {
-					knownBy[update.ID][update.Character] = true
-				}
-			}
+		// 章节可见性与生命周期都由纯 Apply 裁决；完整投影必须保留，才能在早期
+		// 返工 establish 同 ID 时发现后续章节已建立的冲突 Truth。
+		if _, err := domain.ApplyKnowledgeUpdates(entries, a.Chapter, a.KnowledgeUpdates); err != nil {
+			return fmt.Errorf("knowledge updates invalid: %v: %w", err, errs.ErrToolPrecondition)
 		}
 	}
 	return nil

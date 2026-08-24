@@ -104,6 +104,40 @@ func TestCommitChapterRejectsUnknownForeshadowReferenceBeforePending(t *testing.
 	}
 }
 
+func TestCommitChapterRejectsConflictingFutureKnowledgeBeforePending(t *testing.T) {
+	s := store.NewStore(t.TempDir())
+	if err := s.Init(); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Progress.Init(5); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Progress.UpdatePhase(domain.PhaseWriting); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Progress.StartChapter(2); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Drafts.SaveDraft(2, "# 第二章\n\n足够长的返工正文，用于测试未来真相冲突必须在 PendingCommit 前拒绝。"); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.World.UpdateKnowledge(5, []domain.KnowledgeUpdate{{ID: "k_future", Action: "establish", Truth: "未来真相"}}); err != nil {
+		t.Fatal(err)
+	}
+	tool := NewCommitChapterTool(s, NewStyleStatsIndex(s))
+	args := map[string]any{
+		"chapter": 2, "title": "第二章", "summary": "冲突建立", "characters": []string{}, "key_events": []string{"冲突"},
+		"knowledge_updates": []domain.KnowledgeUpdate{{ID: "k_future", Action: "establish", Truth: "冲突真相"}},
+	}
+	raw, _ := json.Marshal(args)
+	if _, err := tool.Execute(context.Background(), raw); err == nil {
+		t.Fatal("expected conflicting future truth to fail")
+	}
+	if pending, err := s.Signals.LoadPendingCommit(); err != nil || pending != nil {
+		t.Fatalf("future truth conflict must fail before pending: pending=%+v err=%v", pending, err)
+	}
+}
+
 func TestCommitChapterRejectsConflictingKnowledgeBeforePending(t *testing.T) {
 	s := store.NewStore(t.TempDir())
 	if err := s.Init(); err != nil {

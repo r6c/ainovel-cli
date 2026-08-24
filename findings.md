@@ -644,3 +644,21 @@ validateBatch
 旧工件或手工修改在第 N 章首次非法时，系统保留 1..N-1，删除 N 章及后续分析，并失效 synthesis/story-resolution；现有 LoadState/NextAction 自动回到 ActionAnalyze。Range digest 只消费 compact narrative evidence，不消费 Knowledge/Foreshadow tracking 字段，因此跟踪事实修正不要求主动删除 range cache，其 InputDigest 语义已有回归测试锁定。
 
 分析缓存版本已从 5 提升为 6；workspace 和 ChapterRecord 版本不变。全量测试、vet、关键包 race、diff check 与范围扫描全部通过。
+
+## 里程碑 E1 盘点
+
+Knowledge 生命周期当前有三份生产实现：`WorldStore.UpdateKnowledge`、`tools.validateCommitArgs` 的临时 map 模拟、`revision.projectKnowledge`。ChapterFacts 字段矩阵和 Import 局部校验属于不同职责，可继续保留。
+
+已经存在的关键差异是：Store 为冻结 payload 的同章 `believe → learn` 完整重放允许“同内容、FormedAt==CorrectedAt==chapter”的幂等 belief；Projector通常从空投影重建，不需要从已部分应用终态恢复。统一纯 Apply 必须采用更强的 Store 幂等语义，才能同时服务增量写入、Commit 试运行和从空投影重建。
+
+纯函数还必须深拷贝 KnownBy/BelievedBy，保证试运行或错误不会修改调用方当前投影。
+
+## 里程碑 E1 实施结论
+
+Knowledge 正式生命周期已经收敛到 `domain.ApplyKnowledgeUpdates`。WorldStore 仅负责锁和 JSON/Markdown 投影，Commit 仅负责未来 Truth 的章节可见性与 Pending 前试运行，Projector 仅负责按 ChapterRecord 章序调用纯函数。
+
+`chapterfacts.Validate` 继续维护模型载荷字段矩阵，Import 的动作 switch 继续用于 ledger 和批次内即时反馈；它们不决定正式跨章生命周期。扫描确认 Store/Commit/Projector 无 Knowledge 动作 switch。
+
+审计额外发现并修复 nil 投影形状：nil current + no updates 继续返回 nil，避免 JSON `null` 漂成 `[]`。
+
+最终审查又发现 Commit 若先过滤未来 Truth，会丢失早期返工 establish 同 ID 冲突的证据，并在 Pending 创建后才由 Store 拒绝。现已由纯 Apply 统一检查引用动作的 `EstablishedAt <= chapter`，Commit 使用完整投影试运行：未来 believe/learn/reveal 被拒绝，而早期 establish 同 ID 仍能检测冲突 Truth。

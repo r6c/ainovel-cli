@@ -178,83 +178,11 @@ func projectWorld(records []domain.ChapterRecord) ([]domain.TimelineEvent, []dom
 
 func projectKnowledge(records []domain.ChapterRecord) ([]domain.KnowledgeEntry, error) {
 	var entries []domain.KnowledgeEntry
-	idx := make(map[string]int)
 	for _, record := range records {
-		for _, update := range record.Facts.KnowledgeUpdates {
-			switch update.Action {
-			case "establish":
-				if i, exists := idx[update.ID]; exists {
-					if entries[i].Truth != update.Truth {
-						return nil, fmt.Errorf("第 %d 章真相 %q 与已建立内容冲突", record.Chapter, update.ID)
-					}
-					continue
-				}
-				idx[update.ID] = len(entries)
-				entries = append(entries, domain.KnowledgeEntry{
-					ID: update.ID, Truth: update.Truth, EstablishedAt: record.Chapter,
-				})
-			case "reveal_to_reader":
-				i, exists := idx[update.ID]
-				if !exists {
-					return nil, fmt.Errorf("第 %d 章向读者揭示未知真相 %q", record.Chapter, update.ID)
-				}
-				if entries[i].ReaderRevealedAt == 0 {
-					entries[i].ReaderRevealedAt = record.Chapter
-				}
-			case "believe":
-				i, exists := idx[update.ID]
-				if !exists {
-					return nil, fmt.Errorf("第 %d 章角色对未知真相 %q 形成错误信念", record.Chapter, update.ID)
-				}
-				if strings.TrimSpace(update.Belief) == strings.TrimSpace(entries[i].Truth) {
-					return nil, fmt.Errorf("第 %d 章角色错误信念与真相 %q 相同", record.Chapter, update.ID)
-				}
-				for _, holder := range entries[i].KnownBy {
-					if holder.Character == update.Character {
-						return nil, fmt.Errorf("第 %d 章角色 %q 已知真相 %q，不能形成错误信念", record.Chapter, update.Character, update.ID)
-					}
-				}
-				repeated := false
-				for _, belief := range entries[i].BelievedBy {
-					if belief.Character != update.Character {
-						continue
-					}
-					if belief.Content == update.Belief && belief.CorrectedAt == 0 {
-						repeated = true
-						break
-					}
-					return nil, fmt.Errorf("第 %d 章角色 %q 已对真相 %q 形成另一错误信念", record.Chapter, update.Character, update.ID)
-				}
-				if repeated {
-					continue
-				}
-				entries[i].BelievedBy = append(entries[i].BelievedBy, domain.KnowledgeBelief{
-					Character: update.Character, Content: update.Belief, FormedAt: record.Chapter,
-				})
-			case "learn":
-				i, exists := idx[update.ID]
-				if !exists {
-					return nil, fmt.Errorf("第 %d 章角色获知未知真相 %q", record.Chapter, update.ID)
-				}
-				known := false
-				for _, holder := range entries[i].KnownBy {
-					if holder.Character == update.Character {
-						known = true
-						break
-					}
-				}
-				for j := range entries[i].BelievedBy {
-					if entries[i].BelievedBy[j].Character == update.Character && entries[i].BelievedBy[j].CorrectedAt == 0 {
-						entries[i].BelievedBy[j].CorrectedAt = record.Chapter
-					}
-				}
-				if known {
-					continue
-				}
-				entries[i].KnownBy = append(entries[i].KnownBy, domain.KnowledgeHolder{
-					Character: update.Character, LearnedAt: record.Chapter,
-				})
-			}
+		var err error
+		entries, err = domain.ApplyKnowledgeUpdates(entries, record.Chapter, record.Facts.KnowledgeUpdates)
+		if err != nil {
+			return nil, fmt.Errorf("第 %d 章知识状态重放失败: %w", record.Chapter, err)
 		}
 	}
 	return entries, nil
