@@ -15,6 +15,7 @@ import (
 	"github.com/voocel/agentcore/llm"
 	"github.com/voocel/ainovel-cli/internal/domain"
 	"github.com/voocel/ainovel-cli/internal/llmcontract"
+	"github.com/voocel/ainovel-cli/internal/rules"
 	"github.com/voocel/ainovel-cli/internal/store"
 )
 
@@ -180,6 +181,26 @@ func TestKnowledgeProjectionMatchesIncrementalWorldStore(t *testing.T) {
 	}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("projected knowledge differs from incremental store:\nwant=%+v\ngot=%+v", want, got)
+	}
+}
+
+func TestProjectorRefreshesDuplicateParagraphViolations(t *testing.T) {
+	st := newRevisionTestStore(t, 1)
+	paragraph := "雾气从河面一层层漫上石阶，守夜人握着灯笼，却始终没有回头看那扇门。"
+	records := []domain.ChapterRecord{testRecord(1,
+		"# 第一章\n"+paragraph+"\n他继续守在门外。\n"+paragraph,
+		domain.ChapterFacts{Title: "第一章", Summary: "守夜人等待", KeyEvents: []string{"守夜人等待"}},
+		domain.StyleDelta{}, time.Now(),
+	)}
+	if err := st.World.SaveRuleViolations(1, []rules.Violation{{Rule: "stale_rule", Actual: 1, Severity: rules.SeverityWarning}}); err != nil {
+		t.Fatal(err)
+	}
+	if err := NewProjector(st).Apply(records); err != nil {
+		t.Fatalf("project duplicate paragraph: %v", err)
+	}
+	violations := st.World.LoadRuleViolations(1)
+	if len(violations) != 1 || violations[0].Rule != "duplicate_paragraph" {
+		t.Fatalf("projector did not refresh duplicate paragraph facts: %+v", violations)
 	}
 }
 

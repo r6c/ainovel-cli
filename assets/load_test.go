@@ -78,6 +78,15 @@ func TestKnowledgePromptsDescribeTruthAndLearningBoundaries(t *testing.T) {
 	}
 }
 
+func TestEditorPromptConsumesDuplicateParagraphFacts(t *testing.T) {
+	editor := mustRead(promptsFS, "prompts/editor.md")
+	for _, phrase := range []string{"duplicate_paragraph", "rule_violations", "有意复沓", "不新增评审维度"} {
+		if !strings.Contains(editor, phrase) {
+			t.Fatalf("Editor 提示缺少重复段落机械事实纪律 %q", phrase)
+		}
+	}
+}
+
 func TestForeshadowPromptsDescribeLifecycleActions(t *testing.T) {
 	writer := mustRead(promptsFS, "prompts/writer.md")
 	for _, phrase := range []string{"reinforce", "partial_payoff", "部分兑现", "resolve"} {

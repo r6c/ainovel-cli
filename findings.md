@@ -104,13 +104,19 @@ ingest → segment → analyze → synthesize → publish
 - Prompt 解释语义，代码执行引用、字段、生命周期、事务和恢复约束。
 - CLI/TUI/Web（若未来出现）只能是 Adapter 或投影，不能成为新事实源。
 
+## Prose Lint 当前边界
+
+`rules.Lint` 是内置、始终执行的产品底线检查；`rules.Check` 是用户结构化规则检查。两者都只返回 `Violation` 事实，不阻断流程或创建新 verdict。
+
+重复段落首版已完成：按非空正文行识别段落，仅检测 TrimSpace 后完全相同且至少 24 个 Unicode 字符的内容。短句、标题和相似段落留给 Editor 语义判断；不做跨章累计或模糊相似度。Target 最多保留前 48 字加省略号，Commit 与 Revision Projector 共用同一 Lint，Editor 将 warning 映射到现有 aesthetic 维度。
+
 ## 后续优先级
 
 核心领域与事务已完成一轮加固。下一项建议转向低风险质量增量：
 
-1. 重复段落确定性 Prose Lint。
-2. Knowledge 最小诊断与导出。
-3. 具体平台 Rubric 试点。
-4. 扩展现有 cocreate 访谈。
+1. Knowledge 最小诊断与导出。
+2. 具体平台 Rubric 试点。
+3. 扩展现有 cocreate 访谈。
+4. 扫榜与拆文独立命令。
 
 暂不增加 `doubt/suspect/forget/reader belief` 等认知动作，除非出现明确产品需求。

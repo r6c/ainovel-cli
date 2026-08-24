@@ -16,6 +16,7 @@ import (
 	"github.com/voocel/ainovel-cli/internal/domain"
 	"github.com/voocel/ainovel-cli/internal/errs"
 	"github.com/voocel/ainovel-cli/internal/llmcontract"
+	"github.com/voocel/ainovel-cli/internal/rules"
 	"github.com/voocel/ainovel-cli/internal/store"
 )
 
@@ -29,6 +30,52 @@ func saveTestChapterRecord(t *testing.T, st *store.Store, chapter int, content s
 		Title: fmt.Sprintf("第%d章", chapter), Summary: "既有摘要", KeyEvents: []string{"既有事件"},
 	}, domain.StyleDelta{}); err != nil {
 		t.Fatalf("SaveChapterRecord %d: %v", chapter, err)
+	}
+}
+
+func TestCommitChapterPersistsDuplicateParagraphViolationWithoutBlocking(t *testing.T) {
+	s := store.NewStore(t.TempDir())
+	if err := s.Init(); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Progress.Init(1); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Progress.UpdatePhase(domain.PhaseWriting); err != nil {
+		t.Fatal(err)
+	}
+	paragraph := "雨水沿着破旧窗棂缓慢滑落，林墨站在黑暗里听见远处钟声再次响起。"
+	if err := s.Drafts.SaveDraft(1, "# 第一章\n"+paragraph+"\n他推门走入长廊。\n"+paragraph); err != nil {
+		t.Fatal(err)
+	}
+	args, _ := json.Marshal(map[string]any{
+		"chapter": 1, "title": "第一章", "summary": "林墨听见钟声", "characters": []string{"林墨"}, "key_events": []string{"林墨听见钟声"},
+		"timeline_events": []any{}, "foreshadow_updates": []any{}, "relationship_changes": []any{}, "state_changes": []any{},
+		"knowledge_updates": []any{}, "cast_intros": []any{}, "hook_type": nil, "dominant_strand": nil, "feedback": nil,
+	})
+	raw, err := newTestCommitChapterTool(s).Execute(context.Background(), args)
+	if err != nil {
+		t.Fatalf("duplicate paragraph warning must not block commit: %v", err)
+	}
+	var output struct {
+		Committed      bool `json:"committed"`
+		RuleViolations []struct {
+			Rule string `json:"rule"`
+		} `json:"rule_violations"`
+	}
+	if err := json.Unmarshal(raw, &output); err != nil {
+		t.Fatal(err)
+	}
+	if !output.Committed || !slices.ContainsFunc(output.RuleViolations, func(v struct {
+		Rule string `json:"rule"`
+	}) bool {
+		return v.Rule == "duplicate_paragraph"
+	}) {
+		t.Fatalf("commit output missing duplicate paragraph fact: %+v", output)
+	}
+	stored := s.World.LoadRuleViolations(1)
+	if !slices.ContainsFunc(stored, func(v rules.Violation) bool { return v.Rule == "duplicate_paragraph" }) {
+		t.Fatalf("stored violations missing duplicate paragraph: %+v", stored)
 	}
 }
 

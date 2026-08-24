@@ -101,6 +101,7 @@
 | `forbidden_chars` | aesthetic | severity=error → 至少 issue 一条，verdict 升级 polish |
 | `forbidden_phrases` | aesthetic | 同上 |
 | `fatigue_words` | aesthetic | severity=warning → issue 一条，evidence 引用原文 |
+| `duplicate_paragraph` | aesthetic | severity=warning → 按 `rule_violations.target` 回看原文，判断是有意复沓还是复制退化；必要时 issue，不新增评审维度 |
 
 章节长短没有机械规则：篇幅是否配得上剧情承载量，属于你 pacing 维度的语义判断（明显灌水或仓促收场才立 issue，不看具体数字）。
 

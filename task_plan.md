@@ -3,9 +3,9 @@
 ## 当前状态
 
 - 总体状态：`complete`
-- 当前里程碑：G——稳定文档与规划历史归档
-- 当前阶段：阶段 64—68 全部完成
-- 基线提交：`f5e91de 加固：校验章节提交冻结载荷的完整性`
+- 当前里程碑：H——确定性重复段落 Prose Lint
+- 当前阶段：阶段 69—75 全部完成
+- 基线提交：`2f6768b 文档：归档演进计划并补充领域词汇表`
 - 完整历史：[`docs/history/plans/2026-08-domain-saga-evolution/`](docs/history/plans/2026-08-domain-saga-evolution/)
 
 ## 已完成里程碑
@@ -20,6 +20,7 @@
 | E1 | Knowledge 纯 Apply/Replay 规则收敛 | `a041b5c` |
 | E2 | Foreshadow 纯 Apply/Replay 规则收敛 | `429bb4a` |
 | F | PendingCommit 冻结载荷完整性 | `f5e91de` |
+| G | 稳定文档与规划历史归档 | `2f6768b` |
 
 ## 稳定架构边界
 
@@ -80,21 +81,86 @@ git diff --check
 文档：归档演进计划并补充领域词汇表
 ```
 
-## G 之后的候选顺序
+# 里程碑 H：确定性重复段落 Prose Lint
 
-1. H：确定性重复段落 Prose Lint。
-2. I：Knowledge 最小诊断与导出投影。
-3. J：一个具体平台 Rubric 试点。
-4. K：在现有 cocreate 上增加阶段化访谈。
-5. L：扫榜与拆文独立命令。
+## 行为边界
+
+- 公共接缝：`rules.Lint(text) []Violation`；Commit/Revision 继续自动消费。
+- 段落：修剪首尾空白后的非空、非 `#` 标题单行。
+- 仅检测完全相同段落；不做相似度或语义判定。
+- 最小长度：24 个 Unicode 字符；短对话、拟声词不报。
+- 同段出现至少 2 次时返回 warning：`rule=duplicate_paragraph`、`limit=1`、`actual=出现次数`。
+- Target 只保存有限长度示例，避免把整段正文复制进诊断。
+
+## 阶段 69：首个完全重复长段落
+
+状态：`complete`
+
+写 `rules.Lint` 公开行为失败测试并做最小实现。
+
+## 阶段 70：低误报边界
+
+状态：`complete`
+
+覆盖短段、标题、不同长段、首尾空白、三个以上重复和多个重复组。
+
+## 阶段 71：Violation 契约与隐私边界
+
+状态：`complete`
+
+固定 warning、limit/actual、Target 截断和确定性输出顺序。
+
+## 阶段 72：Commit 与 Revision 集成
+
+状态：`complete`
+
+验证普通提交和 Revision Projector 都将重复段落事实写入既有 rule violations，不阻断流程。
+
+## 阶段 73：Editor 语义消费
+
+状态：`complete`
+
+同步规则注释/文档，确认 Editor 复用 `rule_violations`，不新增 verdict 或 Route。
+
+## 阶段 74：误报样本与范围审计
+
+状态：`complete`
+
+覆盖对话复沓、刻意短句、CRLF、空白行；不加入模糊匹配、跨章累计或可配置阈值。
+
+## 阶段 75：全量验证与中文提交
+
+状态：`complete`
+
+```text
+go test ./internal/rules -count=1
+go test ./internal/tools -run 'CommitChapter|RuleViolation' -count=1
+go test ./internal/revision -run 'Projector|RuleViolation' -count=1
+go test ./... -timeout=5m
+go vet ./...
+git diff --check
+```
+
+提交信息：
+
+```text
+功能：检测章节中的完全重复段落
+```
+
+## H 之后的候选顺序
+
+1. I：Knowledge 最小诊断与导出投影。
+2. J：一个具体平台 Rubric 试点。
+3. K：在现有 cocreate 上增加阶段化访谈。
+4. L：扫榜与拆文独立命令。
 
 ## 本批明确不做
 
-- 修改 Go 运行时行为
+- 除 `rules.Lint` 完全重复段落检测外的运行时改动
 - 新领域动作或状态
 - 数据库、Web 事实源、Service/Repository
 - 自动迁移或删除历史规划
-- Prose Lint、Rubric、TUI 新功能
+- 模糊段落相似度、跨章重复累计、Rubric、TUI 新功能
 
 ## 错误记录
 

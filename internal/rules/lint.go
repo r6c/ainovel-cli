@@ -3,6 +3,7 @@ package rules
 import (
 	"regexp"
 	"strings"
+	"unicode/utf8"
 )
 
 // Lint 内置产品底线检查：扫描正文中的机制残留，与用户规则无关，commit 时始终执行。
@@ -11,10 +12,12 @@ import (
 // 当前三类（全部来自真实长跑产物的实证缺陷）：
 //   - markdown_residue：正文残留 ** 加粗、首行之外的 # 标题行（导出 txt 会裸露符号）
 //   - non_cjk_fragments：连续拉丁字母片段（模型语言混杂，如中文正文裸混 "pattern"）
+//   - duplicate_paragraph：同章完全重复的长正文段落；仅报事实，不判断是否有意复沓
 func Lint(text string) []Violation {
 	var vs []Violation
 	vs = appendMarkdownResidue(vs, text)
 	vs = appendNonCJKFragments(vs, text)
+	vs = appendDuplicateParagraphs(vs, text)
 	return vs
 }
 
@@ -46,6 +49,47 @@ func appendMarkdownResidue(vs []Violation, text string) []Violation {
 			Rule:     "markdown_residue",
 			Target:   "#",
 			Actual:   headings,
+			Severity: SeverityWarning,
+		})
+	}
+	return vs
+}
+
+const (
+	duplicateParagraphMinRunes    = 24
+	duplicateParagraphTargetRunes = 48
+)
+
+func duplicateParagraphTarget(paragraph string) string {
+	runes := []rune(paragraph)
+	if len(runes) <= duplicateParagraphTargetRunes {
+		return paragraph
+	}
+	return string(runes[:duplicateParagraphTargetRunes]) + "…"
+}
+
+func appendDuplicateParagraphs(vs []Violation, text string) []Violation {
+	counts := make(map[string]int)
+	var order []string
+	for line := range strings.SplitSeq(text, "\n") {
+		paragraph := strings.TrimSpace(line)
+		if paragraph == "" || strings.HasPrefix(paragraph, "#") || utf8.RuneCountInString(paragraph) < duplicateParagraphMinRunes {
+			continue
+		}
+		if counts[paragraph] == 0 {
+			order = append(order, paragraph)
+		}
+		counts[paragraph]++
+	}
+	for _, paragraph := range order {
+		if counts[paragraph] < 2 {
+			continue
+		}
+		vs = append(vs, Violation{
+			Rule:     "duplicate_paragraph",
+			Target:   duplicateParagraphTarget(paragraph),
+			Limit:    1,
+			Actual:   counts[paragraph],
 			Severity: SeverityWarning,
 		})
 	}

@@ -57,6 +57,7 @@ func (s Structured) IsEmpty() bool {
 //	forbidden_chars 出现             -> Error
 //	forbidden_phrases 出现           -> Error
 //	fatigue_words 超阈值             -> Warning
+//	duplicate_paragraph 完全重复长段落 -> Warning
 type Severity string
 
 const (
@@ -70,7 +71,7 @@ const (
 // editor 在审阅时把这些事实映射到现有七维（aesthetic/pacing/character/consistency），
 // 由 LLM 自主决定是否升级 verdict 触发 polish/rewrite。
 type Violation struct {
-	Rule     string   `json:"rule"`             // forbidden_chars / forbidden_phrases / fatigue_words
+	Rule     string   `json:"rule"`             // forbidden_chars / forbidden_phrases / fatigue_words / duplicate_paragraph
 	Target   string   `json:"target,omitempty"` // 具体违规对象（哪个词/字符）
 	Limit    any      `json:"limit,omitempty"`  // 阈值；fatigue_words=int / forbidden_*=空
 	Actual   any      `json:"actual"`           // 实际值：出现次数

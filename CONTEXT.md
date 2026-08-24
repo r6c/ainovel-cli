@@ -321,7 +321,23 @@ Context/Diagnostics 消费
 - legacy 前段与后段兼容
 - 完整性错误时的零副作用与工件保留
 
-## 10. 常用验证
+## 10. 确定性 Prose Lint
+
+`internal/rules.Lint` 是始终执行的产品底线检查；它只返回 `Violation` 事实，不阻断 Commit，也不新增 verdict 或 Route。
+
+当前内置规则包括：
+
+```text
+markdown_residue
+non_cjk_fragments
+duplicate_paragraph
+```
+
+`duplicate_paragraph` 只检测同章内 TrimSpace 后完全相同、至少 24 个 Unicode 字符的非标题正文行。它不做模糊相似度、跨章累计或意图判断；Editor 根据 `rule_violations` 判断是有意复沓还是复制退化。Target 最多保留前 48 字加省略号。
+
+Commit 和 Revision Projector 都必须复用同一个 `rules.Lint`，不要建立第二条 Prose Lint 管线。
+
+## 11. 常用验证
 
 ```bash
 go test ./... -timeout=5m

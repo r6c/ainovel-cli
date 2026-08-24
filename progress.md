@@ -3,76 +3,74 @@
 ## 当前会话
 
 - 日期：2026-08-24
-- 基线：`f5e91de 加固：校验章节提交冻结载荷的完整性`
-- 当前里程碑：G——稳定文档与规划历史归档
-- 当前阶段：阶段 67——同步 README 与架构导航
-- 运行时改动：无
+- 基线：`2f6768b 文档：归档演进计划并补充领域词汇表`
+- 当前里程碑：H——确定性重复段落 Prose Lint
+- 当前阶段：阶段 69—75 全部完成
+- 公共测试接缝：`rules.Lint(text) []Violation`
 
-## 已完成
+## 基线盘点
 
-### 阶段 64：归档历史
+- `rules.Lint` 当前只检测 `markdown_residue` 与 `non_cjk_fragments`。
+- `CommitChapterTool.checkRules` 会把 `rules.Lint` 结果写入提交输出及 `meta/rule_violations.jsonl`。
+- `revision.Projector` 会对接纳正文重新执行 `rules.Lint`，无需新增第二条管线。
+- `Violation` 只陈述事实，不阻断提交；Editor 经现有 `rule_violations` 语义评审。
 
-已把原三份规划文件完整复制到：
+## 重复段落第一版边界
 
 ```text
-docs/history/plans/2026-08-domain-saga-evolution/
+段落 = TrimSpace 后的非空、非 # 标题单行
+完全相同
+长度 >= 24 Unicode 字符
+出现次数 >= 2
+severity = warning
+limit = 1
+actual = 出现次数
 ```
 
-归档快照总计约 140KB，覆盖里程碑 A—F 的完整计划、发现、逐步 TDD 记录与 G 启动基线，并新增 README 索引。
+短对话、拟声词、标题、近似改写不报；Target 必须截断，不能复制整段正文。
 
-### 阶段 65：压缩根工作记忆
+## 错误记录
 
-已完成。根目录三文件仅保留稳定现状、活跃里程碑、最近验证和下一路线；全部逐步日志保留在归档。
+- 搜索 Markdown 中双换行时，`search_files` 底层 rg 不接受字面换行；未重复该方式，改用正文测试夹具与写作参考确认项目按行分段惯例。
 
-### 阶段 66：稳定词汇表
+## 实施记录
 
-已新增根目录 `CONTEXT.md`，覆盖产品定位、事实源/投影、Knowledge 四层认知、Foreshadow、Commit Saga 密封、Revision、Import、规则所有权和修改检查清单。代码入口均已从当前实现核对。
+### 阶段 69 完成
 
-### 阶段 67：README 与架构导航
+首个红灯准确：重复长段落原先返回空列表。现已按首次出现顺序统计 TrimSpace 后完全相同、长度至少 24 个 Unicode 字符的非标题正文行，输出 warning、limit=1、actual=次数；既有 Lint 测试通过。
 
-README 已增加角色认知边界、密封恢复能力与维护文档入口。architecture 的首次批量编辑因总览标题文本与预期不一致而原子拒绝，文件未部分修改；改为读取准确标题与 Signals 段落后精确编辑。相关章节推荐仍准确保留为伏笔/出场/状态/关系四维，不把 Knowledge 边界误称为推荐维度。
+### 阶段 70 完成
 
-### 阶段 68 / 里程碑 G 完成
+短对话、重复标题和只差一个标点的近似段落均不报；TrimSpace 归一化首尾空白，空行和 CRLF 不影响识别，三个副本准确报告 actual=3。所有契约现有实现直接满足。
 
-- 递归检查 10 个相关 Markdown，相对链接全部可解析。
-- 根规划文件由约 139KB 缩减为约 10.6KB；完整历史归档约 142KB。
-- Git 范围仅包含 Markdown 文档，无 Go 生产或测试代码变更。
-- `git diff --check` 通过。
-- 下一步建议规划 H：确定性重复段落 Prose Lint。
+### 阶段 71 完成
 
-## 最近完成的运行时里程碑
+160 字重复段落曾完整复制到 Target；现仅输出前 48 个 Unicode 字符 + `…`，完整段落仍用于去重。多个重复组按首次出现顺序稳定输出，Violation 注释已同步 `duplicate_paragraph` warning。
 
-| 提交 | 内容 |
-|---|---|
-| `f5e91de` | PendingCommit payload/draft/intent 密封与恢复完整性 |
-| `429bb4a` | Foreshadow 专用纯 Apply/Replay |
-| `a041b5c` | Knowledge 专用纯 Apply/Replay |
-| `cafb752` | Import 发布前全书事实重放门禁 |
-| `3ee475c` | 角色错误信念与纠正 |
-| `03bf271` | 读者揭示与信息差 |
-| `6a7b7f7` | 作者真相与角色知情 |
-| `13a775b` | 伏笔生命周期升级 |
+### 阶段 72 集成进度
 
-## 最近验证基线
+- 首轮 Commit 测试停在 `phase=init`，补齐合法 `PhaseWriting` 后通过；重复段落 warning 出现在返回 JSON 和持久化规则事实中，提交不阻断。
+- Revision Projector 测试集中在 `revision_test.go`；读取不存在的 `projector_test.go` 返回 ENOENT，已停止猜测并改用真实文件。
+- Commit 与 Projector 公共集成均通过：提交返回并持久化重复段落 warning；Projector 会刷新旧违规事实而非追加。
+- Editor 资源契约红灯准确：原提示未识别 `duplicate_paragraph`。最小同步到现有 aesthetic 映射，要求区分有意复沓和复制退化，不新增评审维度。
 
-里程碑 F 提交前通过：
+### 阶段 74—75 完成
+
+- 23 个 Unicode 字符不报，24 个字符开始报告；只 TrimSpace，不归一化内部空白。
+- 范围扫描确认没有 similarity/Levenshtein/Jaccard/fuzzy 或跨章状态。
+- 关键 rules/tools/revision/assets 测试通过；`go test ./... -timeout=5m`、`go vet ./...`、`git diff --check` 通过。
+- 一次对 README 单文件路径调用 `search_files` 返回 ENOTDIR；未重复，最终审阅改用 Git diff 与直接文件工具。
+
+## 最终验证
 
 ```text
+go test ./internal/rules -count=1
+go test ./internal/tools -run 'CommitChapterPersistsDuplicateParagraph|RuleViolation' -count=1 -timeout=5m
+go test ./internal/revision -run 'ProjectorRefreshesDuplicateParagraph|RuleViolation' -count=1
+go test ./assets -count=1
 go test ./... -timeout=5m
 go vet ./...
-go test -race ./internal/store ./internal/tools ./internal/revision -timeout=10m
 git diff --check
 ```
 
-本里程碑只改 Markdown，最终将验证链接、格式、文件体积和 Git 范围。
-
-## 本会话发现与错误
-
-- 根规划文件压缩前合计 138,865 字节，混有过期状态；完整归档后再压缩。
-- README 与 architecture 尚未正式描述 Knowledge 四层认知模型。
-- 搜索 Projector 函数时一次未闭合括号正则失败；未重复，改用字面搜索确认入口。
-- 首次 Markdown 链接检查使用 Node.js，但用户环境没有 `node`；不重复该方案，改用已存在的 `python3`。
-
-## 下一步
-
-里程碑 G 已完成，下一步建议规划 H：确定性重复段落 Prose Lint。
+全部通过。里程碑 H 完成；下一候选为 Knowledge 最小诊断与导出投影。
