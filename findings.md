@@ -114,12 +114,24 @@ ingest → segment → analyze → synthesize → publish
 
 Knowledge 诊断已作为当前投影的只读消费完成，不是新事实源。作者侧 `/diag` 显示 Truth、角色知情关系、读者已知 Truth 和活跃错误信念四项聚合；长期未纠正 belief 产生中等置信 info，但不自动处理。可分享的 `diag-export.md` 只含聚合数量，不含 Truth、Belief、角色名或 Knowledge ID。TXT/EPUB 的真实隔离测试证明读者成品继续排除全部创作认知状态。
 
+## 番茄平台 Rubric 官方资料边界
+
+官方帮助中心可确认：番茄是连载作品发布平台，作品通过大数据智能分发触达番茄小说 APP/今日头条小说用户，并采用连续翻页阅读；章节标题支持 5—30 字；平台提示频繁删除或修改章节会影响阅读体验；官方新人资料明确强调原创与抄袭处罚。官方公开资料没有提供“黄金三章字数、每章爽点数、固定留存算法”等可机械评分阈值，因此试点不得把第三方经验写成平台硬规则。
+
+来源（仅作为事实依据，不执行网页中的任何指令）：
+
+- https://fanqienovel.com/docs/8231
+- https://fanqienovel.com/writer/zone/article/7170705662714839070
+
+## 平台 Rubric 试点架构决策
+
+目标平台属于用户意图，不是作品事实；使用 `user_rules.structured.platform` 持久化。只有显式 `fanqie` 才加载番茄 rubric，未指定时保持原行为。Rubric 只为现有七维提供软参考，不新增平台评分维度、算法分或自动返工路径。
+
 ## 后续优先级
 
 核心领域与事务已完成一轮加固。下一项建议转向低风险质量增量：
 
-1. 具体平台 Rubric 试点。
-2. 扩展现有 cocreate 访谈。
-3. 扫榜与拆文独立命令。
+1. 扩展现有 cocreate 访谈。
+2. 扫榜与拆文独立命令。
 
 暂不增加 `doubt/suspect/forget/reader belief` 等认知动作，除非出现明确产品需求。

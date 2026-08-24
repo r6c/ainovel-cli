@@ -33,6 +33,7 @@ type References struct {
 	Differentiation  string // 通用差异化设计参考
 	ArcTemplates     string // 题材弧型模板（按 style 加载，可为空）
 	AntiAITone       string // 去 AI 味判据库（writer/editor 共用，全程注入）
+	FanqieRubric     string // 番茄平台软评价参考；仅显式 platform=fanqie 时注入
 }
 
 // ContextTool 组装当前章节所需上下文。
@@ -429,7 +430,7 @@ func (t *ContextTool) loadLayeredCharacters(result map[string]any, chapter int, 
 }
 
 // writerReferences 返回写作参考资料。章节 1 返回全量，后续章节裁剪掉不再需要的模板。
-func (t *ContextTool) writerReferences(chapter int) map[string]string {
+func (t *ContextTool) writerReferences(chapter int, reads *contextReads) map[string]string {
 	refs := map[string]string{}
 	add := func(k, v string) {
 		if v != "" {
@@ -441,6 +442,7 @@ func (t *ContextTool) writerReferences(chapter int) map[string]string {
 	add("hook_techniques", t.refs.HookTechniques)
 	add("quality_checklist", t.refs.QualityChecklist)
 	add("anti_ai_tone", t.refs.AntiAITone) // 去 AI 味判据全程注入，不随章节裁剪
+	add("platform_rubric", t.selectedPlatformRubric(reads))
 	if chapter <= 3 {
 		add("chapter_guide", t.refs.ChapterGuide)
 		add("dialogue_writing", t.refs.DialogueWriting)
@@ -455,7 +457,7 @@ func (t *ContextTool) writerReferences(chapter int) map[string]string {
 	return refs
 }
 
-func (t *ContextTool) architectReferences() map[string]string {
+func (t *ContextTool) architectReferences(reads *contextReads) map[string]string {
 	refs := map[string]string{}
 	add := func(k, v string) {
 		if v != "" {
@@ -469,7 +471,20 @@ func (t *ContextTool) architectReferences() map[string]string {
 	add("style_reference", t.refs.StyleReference)
 	add("arc_templates", t.refs.ArcTemplates)
 	add("anti_ai_tone", t.refs.AntiAITone) // architect 大纲去 AI 腔；亦兜 editor 走 Chapter=0 路径
+	add("platform_rubric", t.selectedPlatformRubric(reads))
 	return refs
+}
+
+func (t *ContextTool) selectedPlatformRubric(reads *contextReads) string {
+	snap, err := t.store.UserRules.Load()
+	if err != nil {
+		reads.require("user_rules.platform", err)
+		return ""
+	}
+	if snap == nil || snap.Structured.Platform != "fanqie" {
+		return ""
+	}
+	return t.refs.FanqieRubric
 }
 
 // foundationStatus 检查基础设定的完备性，返回缺失项列表。

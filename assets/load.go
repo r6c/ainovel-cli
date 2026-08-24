@@ -152,6 +152,7 @@ func loadReferences(style string, opts LoadOptions) tools.References {
 		LongformPlanning:  mustRead(referencesFS, "references/longform-planning.md"),
 		Differentiation:   mustRead(referencesFS, "references/differentiation.md"),
 		AntiAITone:        resolveAppendable(mustRead(referencesFS, "references/anti-ai-tone.md"), "anti-ai-tone.md", opts),
+		FanqieRubric:      resolveAppendable(mustRead(referencesFS, "references/platforms/fanqie.md"), filepath.Join("platforms", "fanqie.md"), opts),
 	}
 	if style != "" && style != "default" {
 		genreDir := "references/genres/" + style + "/"

@@ -90,7 +90,7 @@
 
 `novel_context` 返回的 `working_memory.user_rules` 是用户对本书的偏好：
 
-- **`structured`**：机械可检字段（forbidden_chars / forbidden_phrases / fatigue_words / genre）
+- **`structured`**：`platform` 是显式目标平台选择、`genre` 是题材标签；forbidden_chars / forbidden_phrases / fatigue_words 才是机械可检字段
 - **`preferences`**：合并后的 Markdown 偏好正文（带来源标题）
 - **`sources`** / **`conflicts`**：来源链与异常清单（如有冲突需在 review 中说明）
 
@@ -115,6 +115,16 @@
 判定规则不变：accept / polish / rewrite 由现有 verdict 标准决定。机械违规只是事实，最终是否触发返工由整体审美判断决定。
 
 **追加约束语义**：user_rules 是本节基础 rubric 的追加约束，不是覆盖。用户偏好与项目默认审美一致时直接合并；冲突时优先采用用户偏好。用户在创作过程中追加的长效要求也会进入 `user_rules.preferences`，逐条核对：违背即归入最准确的现有维度；确实无法准确归类时可补充更具体的维度，不要为了凑枚举扭曲问题语义。
+
+### 3c. 目标平台适配（platform_rubric）
+
+当 `reference_pack.references.platform_rubric` 存在时，先区分其中的**官方可核事实**与**产品软评价**：
+
+- 官方事实只用于理解发布与阅读场景，不得推导平台算法、签约概率或不存在的硬阈值。
+- 产品软评价映射回现有七维：推进清晰度归 pacing，继续阅读动力归 hook，连续承接归 continuity，移动端表达归 aesthetic，标题与原创边界归 consistency。
+- 平台参考是追加视角，不是新的评分状态；必须使用现有七维，**不得新增平台维度**，不得创建平台算法分。
+- 平台适配不得单独决定 verdict。只有当原文证据同时构成既有维度的真实问题时，才按原 verdict 规则处理。
+- 用户明确偏好和 `chapter_contract` 优先；过渡章、铺垫章、关系章职责成立时，不因缺少强刺激机械扣分。
 
 ### 4. 保存结论
 

@@ -3,9 +3,9 @@
 ## 当前状态
 
 - 总体状态：`complete`
-- 当前里程碑：I——Knowledge 最小诊断与脱敏导出
-- 当前阶段：阶段 76—82 全部完成
-- 基线提交：`83fbb92 功能：检测章节中的完全重复段落`
+- 当前里程碑：J——番茄平台 Rubric 试点
+- 当前阶段：阶段 83—90 全部完成
+- 基线提交：`25a43d5 功能：增加知识状态诊断与脱敏统计`
 - 完整历史：[`docs/history/plans/2026-08-domain-saga-evolution/`](docs/history/plans/2026-08-domain-saga-evolution/)
 
 ## 已完成里程碑
@@ -22,6 +22,7 @@
 | F | PendingCommit 冻结载荷完整性 | `f5e91de` |
 | G | 稳定文档与规划历史归档 | `2f6768b` |
 | H | 确定性重复段落 Prose Lint | `83fbb92` |
+| I | Knowledge 最小诊断与脱敏统计 | `25a43d5` |
 
 ## 稳定架构边界
 
@@ -213,19 +214,88 @@ git diff --check
 功能：增加知识状态诊断与脱敏统计
 ```
 
-## I 之后的候选顺序
+# 里程碑 J：番茄平台 Rubric 试点
 
-1. J：一个具体平台 Rubric 试点。
-2. K：在现有 cocreate 上增加阶段化访谈。
-3. L：扫榜与拆文独立命令。
+## 边界
+
+- 显式输入：`user_rules.structured.platform = fanqie`；未指定平台时不注入。
+- 资源：单个版本化番茄 rubric，不创建通用 Pack 框架。
+- 评分：映射到现有七维，不新增第八维、Verdict、Route 或平台算法分。
+- 官方事实与产品启发式分栏；不把第三方“黄金三章公式”写成官方阈值。
+- 资源允许全局/本书覆盖；旧 user_rules 快照零值兼容。
+
+## 阶段 83：显式平台偏好
+
+状态：`complete`
+
+扩展 `rules.Structured`、Snapshot 合并与版本兼容，先锁定显式 `fanqie` 覆盖。
+
+## 阶段 84：规则归一化
+
+状态：`complete`
+
+仅当用户明确指定番茄时输出 `platform=fanqie`；未指定/含糊时为空，不自行猜测。
+
+## 阶段 85：番茄 Rubric 资源
+
+状态：`complete`
+
+新增官方事实来源、软评价维度与禁用伪阈值说明；支持内置/全局/本书覆盖。
+
+## 阶段 86：Context 条件注入
+
+状态：`complete`
+
+只有平台为 fanqie 时注入 `reference_pack.references.platform_rubric`，并接入既有预算裁剪。
+
+## 阶段 87：Editor 消费纪律
+
+状态：`complete`
+
+映射到 pacing/hook/aesthetic/consistency 等现有维度；不得新增平台维度或机械改写。
+
+## 阶段 88：Writer/Architect 软目标
+
+状态：`complete`
+
+有 rubric 时作为软适配参考，用户偏好与章节合同优先；无 rubric 时行为逐字节不变。
+
+## 阶段 89：文档、来源与范围审计
+
+状态：`complete`
+
+记录官方来源日期、非官方启发式边界、旧快照兼容和不复制外部文案原则。
+
+## 阶段 90：全量验证与中文提交
+
+状态：`complete`
+
+```text
+go test ./internal/rules ./internal/userrules ./assets ./internal/tools -count=1
+go test ./... -timeout=5m
+go vet ./...
+git diff --check
+```
+
+提交信息：
+
+```text
+功能：试点番茄平台创作评审参考
+```
+
+## J 之后的候选顺序
+
+1. K：在现有 cocreate 上增加阶段化访谈。
+2. L：扫榜与拆文独立命令。
 
 ## 本批明确不做
 
-- 除 `rules.Lint` 完全重复段落检测外的运行时改动
+- 第二个平台或通用 Pack/Registry/Service 框架
+- 新评审维度、平台算法分、Verdict 或 Route
 - 新领域动作或状态
 - 数据库、Web 事实源、Service/Repository
-- 自动迁移或删除历史规划
-- 模糊段落相似度、跨章重复累计、Rubric、Knowledge 生命周期新动作
+- 强制迁移或重建旧 user_rules 快照
+- 第三方黄金三章公式、爽点数量或推荐算法伪阈值
 
 ## 错误记录
 

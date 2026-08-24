@@ -78,6 +78,56 @@ func TestKnowledgePromptsDescribeTruthAndLearningBoundaries(t *testing.T) {
 	}
 }
 
+func TestLoadIncludesBoundedFanqieRubricAndOverrides(t *testing.T) {
+	builtin := Load("default", LoadOptions{}).References.FanqieRubric
+	for _, phrase := range []string{
+		"官方可核事实", "产品软评价", "5—30字", "连续翻页", "不得机械扣分", "黄金三章", "爽点数量", "留存算法",
+		"2026-08-25", "https://fanqienovel.com/docs/8231", "https://fanqienovel.com/writer/zone/article/7170705662714839070",
+	} {
+		if !strings.Contains(builtin, phrase) {
+			t.Fatalf("番茄 rubric 缺少边界声明 %q", phrase)
+		}
+	}
+
+	home := t.TempDir()
+	book := t.TempDir()
+	writeFile(t, filepath.Join(home, "platforms", "fanqie.md"), "全局番茄补充")
+	writeFile(t, filepath.Join(book, "platforms", "fanqie.md"), "本书番茄补充")
+	got := Load("default", LoadOptions{HomeStyleDir: home, BookStyleDir: book}).References.FanqieRubric
+	gi, bi := strings.Index(got, "全局番茄补充"), strings.Index(got, "本书番茄补充")
+	if gi < 0 || bi < 0 || gi > bi {
+		t.Fatalf("番茄 rubric 覆盖顺序错误: global=%d book=%d\n%s", gi, bi, got)
+	}
+}
+
+func TestEditorPromptKeepsPlatformRubricInsideExistingDimensions(t *testing.T) {
+	editor := mustRead(promptsFS, "prompts/editor.md")
+	for _, phrase := range []string{"platform_rubric", "官方可核事实", "产品软评价", "现有七维", "不得新增平台维度", "不得单独决定 verdict"} {
+		if !strings.Contains(editor, phrase) {
+			t.Fatalf("Editor 提示缺少平台 rubric 边界 %q", phrase)
+		}
+	}
+	for _, forbidden := range []string{"platform_fit", "fanqie_score"} {
+		if strings.Contains(editor, forbidden) {
+			t.Fatalf("Editor 提示不应定义平台评分状态 %q", forbidden)
+		}
+	}
+}
+
+func TestWriterAndArchitectPromptsTreatPlatformRubricAsConditionalSoftReference(t *testing.T) {
+	for name, prompt := range map[string]string{
+		"writer":          mustRead(promptsFS, "prompts/writer.md"),
+		"architect_short": mustRead(promptsFS, "prompts/architect-short.md"),
+		"architect_long":  mustRead(promptsFS, "prompts/architect-long.md"),
+	} {
+		for _, phrase := range []string{"platform_rubric", "存在时", "软参考", "用户偏好", "章节合同", "人物逻辑", "不得机械"} {
+			if !strings.Contains(prompt, phrase) {
+				t.Fatalf("%s 提示缺少平台软目标边界 %q", name, phrase)
+			}
+		}
+	}
+}
+
 func TestEditorPromptConsumesDuplicateParagraphFacts(t *testing.T) {
 	editor := mustRead(promptsFS, "prompts/editor.md")
 	for _, phrase := range []string{"duplicate_paragraph", "rule_violations", "有意复沓", "不新增评审维度"} {

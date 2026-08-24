@@ -38,6 +38,7 @@ func TestExtractJSON_StripsCodeFences(t *testing.T) {
 func TestParseNormalizerJSON_FullOutput(t *testing.T) {
 	raw := "```json\n" + `{
   "structured": {
+    "platform": "",
     "genre": "都市",
     "forbidden_chars": [],
     "forbidden_phrases": ["某种程度上"],
@@ -110,6 +111,33 @@ func TestNormalizeContractIsStrictReady(t *testing.T) {
 	}
 }
 
+func TestNormalizePreservesExplicitFanqiePlatform(t *testing.T) {
+	model := &scriptedModel{replies: []string{`{"structured":{"platform":"fanqie","genre":"都市","forbidden_chars":[],"forbidden_phrases":[],"fatigue_words":[]},"preferences":"","uncertain":[]}`}}
+	cand, err := NewNormalizer(model).Normalize(t.Context(), "startup_prompt", "这本书明确发布到番茄小说")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cand.Structured.Platform != "fanqie" {
+		t.Fatalf("explicit platform lost: %+v", cand.Structured)
+	}
+}
+
+func TestNormalizerRejectsUnsupportedPlatformAndKeepsAmbiguousUnspecified(t *testing.T) {
+	bad := normalizerOutput{Structured: normalizerStructured{Platform: "qidian"}}
+	if _, err := bad.toCandidate("x"); err == nil {
+		t.Fatal("unsupported platform must be rejected at DTO boundary")
+	}
+
+	model := &scriptedModel{replies: []string{`{"structured":{"platform":"","genre":"","forbidden_chars":[],"forbidden_phrases":[],"fatigue_words":[]},"preferences":"偏移动端阅读","uncertain":["未明确具体平台"]}`}}
+	cand, err := NewNormalizer(model).Normalize(t.Context(), "startup_prompt", "希望适合免费阅读平台，但未指定具体平台")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cand.Structured.Platform != "" {
+		t.Fatalf("ambiguous platform must remain unspecified: %+v", cand.Structured)
+	}
+}
+
 func TestNormalize_NilModelErrors(t *testing.T) {
 	// 无模型可用：返回明确错误，由 Service 层降级为 raw preferences。
 	var n *Normalizer = NewNormalizer(nil)
@@ -165,7 +193,7 @@ func (m *scriptedModel) SupportsTools() bool { return false }
 func TestNormalize_FeedbackRetryRecovers(t *testing.T) {
 	model := &scriptedModel{replies: []string{
 		"这不是 JSON",
-		`{"structured":{"genre":"","forbidden_chars":[],"forbidden_phrases":["某种程度上"],"fatigue_words":[]},"preferences":"","uncertain":[]}`,
+		`{"structured":{"platform":"","genre":"","forbidden_chars":[],"forbidden_phrases":["某种程度上"],"fatigue_words":[]},"preferences":"","uncertain":[]}`,
 	}}
 	n := NewNormalizer(model)
 
@@ -201,7 +229,7 @@ func TestNormalize_FeedbackRetryRecovers(t *testing.T) {
 
 // 归一化不覆盖模型的 thinking 默认；普通 chat 模型会拒绝显式 off。
 func TestNormalize_LeavesThinkingUnspecifiedAndReservesTokens(t *testing.T) {
-	model := &scriptedModel{replies: []string{`{"structured":{"genre":"","forbidden_chars":[],"forbidden_phrases":[],"fatigue_words":[]},"preferences":"x","uncertain":[]}`}}
+	model := &scriptedModel{replies: []string{`{"structured":{"platform":"","genre":"","forbidden_chars":[],"forbidden_phrases":[],"fatigue_words":[]},"preferences":"x","uncertain":[]}`}}
 	n := NewNormalizer(model)
 
 	if _, err := n.Normalize(t.Context(), "startup_prompt", "随便一条规则"); err != nil {
@@ -271,7 +299,7 @@ func (m *flakyModel) Generate(ctx context.Context, msgs []agentcore.Message, too
 
 func TestNormalize_RetryableErrorRecovers(t *testing.T) {
 	model := &flakyModel{
-		scriptedModel: scriptedModel{replies: []string{`{"structured":{"genre":"","forbidden_chars":[],"forbidden_phrases":[],"fatigue_words":[]},"preferences":"x","uncertain":[]}`}},
+		scriptedModel: scriptedModel{replies: []string{`{"structured":{"platform":"","genre":"","forbidden_chars":[],"forbidden_phrases":[],"fatigue_words":[]},"preferences":"x","uncertain":[]}`}},
 		failures:      2,
 	}
 	n := NewNormalizer(model)
@@ -297,7 +325,7 @@ func (m *nativeRulesModel) Capabilities() llm.Capabilities {
 func TestNormalize_NativeSendsSchemaAndRejectsFences(t *testing.T) {
 	// 原生模式：schema 进请求；裸 JSON 成功。
 	model := &nativeRulesModel{&scriptedModel{replies: []string{
-		`{"structured":{"genre":"","forbidden_chars":[],"forbidden_phrases":[],"fatigue_words":[]},"preferences":"x","uncertain":[]}`,
+		`{"structured":{"platform":"","genre":"","forbidden_chars":[],"forbidden_phrases":[],"fatigue_words":[]},"preferences":"x","uncertain":[]}`,
 	}}}
 	n := NewNormalizer(model)
 	cand, err := n.Normalize(t.Context(), "startup_prompt", "规则")

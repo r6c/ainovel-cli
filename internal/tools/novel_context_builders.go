@@ -620,7 +620,7 @@ func (t *ContextTool) buildChapterReferencePack(envelope *chapterContextEnvelope
 		}
 	}
 
-	envelope.References["references"] = t.writerReferences(state.chapter)
+	envelope.References["references"] = t.writerReferences(state.chapter, reads)
 }
 
 func (t *ContextTool) buildArchitectContext(result map[string]any, reads *contextReads) {
@@ -795,5 +795,5 @@ func (t *ContextTool) buildArchitectReferences(envelope *architectContextEnvelop
 		reads.warn("style_rules", err)
 	}
 
-	envelope.References["references"] = t.architectReferences()
+	envelope.References["references"] = t.architectReferences(reads)
 }

@@ -345,7 +345,15 @@ Commit 和 Revision Projector 都必须复用同一个 `rules.Lint`，不要建�
 
 Diagnostics 只是当前投影的只读 Adapter，不得修改 Knowledge、自动生成 `learn` 或成为新事实源。
 
-## 12. 常用验证
+## 12. 目标平台 Rubric 试点
+
+目标平台属于用户意图，持久化在 `meta/user_rules.json` 的 `structured.platform`；当前只支持显式 `fanqie`。含糊的“免费阅读平台/移动端平台”不得猜测，未指定时不加载任何平台参考。
+
+番茄试点资源位于 `assets/references/platforms/fanqie.md`，支持 `~/.ainovel/style/platforms/fanqie.md` 与本书 `style/platforms/fanqie.md` 追加覆盖。只有 `platform=fanqie` 时，`novel_context` 才把它作为 `reference_pack.references.platform_rubric` 注入 Writer、Editor 和 Architect；该资源参与既有预算裁剪。
+
+Rubric 区分官方可核事实与 ainovel-cli 产品软评价，映射现有七维，不新增平台评分状态、Verdict 或 Route。官方公开资料未提供黄金三章字数、爽点数量或推荐算法阈值，禁止编造这些硬指标。用户偏好、章节合同与人物逻辑优先。
+
+## 13. 常用验证
 
 ```bash
 go test ./... -timeout=5m

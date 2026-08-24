@@ -1,6 +1,7 @@
 package rules
 
 import (
+	"encoding/json"
 	"strings"
 	"testing"
 )
@@ -19,6 +20,32 @@ func TestBuildSnapshot_FieldOverridePrecedence(t *testing.T) {
 	}
 	if snap.Version != SnapshotVersion {
 		t.Fatalf("version 应为 %d，得到 %d", SnapshotVersion, snap.Version)
+	}
+}
+
+func TestBuildSnapshot_PlatformUsesExplicitOverride(t *testing.T) {
+	snap := BuildSnapshot([]Candidate{
+		{Source: "startup_prompt", Structured: Structured{Platform: "fanqie"}},
+		{Source: "global:empty.md", Structured: Structured{Platform: ""}},
+		{Source: "project:fanqie.md", Structured: Structured{Platform: " fanqie "}},
+	})
+	if snap.Structured.Platform != "fanqie" {
+		t.Fatalf("explicit fanqie platform should survive merge, got %q", snap.Structured.Platform)
+	}
+
+	invalid := BuildSnapshot([]Candidate{{Source: "project:bad.md", Structured: Structured{Platform: "unknown"}}})
+	if invalid.Structured.Platform != "" {
+		t.Fatalf("unsupported platform must not enter runtime snapshot, got %q", invalid.Structured.Platform)
+	}
+}
+
+func TestSnapshotLegacyV2WithoutPlatformLoadsAsUnspecified(t *testing.T) {
+	var snap Snapshot
+	if err := json.Unmarshal([]byte(`{"version":2,"status":"ready","structured":{"genre":"都市"},"preferences":"","sources":[],"uncertain":[]}`), &snap); err != nil {
+		t.Fatal(err)
+	}
+	if snap.Structured.Platform != "" || snap.Structured.Genre != "都市" {
+		t.Fatalf("legacy snapshot compatibility failed: %+v", snap.Structured)
 	}
 }
 

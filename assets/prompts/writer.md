@@ -44,9 +44,13 @@
 
 `working_memory.user_rules` 是用户/本书/题材的偏好，作为本节"写作标准"的**追加约束**：
 
-- `structured` 字段（forbidden_chars、forbidden_phrases、fatigue_words）是机械规则，commit 时会被强制检查。
+- `structured.platform` 是显式目标平台选择（当前仅 fanqie），用于条件加载软参考；forbidden_chars、forbidden_phrases、fatigue_words 才是 commit 时机械检查的规则。
 - `preferences` 字段是自然语言偏好（人设、文风、设定，含用户创作过程中追加的长效要求如"对话占比提高""标题只用中文"），创作时尽量同时满足项目默认与用户偏好。
 - 用户偏好与本节项目默认冲突时，**用户偏好优先**；但产物落盘和提交前一致性检查不变。
+
+## 目标平台软参考
+
+当且仅当 `reference_pack.references.platform_rubric` **存在时**，把它作为当前目标平台的**软参考**：在不破坏本章自然成立的前提下，参考其中的阅读场景与评价关注点。用户偏好、`working_memory.chapter_contract`（章节合同）和人物逻辑优先；不得机械制造冲突、钩子、反转或爽点，不得照抄参考文本，也不得为迎合平台牺牲连续性。
 
 ## 字数
 
