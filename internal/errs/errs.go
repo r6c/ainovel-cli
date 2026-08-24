@@ -11,13 +11,14 @@ package errs
 import "errors"
 
 var (
-	ErrConfig           = errors.New("config error")
-	ErrProvider         = errors.New("provider error") // provider initialization / wiring
-	ErrStoreRead        = errors.New("store read error")
-	ErrStoreWrite       = errors.New("store write error")
-	ErrToolArgs         = errors.New("tool args invalid")
-	ErrToolPrecondition = errors.New("tool precondition failed")
-	ErrToolConflict     = errors.New("tool conflict")
-	ErrPhaseTransition  = errors.New("invalid phase transition")
-	ErrFlowTransition   = errors.New("invalid flow transition")
+	ErrConfig                 = errors.New("config error")
+	ErrProvider               = errors.New("provider error") // provider initialization / wiring
+	ErrStoreRead              = errors.New("store read error")
+	ErrStoreWrite             = errors.New("store write error")
+	ErrToolArgs               = errors.New("tool args invalid")
+	ErrToolPrecondition       = errors.New("tool precondition failed")
+	ErrToolConflict           = errors.New("tool conflict")
+	ErrPendingCommitIntegrity = errors.New("pending commit integrity error")
+	ErrPhaseTransition        = errors.New("invalid phase transition")
+	ErrFlowTransition         = errors.New("invalid flow transition")
 )

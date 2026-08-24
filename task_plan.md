@@ -3,11 +3,11 @@
 ## 规划总览
 
 - 总体状态：`complete`
-- 当前执行阶段：阶段 48—55 全部完成
+- 当前执行阶段：阶段 56—63 全部完成
 - 已完成领域里程碑：A 伏笔生命周期；B 作者真相 + 角色获知；C1 读者揭示 + 信息差；C2a 最小角色错误信念；D Import 全书事实重放门禁
-- 下一里程碑：E2 Foreshadow 纯 Apply/Replay 规则收敛
-- 规划原则：不增加伏笔状态；把现有规则收敛为专用纯函数，Store/Commit/Projector 作为 IO、事务和重建适配器
-- 当前工作区：干净；基线提交 `a041b5c 重构：统一知识状态的应用与重放规则`
+- 下一里程碑：F PendingCommit 冻结载荷完整性
+- 规划原则：恢复重复纯载荷与摘要校验，但不根据已部分应用的当前投影重新裁决冻结意图
+- 当前工作区：干净；基线提交 `429bb4a 重构：统一伏笔生命周期的应用与重放规则`
 
 ## 路线决策摘要
 
@@ -1681,4 +1681,66 @@ git diff --check
 
 ```text
 重构：统一伏笔生命周期的应用与重放规则
+```
+
+---
+
+# 里程碑 F：PendingCommit 冻结载荷完整性
+
+## 目标
+
+为冻结 payload 和正文快照增加 SHA-256 密封；首次提交执行纯载荷 + 当前状态校验，恢复执行密封 + 纯载荷校验后幂等重放，不重新执行当前投影语义校验。
+
+## 阶段 56：篡改红灯
+状态：`complete`
+
+通过 `CommitChapterTool.Execute` 证明密封 payload/draft 被替换时必须在任何副作用前拒绝并保留 PendingCommit。
+
+## 阶段 57：纯载荷校验拆分
+状态：`complete`
+
+集中校验 stage、payload 解码、chapter 一致性、ChapterFacts 字段纪律、draft 非空与 rewrite 元数据；当前投影规则仍只在首次冻结前执行。
+
+## 阶段 58：新 Pending 自动密封
+状态：`complete`
+
+普通提交与 Rewrite 共用密封 helper，写入 SealVersion=1、PayloadDigest、DraftDigest。
+
+## 阶段 59：恢复前完整性验证
+状态：`complete`
+
+摘要格式/匹配、半密封、非法 stage/payload/chapter 在副作用前拒绝；Pending 保留。
+
+## 阶段 60：旧 Pending 兼容升级
+状态：`complete`
+
+两个摘要都缺失时先做纯载荷校验，再原子回写密封后恢复；半密封拒绝。
+
+## 阶段 61：多 Stage 与 Rewrite 回归
+状态：`complete`
+
+started/state_applied/progress_marked/signal_saved、Knowledge、Foreshadow、Rewrite 冻结正文恢复矩阵。
+
+## 阶段 62：错误分类与诊断
+状态：`complete`
+
+增加稳定完整性错误分类，错误不输出全文或完整 payload。
+
+## 阶段 63：文档、全量验证与中文提交
+状态：`complete`
+
+```text
+go test ./internal/tools -run 'CommitChapter|PendingCommit|Replay|Integrity' -count=1 -timeout=5m
+go test ./internal/store -run 'PendingCommit|Signal' -count=1
+go test ./internal/revision -run 'Projector|Rewrite|ValidateRecordSet' -count=1
+go test ./... -timeout=5m
+go vet ./...
+go test -race ./internal/store ./internal/tools ./internal/revision -timeout=10m
+git diff --check
+```
+
+提交信息：
+
+```text
+加固：校验章节提交冻结载荷的完整性
 ```

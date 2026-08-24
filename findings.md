@@ -670,3 +670,11 @@ Foreshadow 正式生命周期原先分散在 `WorldStore.UpdateForeshadow`、`to
 Store 只负责锁和 JSON/Markdown，Projector 按章调用纯 Apply，Commit 对完整账本试运行。未来 PlantedAt、resolved 终态和同 payload 顺序由 domain 统一裁决；动作 switch 扫描确认 Store/Commit/Projector 不再维护伏笔生命周期。
 
 收口审计额外修复：nil/非 nil 空账本形状保真；Projector 无伏笔记录继续写 `[]`；同章完整推进后 resolve 的冻结 payload 可幂等重放，但孤立 `resolved→advance/reinforce/partial_payoff` 仍拒绝。
+
+## 里程碑 F 发现
+
+PendingCommit 原本只有 payload 与 DraftContent，没有完整性证据；恢复为了避免用部分应用后的当前投影重新裁决，正确地跳过状态语义校验，但也会接受仍合法 JSON 的单独篡改。现已将校验拆成：首次执行纯载荷 + 当前状态；恢复执行密封 + 纯载荷后幂等重放。
+
+密封 v1 使用三个 SHA-256：compact JSON payload、DraftContent UTF-8、以及 `Chapter/Rewrite/RewriteMode` intent。收口测试实际证明仅密封 payload/draft 不足：Rewrite 标志与 mode 同时改成普通提交的自洽组合会切换恢复分支。Stage/Output/Result/时间戳是 Saga 正常可变字段，不纳入 intent。
+
+旧 `started/state_applied` 仅在 payload 解码、章号和 ChapterFacts 字段纪律通过后先原子升级密封；非法旧载荷不重签。后段 `progress_marked/signal_saved` 不再需要正文快照，继续兼容旧无摘要工件并直接收尾。完整性失败保留 Pending，并分类为 `ErrPendingCommitIntegrity`。

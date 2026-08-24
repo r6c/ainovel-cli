@@ -7,6 +7,68 @@
 - 执行原则：严格 TDD，红→绿，单切片推进
 - 项目根：`ainovel-cli`
 
+## 2026-08-24：里程碑 F 启动
+
+- HEAD：`429bb4a 重构：统一伏笔生命周期的应用与重放规则`；工作区开始时干净。
+- session-catchup 未报告未同步上下文。
+- 已确认公共接缝：CommitChapterTool 首次冻结/恢复、SignalStore PendingCommit 持久化。
+- PendingCommit 当前无摘要字段；恢复会在解码冻结 payload 后直接继续 Saga。
+- 普通提交与 Rewrite 各有一个 Pending 构造点，后续必须共享密封逻辑。
+- 搜索 WriteJSON 声明时一次不完整正则导致解析失败；未重试同一查询，改用字面搜索。
+- 随后搜索 ChapterRecord Load 声明又误用了未闭合括号正则；停止猜测声明形式，直接复用仓库现有 `ChapterRecords.Load` 调用观察副作用。
+- 阶段 56 首个红灯：带 v1 摘要但 payload 已被替换的 PendingCommit 被错误恢复并提交，证明当前完全忽略密封字段。
+- `SignalStore.WriteJSON` 使用 MarshalIndent，会改变 RawMessage 的排版空白；摘要采用 `json.Compact` 后的冻结 JSON 字节，保护字段顺序/内容而忽略无意义空白。
+
+### 阶段 56 完成
+
+v1 sealed Pending 的 payload 或 DraftContent 被替换时，恢复均在 ChapterRecord/Progress 等副作用前拒绝并保留 Pending。旧无摘要重放测试继续通过。
+
+### 阶段 57 完成
+
+摘要匹配但字段矩阵非法的冻结 payload 曾先写 ChapterRecord。现已拆出 `validateFrozenCommitArgs`，首次与恢复均执行 ChapterFacts/章号纯校验；Knowledge/Foreshadow 当前投影试运行仍仅在首次冻结前执行。
+
+### 阶段 58 完成
+
+新增 `sealPendingCommit`：SealVersion=1，payload 使用 compact JSON SHA-256，draft 使用 UTF-8 SHA-256。普通提交与 Rewrite 两个首次 Pending 构造点共同调用；提交、返工、恢复和 SignalStore 测试全绿。
+
+### 阶段 59 完成
+
+定向测试后 tools 全包发现 `progress_marked` 旧 Pending 合法缺少 DraftContent。现已将冻结输入要求限定为 `started/state_applied`；后段 stage 只收尾结果。密封格式、摘要、元数据和纯字段纪律完整通过，tools 全包恢复全绿。
+
+### 阶段 60 完成
+
+合法 legacy started/state_applied 在 payload 解码、章号和纯字段校验后，先原子回写完整 v1 密封再重放；非法 legacy 不密封，升级后再次篡改会按 v1 拒绝。tools 全包通过。
+
+### 阶段 61 完成
+
+新增 sealed state_applied/signal_saved 合法恢复和四 Stage 篡改拒绝矩阵；started 的 Knowledge/Foreshadow/Reader、progress_marked、Rewrite 冻结正文既有测试继续通过。state_applied 夹具曾缺 Summary，补齐真实阶段工件后通过。
+
+### 阶段 62 完成
+
+新增 `ErrPendingCommitIntegrity`；payload/draft 摘要不匹配、半密封、未知版本均可用 errors.Is 稳定识别。错误提示检查 `meta/pending_commit.json`，不输出正文或完整 payload；业务字段/状态错误保留原分类。
+
+### 阶段 63 收口审计红灯
+
+真实 Rewrite 恢复测试确认：密封后同时把 `Rewrite=true/mode=rewrite` 改成普通提交的自洽组合，恢复会错误走普通路径并成功。最小修复增加 IntentDigest，覆盖 Chapter、Rewrite、RewriteMode；Stage/Output/Result/时间戳是 Saga 可变字段，不纳入。
+
+IntentDigest 修复后，四阶段篡改测试先因手工 v1 夹具仍是旧“两摘要”形状而失败。这是夹具协议升级，不是产品回归；合法 v1 夹具改为调用 `sealPendingCommit` 后只篡改目标字段，故意半密封/未知版本夹具保持显式构造。同步夹具后一次编译错误来自同一作用域重复 `:= err`，改为赋值，不作为产品红灯。
+
+### 阶段 63 / 里程碑 F 完成
+
+生产审计确认只有普通提交与 Rewrite 两个首次 Pending 构造点，均在首次副作用前密封；后续 Stage 保存沿用同一密封字段。最终验证全部通过：
+
+```text
+go test ./internal/tools -run 'CommitChapter|PendingCommit|Replay|Integrity|Tampered|Sealed|Legacy' -count=1 -timeout=5m
+go test ./internal/store -run 'PendingCommit|Signal' -count=1
+go test ./internal/revision -run 'Projector|Rewrite|ValidateRecordSet' -count=1
+go test ./... -timeout=5m
+go vet ./...
+go test -race ./internal/store ./internal/tools ./internal/revision -timeout=10m
+git diff --check
+```
+
+没有新增 Saga Stage、数据库、签名/HMAC、自动删除或自动重签损坏工件。
+
 ## 2026-08-24：里程碑 E2 启动
 
 - HEAD：`a041b5c 重构：统一知识状态的应用与重放规则`；工作区开始时干净。

@@ -13,11 +13,15 @@ func TestPendingCommitLifecycle(t *testing.T) {
 	}
 
 	pending := domain.PendingCommit{
-		Chapter:   3,
-		Stage:     domain.CommitStageProgressMarked,
-		Summary:   "第3章摘要",
-		StartedAt: "2026-03-27T10:00:00Z",
-		UpdatedAt: "2026-03-27T10:01:00Z",
+		Chapter:       3,
+		Stage:         domain.CommitStageProgressMarked,
+		Summary:       "第3章摘要",
+		StartedAt:     "2026-03-27T10:00:00Z",
+		UpdatedAt:     "2026-03-27T10:01:00Z",
+		SealVersion:   1,
+		PayloadDigest: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+		DraftDigest:   "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+		IntentDigest:  "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
 		Result: &domain.CommitResult{
 			Chapter:     3,
 			Committed:   true,
@@ -38,6 +42,9 @@ func TestPendingCommitLifecycle(t *testing.T) {
 	}
 	if got.Chapter != 3 || got.Stage != domain.CommitStageProgressMarked {
 		t.Fatalf("unexpected pending commit: %+v", got)
+	}
+	if got.SealVersion != 1 || got.PayloadDigest != pending.PayloadDigest || got.DraftDigest != pending.DraftDigest || got.IntentDigest != pending.IntentDigest {
+		t.Fatalf("pending commit seal did not round-trip: %+v", got)
 	}
 	if got.Result == nil || got.Result.NextChapter != 4 {
 		t.Fatalf("unexpected pending result: %+v", got.Result)

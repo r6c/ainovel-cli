@@ -35,7 +35,7 @@
 
 ### 2.2 工具是事实层唯一接口
 
-所有与文件系统、Progress、Checkpoint 的交互都由工具完成。单个文件使用 `temp + fsync + rename` 原子替换；跨文件顺序写入不冒充数据库事务：章节提交使用持久化 `PendingCommit` Saga，结构写入使用确定性幂等重放并显式暴露失败。每一步都必须检查错误；只有已持久化恢复意图的流程才能承诺跨重启按原载荷恢复。
+所有与文件系统、Progress、Checkpoint 的交互都由工具完成。单个文件使用 `temp + fsync + rename` 原子替换；跨文件顺序写入不冒充数据库事务：章节提交使用持久化 `PendingCommit` Saga，结构写入使用确定性幂等重放并显式暴露失败。每一步都必须检查错误；只有已持久化恢复意图的流程才能承诺跨重启按原载荷恢复。新建 PendingCommit 在首次副作用前以 SHA-256 密封规范化 payload、正文快照及不可从 payload 推导的提交类型元数据（chapter/rewrite/rewrite_mode）；Stage、Output、Result 与时间戳是 Saga 推进字段，不纳入不可变密封。
 
 ### 2.3 观察层只观察
 
@@ -190,7 +190,7 @@ Artifact 在 `store/outline.go` `drafts.go` `summaries.go` `characters.go` `worl
 
 ### 5.2 写类工具（单文件原子 + 分级恢复语义）
 
-单文件写入原子；跨文件步骤不承诺数据库式原子性。`commit_chapter` 的普通提交与返工提交共用 `PendingCommit`，按“完整意图 → artifact/状态 → Progress → checkpoint → 清除意图”推进；恢复只使用首次落盘的规范化 payload 与正文快照，禁止采用重启后模型重新生成的参数或被覆盖的 draft。`expand_arc` / `append_volume` 等结构操作没有持久化意图，只承诺同一参数的幂等重放、派生视图修复和错误显式返回。
+单文件写入原子；跨文件步骤不承诺数据库式原子性。`commit_chapter` 的普通提交与返工提交共用 `PendingCommit`，按“完整意图 → artifact/状态 → Progress → checkpoint → 清除意图”推进。首次冻结前执行纯载荷校验和当前投影语义校验，再写入 `seal_version=1` 与 payload/draft/intent 三个 SHA-256；恢复先验证密封与不依赖当前 Store 的载荷自洽性，再按 Stage 幂等重放，禁止用已部分应用后的当前投影重新裁决冻结意图，也禁止采用重启后模型重新生成的参数或被覆盖的 draft。旧版 `started/state_applied` 工件仅在纯载荷通过后先原子升级为密封格式；`progress_marked/signal_saved` 已完成正文与状态，只按既有结果收尾。摘要或密封格式异常时保留工件并返回 `ErrPendingCommitIntegrity`，不自动重签。`expand_arc` / `append_volume` 等结构操作没有持久化意图，只承诺同一参数的幂等重放、派生视图修复和错误显式返回。
 
 | 工具 | Artifact | Step |
 |---|---|---|

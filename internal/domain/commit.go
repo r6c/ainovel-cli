@@ -20,6 +20,10 @@ type PendingCommit struct {
 	RewriteMode    string          `json:"rewrite_mode,omitempty"`
 	Payload        json.RawMessage `json:"payload,omitempty"`
 	DraftContent   string          `json:"draft_content,omitempty"`
+	SealVersion    int             `json:"seal_version,omitempty"`
+	PayloadDigest  string          `json:"payload_digest,omitempty"`
+	DraftDigest    string          `json:"draft_digest,omitempty"`
+	IntentDigest   string          `json:"intent_digest,omitempty"`
 	Output         json.RawMessage `json:"output,omitempty"`
 	Summary        string          `json:"summary,omitempty"`
 	HookType       string          `json:"hook_type,omitempty"`

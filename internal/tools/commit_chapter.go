@@ -1,7 +1,9 @@
 package tools
 
 import (
+	"bytes"
 	"context"
+	"crypto/sha256"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -75,6 +77,80 @@ func (t *CommitChapterTool) Schema() map[string]any {
 	return schema.Object(props...)
 }
 
+func digestPayload(payload json.RawMessage) (string, error) {
+	var compact bytes.Buffer
+	if err := json.Compact(&compact, payload); err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("%x", sha256.Sum256(compact.Bytes())), nil
+}
+
+func digestPendingIntent(pending domain.PendingCommit) string {
+	data := fmt.Sprintf("chapter=%d\x00rewrite=%t\x00rewrite_mode=%s", pending.Chapter, pending.Rewrite, pending.RewriteMode)
+	return fmt.Sprintf("%x", sha256.Sum256([]byte(data)))
+}
+
+func sealPendingCommit(pending domain.PendingCommit) (domain.PendingCommit, error) {
+	payloadDigest, err := digestPayload(pending.Payload)
+	if err != nil {
+		return domain.PendingCommit{}, err
+	}
+	pending.SealVersion = 1
+	pending.PayloadDigest = payloadDigest
+	pending.DraftDigest = fmt.Sprintf("%x", sha256.Sum256([]byte(pending.DraftContent)))
+	pending.IntentDigest = digestPendingIntent(pending)
+	return pending, nil
+}
+
+func pendingNeedsFrozenInputs(stage domain.CommitStage) bool {
+	return stage == domain.CommitStageStarted || stage == domain.CommitStageStateApplied
+}
+
+func validatePendingMetadata(pending domain.PendingCommit) error {
+	if pending.Chapter <= 0 {
+		return fmt.Errorf("pending commit chapter must be > 0")
+	}
+	if pendingNeedsFrozenInputs(pending.Stage) && pending.DraftContent == "" {
+		return fmt.Errorf("pending commit 缺少 draft_content")
+	}
+	if !pending.Rewrite && pending.RewriteMode != "" {
+		return fmt.Errorf("普通 pending commit 不能携带 rewrite_mode %q", pending.RewriteMode)
+	}
+	if pending.Rewrite && pending.RewriteMode != "" && pending.RewriteMode != "rewrite" && pending.RewriteMode != "polish" {
+		return fmt.Errorf("rewrite pending commit mode 非法: %q", pending.RewriteMode)
+	}
+	return nil
+}
+
+func isLegacyPendingSeal(pending domain.PendingCommit) bool {
+	return pending.SealVersion == 0 && pending.PayloadDigest == "" && pending.DraftDigest == "" && pending.IntentDigest == ""
+}
+
+func validatePendingSeal(pending domain.PendingCommit) error {
+	if isLegacyPendingSeal(pending) {
+		return nil
+	}
+	if pending.SealVersion != 1 || pending.PayloadDigest == "" || pending.DraftDigest == "" || pending.IntentDigest == "" {
+		return fmt.Errorf("pending commit 密封格式非法：seal_version=%d payload_digest=%t draft_digest=%t intent_digest=%t",
+			pending.SealVersion, pending.PayloadDigest != "", pending.DraftDigest != "", pending.IntentDigest != "")
+	}
+	got, err := digestPayload(pending.Payload)
+	if err != nil {
+		return fmt.Errorf("pending commit payload 无法规范化: %w", err)
+	}
+	if got != pending.PayloadDigest {
+		return fmt.Errorf("pending commit payload 摘要不匹配，冻结载荷可能已被修改")
+	}
+	draftDigest := fmt.Sprintf("%x", sha256.Sum256([]byte(pending.DraftContent)))
+	if draftDigest != pending.DraftDigest {
+		return fmt.Errorf("pending commit draft 摘要不匹配，冻结正文可能已被修改")
+	}
+	if digestPendingIntent(pending) != pending.IntentDigest {
+		return fmt.Errorf("pending commit intent 摘要不匹配，冻结提交类型可能已被修改")
+	}
+	return nil
+}
+
 func (t *CommitChapterTool) Execute(_ context.Context, args json.RawMessage) (json.RawMessage, error) {
 	var requested commitArgs
 	if err := json.Unmarshal(args, &requested); err != nil {
@@ -91,6 +167,13 @@ func (t *CommitChapterTool) Execute(_ context.Context, args json.RawMessage) (js
 		return nil, fmt.Errorf("存在未恢复的章节提交：第 %d 章（阶段 %s），请先恢复或重新提交该章: %w", existingPending.Chapter, existingPending.Stage, errs.ErrToolConflict)
 	}
 	if existingPending != nil {
+		if err := validatePendingSeal(*existingPending); err != nil {
+			return nil, fmt.Errorf("pending commit 完整性校验失败: %v；请检查 meta/pending_commit.json: %w",
+				err, errs.ErrPendingCommitIntegrity)
+		}
+		if err := validatePendingMetadata(*existingPending); err != nil {
+			return nil, fmt.Errorf("pending commit 元数据非法: %v: %w", err, errs.ErrToolConflict)
+		}
 		switch existingPending.Stage {
 		case domain.CommitStageStarted, domain.CommitStageStateApplied, domain.CommitStageProgressMarked, domain.CommitStageSignalSaved:
 		default:
@@ -109,6 +192,19 @@ func (t *CommitChapterTool) Execute(_ context.Context, args json.RawMessage) (js
 		}
 		if a.Chapter != existingPending.Chapter {
 			return nil, fmt.Errorf("pending commit payload 章节不一致：记录=%d payload=%d: %w", existingPending.Chapter, a.Chapter, errs.ErrToolConflict)
+		}
+		if err := validateFrozenCommitArgs(a); err != nil {
+			return nil, fmt.Errorf("pending commit payload 非法: %w", err)
+		}
+		if isLegacyPendingSeal(*existingPending) {
+			sealed, sealErr := sealPendingCommit(*existingPending)
+			if sealErr != nil {
+				return nil, fmt.Errorf("seal legacy pending commit: %w: %w", errs.ErrStoreWrite, sealErr)
+			}
+			if saveErr := t.store.Signals.SavePendingCommit(sealed); saveErr != nil {
+				return nil, fmt.Errorf("save sealed legacy pending commit: %w: %w", errs.ErrStoreWrite, saveErr)
+			}
+			existingPending = &sealed
 		}
 	}
 
@@ -162,6 +258,10 @@ func (t *CommitChapterTool) Execute(_ context.Context, args json.RawMessage) (js
 				Rewrite: true, RewriteMode: mode, Payload: payload, DraftContent: content,
 				Summary: a.Summary, HookType: a.HookType,
 				DominantStrand: a.DominantStrand, StartedAt: now, UpdatedAt: now}
+			pending, err = sealPendingCommit(pending)
+			if err != nil {
+				return nil, fmt.Errorf("seal rewrite pending commit: %w", err)
+			}
 			if err := t.store.Signals.SavePendingCommit(pending); err != nil {
 				return nil, fmt.Errorf("save rewrite pending commit: %w: %w", errs.ErrStoreWrite, err)
 			}
@@ -232,6 +332,10 @@ func (t *CommitChapterTool) Execute(_ context.Context, args json.RawMessage) (js
 			Chapter: a.Chapter, Stage: domain.CommitStageStarted, Payload: payload, DraftContent: content,
 			Summary: a.Summary, HookType: a.HookType, DominantStrand: a.DominantStrand,
 			StartedAt: now, UpdatedAt: now,
+		}
+		pending, err = sealPendingCommit(pending)
+		if err != nil {
+			return nil, fmt.Errorf("seal pending commit: %w", err)
 		}
 		if err := t.store.Signals.SavePendingCommit(pending); err != nil {
 			return nil, fmt.Errorf("save pending commit: %w: %w", errs.ErrStoreWrite, err)

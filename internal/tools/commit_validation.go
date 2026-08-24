@@ -45,9 +45,19 @@ func (t *CommitChapterTool) validateRewriteRecordSet(a commitArgs, progress *dom
 	return nil
 }
 
-func (t *CommitChapterTool) validateCommitArgs(a commitArgs) error {
+func validateFrozenCommitArgs(a commitArgs) error {
+	if a.Chapter <= 0 {
+		return fmt.Errorf("chapter must be > 0: %w", errs.ErrToolArgs)
+	}
 	if err := chapterfacts.Validate(a.ChapterFacts); err != nil {
 		return fmt.Errorf("%v: %w", err, errs.ErrToolArgs)
+	}
+	return nil
+}
+
+func (t *CommitChapterTool) validateCommitArgs(a commitArgs) error {
+	if err := validateFrozenCommitArgs(a); err != nil {
+		return err
 	}
 
 	if len(a.ForeshadowUpdates) > 0 {
