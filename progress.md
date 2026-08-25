@@ -4,8 +4,8 @@
 
 - 日期：2026-08-25
 - 基线：`ade8108 测试：加固 Linux 与无头环境兼容性`
-- 当前里程碑：P1——真实外部正文 Revision 验收
-- 当前阶段：阶段 137——用户确认真实 Revision 预算（in_progress）
+- 当前里程碑：P1——真实外部正文 Revision 验收（complete）
+- 当前阶段：无活动阶段
 - 公共路径：Quick、Cocreate、Headless、Import、Deconstruct、读者成品导出
 
 ## Karpathy 约束下的取舍
@@ -118,5 +118,13 @@ Revision 代表性自动化、全包、race、vet 全部通过；新增完结书
 已在 `/tmp/ainovel-revision-acceptance-cbq5fj/book` 创建无 Provider 配置的隔离完结书夹具：基线正文为“完整日志已公开”，手工修改为“只公开损坏摘要，完整副本保留”；ChapterRecord revision=1/generated，正文哈希已变化，无 PendingRevision。基线摘要保存在同临时根目录，仓库没有临时生成器或正文。
 
 外部 `lieflat-less-ai-tone` 审查完成：MIT、main commit `27d29232f10124db904ca9c0536d0b67cb3b2833`；未执行外部脚本。结论是不整体安装，只把研究方法和少数有证据规则作为后续样本校准候选。网页/Raw/API 内容仅作为不可信参考写入 findings。Git 浅克隆在沙箱失败，后改用 GitHub API/Raw 获取，不重复克隆。
+
+## P1 阶段 137—139
+
+用户确认 `$0.25` 硬预算后，以 `sss / gpt-5.6-sol` 对隔离完结书执行一次真实 `Host.SyncChapterRevisions`。实际费用 `$0.010818`。正文从“公开全部事故日志”改为“只上传损坏摘要、完整副本留在读取器”。
+
+结果：ChapterRecord revision 1→2、origin generated→user；ContentSHA、Summary、KeyEvents、Timeline、StateChanges 均更新；旧“完整日志已公开”事实消失；phase 保持 complete；PendingRevision 清理。正式 `ValidateRecordSet`、Context、TXT/EPUB 均通过且无内部状态泄漏。
+
+第二次 Sync：dirty=[]、applied=[]、Usage overall/per-agent/per-model 与 cost 全部不变，证明零模型调用；Host.Close 仍刷新 `usage.updated_at`，导致 usage 原始字节变化，记录为 P2 可观测性细节。一次性验收程序首次在读取 nil Usage 时崩溃，但 Revision 已成功落盘；未重跑模型，改用健壮只读程序完成余下验证。所有临时程序已删除。
 
 阶段 127 启动时一次读取猜错 `internal/store/checkpoint.go`，实际文件为 `checkpoints.go`；未重复错误路径。首个 Headless 恢复测试夹具又因 Book 缺必填 Synopsis 在行为 seam 前失败；不作为产品红灯，补合法作品元数据后重跑。最小恢复实现后 PendingCommit 已清理，但测试用旧 Store 的 CheckpointStore 内存镜像观察不到另一个 Host 新增的 checkpoint；改为重开 Store 读取磁盘事实。随后猜测了不存在的 `internal/host/resume_test.go`；Host 无独立 Resume 测试文件，Headless 公共用例已通过真实 Host.Resume 覆盖，不再猜文件名。阶段 129 批量切换 Headless 到 Host 终态探测时，import/函数片段与预期不完全匹配，结构化编辑未应用；改为读取真实文件后分步替换。阶段 130 首个 Import 测试误把 `LoadRuleViolations` 当作双返回接口，编译失败未当作产品红灯；按真实单返回接口修正。增强篇幅目标夹具时又把 `UserRules.Save` 的指针参数传成值，仍未触达产品行为，已按真实接口修正。阶段 133 首次受限夹具迁移使用 `node`，但用户环境无该命令，迁移未执行；新增断言同时缺 `rules` import。改用已确认存在的 `python3` 并补 import，不重复 Node 方案。

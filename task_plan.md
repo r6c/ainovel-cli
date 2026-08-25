@@ -3,8 +3,8 @@
 ## 当前状态
 
 - 总体状态：`planned`
-- 当前里程碑：P1——真实外部正文 Revision 验收
-- 当前阶段：阶段 135——Revision 自动化验收基线（pending）
+- 当前里程碑：P1——真实外部正文 Revision 验收（complete）
+- 当前阶段：无活动阶段
 - 基线提交：`bdba5d1 测试：记录真实模型问题修复回归结果`
 - 完整历史：[`docs/history/plans/2026-08-domain-saga-evolution/`](docs/history/plans/2026-08-domain-saga-evolution/)
 
@@ -764,19 +764,19 @@ git diff --check
 
 ## 阶段 137：用户确认预算
 
-状态：`in_progress`
+状态：`complete`
 
 向用户确认本次 Revision 真实模型预算上限；未确认前停止。建议上限 `$0.25`，通知关闭，超限硬停。
 
 ## 阶段 138：真实 Revision 与恢复验证
 
-状态：`pending`
+状态：`complete`
 
 执行 `/sync` 等价 Host 接口，必要时在 PendingRevision 中间阶段做一次可控强杀；验证 revision+1、origin=user、ContentSHA 更新、旧事实移除、新事实重建、PendingRevision 清理、再次同步零调用。
 
 ## 阶段 139：下游一致性与脱敏记录
 
-状态：`pending`
+状态：`complete`
 
 验证 Context 使用新事实、TXT/EPUB 反映修改正文且不泄露内部状态；把费用、工件和 P0/P1/P2 脱敏写入发布验收，临时正文/日志/配置不进 Git。
 

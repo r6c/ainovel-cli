@@ -194,6 +194,24 @@ Linux 缺 notify-send 时日志降级
 
 以上为自动化回归，未调用真实 Provider。
 
+### 3.8 真实外部正文 Revision 验收
+
+Provider：`sss / gpt-5.6-sol`；硬预算 `$0.25`，实际费用 `$0.010818`。
+
+隔离完结书的一章由“公开全部事故日志”手工修改为“只上传损坏摘要，完整副本保留在读取器”。真实 `/sync` 等价接口结果：
+
+- ChapterRecord revision `1 → 2`，origin `generated → user`；ContentSHA 更新。
+- Summary、KeyEvents、Timeline 和 StateChanges 按修改后正文重建，旧“完整日志已公开”事实不再存在。
+- `phase=complete` 保持，无 PendingRevision；`revision.ValidateRecordSet` 通过。
+- 第二次 Sync 得到 `dirty=[] / applied=[]`，Usage 的 cost、token、per-agent、per-model 均不变；仅 `updated_at` 随 Host 关闭刷新。
+- Writer Context 出现新摘要、不含旧摘要；TXT/EPUB 均包含修改后正文且未发现内部状态标识泄漏。
+
+一次性验收程序首次因把可选 Usage 当成非空而在结果打印阶段崩溃；Revision 事务已成功完成，未重新调用模型，后续使用只读程序完成验证。临时正文、配置、日志与程序均未进入 Git。
+
+### 3.9 外部去 AI 味 Skill 评估
+
+`larashero3-dotcom/lieflat-less-ai-tone`（MIT，审查 commit `27d29232f10124db904ca9c0536d0b67cb3b2833`）不整体安装。它与现有 `anti-ai-tone`、`rules` 和 `story-deslop` 重叠，三个 Python 脚本只做语料统计，不是小说运行时执行器。后续仅把白名单最小修改、信息守恒及少数有证据的候选规则纳入本项目网文样本校准；不直接复制 Skill 或新增第二条去 AI 味管线。
+
 ## 4. 发布判定
 
 发布前必须满足：

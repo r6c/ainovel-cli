@@ -166,6 +166,14 @@ O2 将 `markdown_residue` 作为生成正文/Rewrite 的提交前硬门禁；但
 
 外部仓库只包含三个统计脚本：`compare-human-ai.py`、`check-structure.py`、`check-translationese.py`，没有现成的小说运行时 lint/rewriter。故“安装后直接提升 ainovel-cli”收益有限。
 
+## P1 真实 Revision 验收结论
+
+使用 `sss / gpt-5.6-sol`，预算上限 `$0.25`，实际费用 `$0.010818`。隔离完结书的一章从“完整日志已公开”改为“仅上传损坏摘要，完整副本保留在读取器”。
+
+验收通过：revision=2、origin=user、哈希更新；Summary/KeyEvents/Timeline/StateChanges 重建；旧事实移除；phase 仍为 complete；无 PendingRevision；再次同步零模型调用；Context 和 TXT/EPUB 使用修改后正文且不泄露内部状态。
+
+P2：第二次零调用 Sync 的 Usage 数值完全不变，但构造/关闭 Host 会刷新 `usage.updated_at`，因此 usage.json 原始字节变化。它不产生费用或模型调用，后续若需要“零写入 Sync”语义可单独处理，不阻塞发布。
+
 ### 暂不处理
 
 - Import ChapterRecord 当前标为 `generated`，因为领域只有 generated/user 两种 origin。它不会被误计为用户修订风格，暂不为命名纯度新增第三状态。
