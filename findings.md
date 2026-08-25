@@ -157,12 +157,9 @@ O2 将 `markdown_residue` 作为生成正文/Rewrite 的提交前硬门禁；但
 
 不建议整体安装为 ainovel-cli 的第二条去 AI 味 Skill：项目已有 `assets/references/anti-ai-tone.md`、`rules.Lint/Check`、Writer/Editor 共用判据，以及全局 `story-deslop`；再加一条 skill 会造成重复入口、冲突规则和维护漂移。外部脚本是 Python，整合为运行时依赖也不符合当前 Go-only、Linux/无头可移植边界。
 
-建议只把它当作研究参考，后续建立一个独立“反例校准”小里程碑：
+已完成独立反例校准：16 条自建匿名网文最小对、独立金标、三轮盲评和 Writer 三重复 A/B。采用白名单式最小改写、信息守恒、目标风格优先、段首零回指、提示性冒号和理想化职业人格喻体等有 worked-example 证据的边界；明确句长/段长、问句、比喻、句内排比和标点本身不能作为 AI 来源证据。
 
-- 值得吸收：白名单式最小改写、信息守恒、先读目标风格、段首零回指评论、提示性/空转冒号、理想化职业人格喻体、只保留有证据的五类翻译腔、命中样本先抽查再立规则。
-- 值得用于纠偏：句长/段长均匀度、正文问句、问句小标题、句内同构排比、比喻本身、被动句、名词化、长句均不能直接作为 AI 痕迹。现有 `story-deslop`/`anti-ai-tone.md` 中与这些结论冲突的表述需要先通过本项目样本评测，不应直接继续强化。
-- 不直接吸收：其 2.83M 字统计语料不公开，数字无法第三方复核；题材以公开文章为主，不等同于中文网文；破折号等特征模型差异很大；SKILL 的“标题/段落结构完全不动”适合通用文章清理，但与小说去 AI 味的节奏修订目标并不完全一致。
-- 许可证允许复用，但若复制 substantial portions，必须保留 MIT 版权与许可证。优先 clean-room 摘要和 worked-example eval，不复制整份 SKILL。
+外部项目的 2.83M 字统计语料不公开，题材也不等同中文网文，故仍不采用其数字阈值或整份 Skill。未复制 substantial portions；正式判据由本仓库样本 clean-room 整理。若未来复制具体代码或长段文本，仍须保留 MIT 版权与许可证。
 
 外部仓库只包含三个统计脚本：`compare-human-ai.py`、`check-structure.py`、`check-translationese.py`，没有现成的小说运行时 lint/rewriter。故“安装后直接提升 ainovel-cli”收益有限。
 

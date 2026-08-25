@@ -1,0 +1,232 @@
+{
+  "version": 1,
+  "case": "writer_first_chapter",
+  "repeat": 3,
+  "runs": [
+    {
+      "arm": "baseline",
+      "repeat": 1,
+      "outcome": "PASS",
+      "completed": 1,
+      "cost_usd": 0.40840519999999997,
+      "tool_calls": 18,
+      "chars": 2368,
+      "paragraphs": 75,
+      "short_lines": 25,
+      "questions": 12,
+      "similes": 4,
+      "not_a_but_b": 0,
+      "colons": 4
+    },
+    {
+      "arm": "calibrated",
+      "repeat": 1,
+      "outcome": "PASS",
+      "completed": 1,
+      "cost_usd": 0.3356144,
+      "tool_calls": 17,
+      "chars": 2136,
+      "paragraphs": 64,
+      "short_lines": 17,
+      "questions": 5,
+      "similes": 4,
+      "not_a_but_b": 1,
+      "colons": 3
+    },
+    {
+      "arm": "baseline",
+      "repeat": 2,
+      "outcome": "PASS",
+      "completed": 1,
+      "cost_usd": 0.3156592,
+      "tool_calls": 16,
+      "chars": 2132,
+      "paragraphs": 68,
+      "short_lines": 24,
+      "questions": 12,
+      "similes": 3,
+      "not_a_but_b": 0,
+      "colons": 5
+    },
+    {
+      "arm": "calibrated",
+      "repeat": 2,
+      "outcome": "PASS",
+      "completed": 1,
+      "cost_usd": 0.37664440000000005,
+      "tool_calls": 15,
+      "chars": 2062,
+      "paragraphs": 59,
+      "short_lines": 17,
+      "questions": 6,
+      "similes": 5,
+      "not_a_but_b": 1,
+      "colons": 7
+    },
+    {
+      "arm": "baseline",
+      "repeat": 3,
+      "outcome": "PASS",
+      "completed": 1,
+      "cost_usd": 0.56272,
+      "tool_calls": 24,
+      "chars": 2080,
+      "paragraphs": 72,
+      "short_lines": 29,
+      "questions": 13,
+      "similes": 2,
+      "not_a_but_b": 2,
+      "colons": 5
+    },
+    {
+      "arm": "calibrated",
+      "repeat": 3,
+      "outcome": "PASS",
+      "completed": 1,
+      "cost_usd": 0.34454920000000006,
+      "tool_calls": 15,
+      "chars": 2719,
+      "paragraphs": 84,
+      "short_lines": 27,
+      "questions": 17,
+      "similes": 3,
+      "not_a_but_b": 1,
+      "colons": 13
+    }
+  ],
+  "averages": {
+    "baseline": {
+      "cost_usd": 0.428928,
+      "tool_calls": 19.333333,
+      "chars": 2193.333333,
+      "paragraphs": 71.666667,
+      "short_lines": 26,
+      "questions": 12.333333,
+      "similes": 3,
+      "not_a_but_b": 0.666667,
+      "colons": 4.666667
+    },
+    "calibrated": {
+      "cost_usd": 0.352269,
+      "tool_calls": 15.666667,
+      "chars": 2305.666667,
+      "paragraphs": 69,
+      "short_lines": 20.333333,
+      "questions": 9.333333,
+      "similes": 4,
+      "not_a_but_b": 1,
+      "colons": 7.666667
+    }
+  },
+  "blind_review_score": {
+    "baseline": 1,
+    "calibrated": 8,
+    "tie": 0
+  },
+  "blind_reviews": [
+    {
+      "round": 1,
+      "pair": "p1",
+      "assignment": "A=baseline,B=calibrated",
+      "preferred": "B",
+      "winner": "calibrated",
+      "confidence": "medium",
+      "a_function_preserved": true,
+      "b_function_preserved": true,
+      "reason": "A的线索更密，但解释偏多；B从失踪、遗物推进到地板下求救，场景递进和章末钩子更强。"
+    },
+    {
+      "round": 1,
+      "pair": "p2",
+      "assignment": "A=calibrated,B=baseline",
+      "preferred": "A",
+      "winner": "calibrated",
+      "confidence": "medium",
+      "a_function_preserved": true,
+      "b_function_preserved": true,
+      "reason": "A的药材鉴别、掌柜遮掩与账目线索层层相扣，且个人名字反转更有冲击；B的调查场面更活，但终点稍轻。"
+    },
+    {
+      "round": 1,
+      "pair": "p3",
+      "assignment": "A=baseline,B=calibrated",
+      "preferred": "B",
+      "winner": "calibrated",
+      "confidence": "high",
+      "a_function_preserved": true,
+      "b_function_preserved": true,
+      "reason": "B把禁药、失踪案、药柜铜签和废矿地点连成可执行的调查方向，外部冲突与剧情推进明显更完整。"
+    },
+    {
+      "round": 2,
+      "pair": "p1",
+      "assignment": "A=calibrated,B=baseline",
+      "preferred": "B",
+      "winner": "baseline",
+      "confidence": "medium",
+      "a_function_preserved": true,
+      "b_function_preserved": true,
+      "reason": "B把药材异常、账目矛盾、掌柜伪造说法和巡城司内鬼嫌疑连成一条调查线，外部冲突更强；A的末尾钩子更鲜明，但中段推进较单线。"
+    },
+    {
+      "round": 2,
+      "pair": "p2",
+      "assignment": "A=baseline,B=calibrated",
+      "preferred": "B",
+      "winner": "calibrated",
+      "confidence": "medium",
+      "a_function_preserved": true,
+      "b_function_preserved": true,
+      "reason": "B将失踪、掌柜遮掩、魂药来源和主角姓名收货单扣得更紧，个人危机更直接；A线索扎实，但章末仍停在提问，推进稍弱。"
+    },
+    {
+      "round": 2,
+      "pair": "p3",
+      "assignment": "A=calibrated,B=baseline",
+      "preferred": "A",
+      "winner": "calibrated",
+      "confidence": "high",
+      "a_function_preserved": true,
+      "b_function_preserved": true,
+      "reason": "A的禁药机制、师父失踪、掌柜遮掩与巡城司调查衔接更完整，药渣、铜签和废矿线索层层递进；B也完整，但人物关系与阴谋展开略薄。"
+    },
+    {
+      "round": 3,
+      "pair": "p1",
+      "assignment": "A=baseline,B=calibrated",
+      "preferred": "B",
+      "winner": "calibrated",
+      "confidence": "medium",
+      "a_function_preserved": true,
+      "b_function_preserved": true,
+      "reason": "A的证据链更密，B则人物关系和悬念递进更自然，结尾“三短一长”的求救信号形成更强追读钩子。"
+    },
+    {
+      "round": 3,
+      "pair": "p2",
+      "assignment": "A=calibrated,B=baseline",
+      "preferred": "A",
+      "winner": "calibrated",
+      "confidence": "high",
+      "a_function_preserved": true,
+      "b_function_preserved": true,
+      "reason": "两版均完成失踪与禁药疑云的建立，但A的线索层层落地，并以涉及主角的账目反转收束，章节完成度更高。"
+    },
+    {
+      "round": 3,
+      "pair": "p3",
+      "assignment": "A=baseline,B=calibrated",
+      "preferred": "B",
+      "winner": "calibrated",
+      "confidence": "high",
+      "a_function_preserved": true,
+      "b_function_preserved": true,
+      "reason": "A的个人牵连感强，B同时交代失踪现场、禁药危害、官府调查和明确追查地点，剧情推进更完整，悬案规模也更清楚。"
+    }
+  ],
+  "limitations": [
+    "同一需求的两臂仍有模型随机差异，偏好不能完全归因于判据。",
+    "三次重复只能证明无明显回归和偏好趋势，不构成统计显著性。",
+    "原始章节保留在 gitignored workspace，不进入版本库。"
+  ]
+}

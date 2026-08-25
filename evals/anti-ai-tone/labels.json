@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "labels": [
+    {"id":"s01","feature":"段落长度/短段","should_modify":false,"reason":"危机节点用连续短段压缩节奏，每段都新增状态，不能仅因短而改。"},
+    {"id":"s02","feature":"比喻","should_modify":false,"reason":"比喻来自角色童年经验，补足寒冷触感和人物背景。"},
+    {"id":"s03","feature":"问句","should_modify":false,"reason":"问答推动角色决定并形成停顿，不是解释性设问。"},
+    {"id":"s04","feature":"翻案腔","should_modify":false,"reason":"否定结构承担现场路线纠错，材料真实走过误判到修正。"},
+    {"id":"s05","feature":"冒号","should_modify":false,"reason":"冒号用于总分列出关键物证，三项均是后续可用信息。"},
+    {"id":"s06","feature":"句间同构","should_modify":false,"reason":"重复句法承担钟声递进和恐怖升级，第三次发生质变。"},
+    {"id":"s07","feature":"比喻","should_modify":true,"reason":"理想化职业人格喻体连续抒情，没有给出系统实际机制。"},
+    {"id":"s08","feature":"句内排比","should_modify":true,"reason":"犹豫/迟疑/踌躇同义堆叠，只重复同一信息。"},
+    {"id":"s09","feature":"句间同构","should_modify":false,"reason":"句法已随视线和线索变化，动作连续且每步推进调查。"},
+    {"id":"s10","feature":"句间同构","should_modify":true,"reason":"同一主语和看见骨架机械复现，末句还由叙述者解释形式。"},
+    {"id":"s11","feature":"段首零回指","should_modify":true,"reason":"值得注意的是未标示评价对象，需回指上一段敲击。"},
+    {"id":"s12","feature":"句内排比/顿号","should_modify":false,"reason":"物品和动作是逃离前不可遗漏的任务清单，紧迫性有剧情功能。"},
+    {"id":"s13","feature":"问句","should_modify":false,"reason":"人物直接提问后由现场证据回答，推动悬疑。"},
+    {"id":"s14","feature":"段首回指/冒号","should_modify":false,"reason":"这次敲击明确回指对象，冒号后是具体证据。"},
+    {"id":"s15","feature":"提示性冒号","should_modify":true,"reason":"一句话总结和原因很简单均为空转提示，删去即可保留全部信息。"},
+    {"id":"s16","feature":"翻案腔","should_modify":false,"reason":"单次对照句直接揭示人物核心恐惧；没有重复点题或虚立与剧情无关的误解，不能仅因句式修改。"}
+  ]
+}

@@ -78,6 +78,26 @@ func TestKnowledgePromptsDescribeTruthAndLearningBoundaries(t *testing.T) {
 	}
 }
 
+func TestAntiAIToneReferenceUsesCalibratedNovelBoundaries(t *testing.T) {
+	ref := mustRead(referencesFS, "references/anti-ai-tone.md")
+	for _, phrase := range []string{
+		"AI 来源判据", "一般审美问题", "目标风格优先", "信息守恒", "叙事功能优先",
+		"段首零回指评论", "提示性冒号", "理想化职业人格喻体",
+		"短句或短段本身", "问句本身", "比喻本身", "句内排比本身",
+	} {
+		if !strings.Contains(ref, phrase) {
+			t.Fatalf("anti-ai-tone 缺少校准边界 %q", phrase)
+		}
+	}
+	for _, overclaim := range []string{
+		"三段式 / 排比三连", "每段长度、句式高度雷同", "明喻套句", "口语有停顿、省略、答非所问",
+	} {
+		if strings.Contains(ref, overclaim) {
+			t.Fatalf("anti-ai-tone 仍保留未经功能判断的泛化 %q", overclaim)
+		}
+	}
+}
+
 func TestSimulationPromptsDescribeAbstractDeconstructionNotAuthorImitation(t *testing.T) {
 	for name, prompt := range map[string]string{
 		"source": mustRead(promptsFS, "prompts/simulation-source.md"),

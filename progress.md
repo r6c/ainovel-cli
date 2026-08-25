@@ -4,7 +4,7 @@
 
 - 日期：2026-08-25
 - 基线：`ade8108 测试：加固 Linux 与无头环境兼容性`
-- 当前里程碑：P1——真实外部正文 Revision 验收（complete）
+- 当前里程碑：R——AI 味判据证据校准（complete）
 - 当前阶段：无活动阶段
 - 公共路径：Quick、Cocreate、Headless、Import、Deconstruct、读者成品导出
 
@@ -126,5 +126,17 @@ Revision 代表性自动化、全包、race、vet 全部通过；新增完结书
 结果：ChapterRecord revision 1→2、origin generated→user；ContentSHA、Summary、KeyEvents、Timeline、StateChanges 均更新；旧“完整日志已公开”事实消失；phase 保持 complete；PendingRevision 清理。正式 `ValidateRecordSet`、Context、TXT/EPUB 均通过且无内部状态泄漏。
 
 第二次 Sync：dirty=[]、applied=[]、Usage overall/per-agent/per-model 与 cost 全部不变，证明零模型调用；Host.Close 仍刷新 `usage.updated_at`，导致 usage 原始字节变化，记录为 P2 可观测性细节。一次性验收程序首次在读取 nil Usage 时崩溃，但 Revision 已成功落盘；未重跑模型，改用健壮只读程序完成余下验证。所有临时程序已删除。
+
+## 里程碑 R 启动
+
+用户允许真实模型费用。采用 16 条匿名网文最小对、独立金标、sss 三轮盲评；外部研究结论不写入 Judge prompt。未安装 Skill、未运行外部 Python 脚本。会话恢复脚本首次命令引号错误，改用直接路径后成功；探索中猜错 `internal/llmcontract/structured.go`、`internal/agentcore` 和 `internal/schema`，均改为真实模块路径。样本完整性测试首次把金标平衡误写成 5/11，实际是 6/10；按标签逐项复核后修正，不视为规则效果红灯。
+
+阶段 140—142：建立 16 条匿名网文最小对和独立金标；`sss/gpt-5.6-sol` 三轮盲评分别判 4/5/5 条 modify。14 条三轮一致；s11 为 2/3 modify。原 s16 金标机械误判单次人物核心恐惧对照句，三轮均指出其人物功能，人工按预先协议修正后多数票 16/16 命中。Judge 总 Token 7,724，Provider 未返回 Cost，记 unavailable。
+
+阶段 143：`anti-ai-tone.md` 改为目标风格、叙事功能、信息守恒和最小改动优先；短段/问句/比喻/排比/冒号/对照句式本身不作来源证据；新增段首零回指、提示性冒号、职业人格喻体等候选。资源契约全绿。
+
+阶段 144：Writer smoke baseline/calibrated 各 3 次，六臂全 PASS，总费用 `$2.343592`；校准版平均成本 `$0.352269` vs `$0.428928`，平均工具 15.67 vs 19.33，但不据此判质量。匿名方向互换 Judge 九次为 calibrated 8 胜、baseline 1 胜；九次均判双方剧情功能完整。原始章节留在 gitignored workspace，版本库只保留脱敏指标。
+
+阶段 144 一次性 A/B 运行器首次编译因 `eval.Outcome` 未显式转 string 失败，未调用模型；修正后以普通后台子进程启动，但子进程仍属于宿主进程组，在 120 秒工具超时后被终止，未完成任何臂、无 runs 结果。后续改用 Python `start_new_session=True` 真正脱离，不重复普通后台方案。
 
 阶段 127 启动时一次读取猜错 `internal/store/checkpoint.go`，实际文件为 `checkpoints.go`；未重复错误路径。首个 Headless 恢复测试夹具又因 Book 缺必填 Synopsis 在行为 seam 前失败；不作为产品红灯，补合法作品元数据后重跑。最小恢复实现后 PendingCommit 已清理，但测试用旧 Store 的 CheckpointStore 内存镜像观察不到另一个 Host 新增的 checkpoint；改为重开 Store 读取磁盘事实。随后猜测了不存在的 `internal/host/resume_test.go`；Host 无独立 Resume 测试文件，Headless 公共用例已通过真实 Host.Resume 覆盖，不再猜文件名。阶段 129 批量切换 Headless 到 Host 终态探测时，import/函数片段与预期不完全匹配，结构化编辑未应用；改为读取真实文件后分步替换。阶段 130 首个 Import 测试误把 `LoadRuleViolations` 当作双返回接口，编译失败未当作产品红灯；按真实单返回接口修正。增强篇幅目标夹具时又把 `UserRules.Save` 的指针参数传成值，仍未触达产品行为，已按真实接口修正。阶段 133 首次受限夹具迁移使用 `node`，但用户环境无该命令，迁移未执行；新增断言同时缺 `rules` import。改用已确认存在的 `python3` 并补 import，不重复 Node 方案。

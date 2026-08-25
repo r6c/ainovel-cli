@@ -1,0 +1,438 @@
+{
+  "model": "sss/gpt-5.6-sol",
+  "runs": [
+    {
+      "round": 1,
+      "order": [
+        "s11",
+        "s04",
+        "s15",
+        "s02",
+        "s08",
+        "s13",
+        "s01",
+        "s16",
+        "s06",
+        "s10",
+        "s03",
+        "s14",
+        "s07",
+        "s12",
+        "s05",
+        "s09"
+      ],
+      "results": [
+        {
+          "id": "s01",
+          "decision": "preserve",
+          "confidence": "high",
+          "evidence": "“警报—灯灭—门开—走廊现人”逐步压缩时间并完成突发场面升级。",
+          "reason": "短句排列表现连续事件与惊悚节奏，具有明确叙事功能。"
+        },
+        {
+          "id": "s02",
+          "decision": "preserve",
+          "confidence": "high",
+          "evidence": "“像小时候偷穿父亲那件湿蓑衣”具体关联人物记忆，且缠刀动作体现应对寒湿。",
+          "reason": "比喻和动作都有人物与环境功能，不构成模板化问题。"
+        },
+        {
+          "id": "s03",
+          "decision": "preserve",
+          "confidence": "high",
+          "evidence": "“还追吗？”与简短“追”在河面黑点背景下完成选择和追逐决断。",
+          "reason": "极简对话承担行动决策，不是模板化空转。"
+        },
+        {
+          "id": "s04",
+          "decision": "preserve",
+          "confidence": "high",
+          "evidence": "“不是东门，是西门”结合翻地图、火燎缺口和目击证词，完成地点纠错与信息确认。",
+          "reason": "对照句式服务于现场辨认和悬念澄清，不是空泛翻案。"
+        },
+        {
+          "id": "s05",
+          "decision": "preserve",
+          "confidence": "high",
+          "evidence": "钥匙、折叠车票、残照片三件物品形成可继续追查的现场悬念。",
+          "reason": "冒号后的列举提供具体道具线索，具有明确悬疑功能。"
+        },
+        {
+          "id": "s06",
+          "decision": "preserve",
+          "confidence": "high",
+          "evidence": "三次钟声分别对应群鸦飞散、守门人下跪、棺中异响，重复形成递进异变。",
+          "reason": "重复句法明确服务于节奏、升级和悬念，不属于机械复现。"
+        },
+        {
+          "id": "s07",
+          "decision": "modify",
+          "confidence": "high",
+          "evidence": "“永不疲倦的老管家”与“智慧的导师”是无具体行为支撑的泛化赞喻。",
+          "reason": "两组同义拟人只重复表达系统友善，缺少场景信息，应删减或具体化。"
+        },
+        {
+          "id": "s08",
+          "decision": "modify",
+          "confidence": "high",
+          "evidence": "“不再犹豫、不再迟疑、不再踌躇”连续同义复现，信息只推进一次。",
+          "reason": "同义排比机械重复，保留一个动词即可增强推进感。"
+        },
+        {
+          "id": "s09",
+          "decision": "preserve",
+          "confidence": "high",
+          "evidence": "水渍、泥脚印、窗帘和鞋尖按因果引导视线，连续推进周衡的发现过程。",
+          "reason": "相较机械重复，这里有线索链和视线移动，叙事功能明确。"
+        },
+        {
+          "id": "s10",
+          "decision": "modify",
+          "confidence": "high",
+          "evidence": "连续三句以“周衡看见”重复同一动作，且文本明示“现场却没有往前走”。",
+          "reason": "同义动作机械排布并自我解释，缺少有效推进，值得最小压缩。"
+        },
+        {
+          "id": "s11",
+          "decision": "preserve",
+          "confidence": "medium",
+          "evidence": "“三次间隔都只有七秒”提供可核验的异常线索，后句的录音操作承接调查动作。",
+          "reason": "“值得注意的是”虽是提示语，但确实引出关键时间线索，未模板化到需改。"
+        },
+        {
+          "id": "s12",
+          "decision": "preserve",
+          "confidence": "high",
+          "evidence": "证件、现金、药品、硬盘、路由器和后门检查构成逃亡准备清单，末句压出时限。",
+          "reason": "并列清单具体展示任务与紧迫性，不是机械罗列。"
+        },
+        {
+          "id": "s13",
+          "decision": "preserve",
+          "confidence": "high",
+          "evidence": "无人回答、钥匙仍在门上、齿缝粘蓝布共同构成冷库锁案的现场线索。",
+          "reason": "问句制造调查入口，细节承担悬念功能，不应因短促而修改。"
+        },
+        {
+          "id": "s14",
+          "decision": "preserve",
+          "confidence": "high",
+          "evidence": "“三次间隔都只有七秒”被拖回录音核对并得到“一秒不差”的验证。",
+          "reason": "异常判断与证据核验形成闭环，信息和调查节奏清晰。"
+        },
+        {
+          "id": "s15",
+          "decision": "modify",
+          "confidence": "high",
+          "evidence": "“一句话总结”“原因很简单”是可删除的总结框架，后文已有直接因果信息。",
+          "reason": "属于空转提示语，删去框架即可保留任务与追捕信息。"
+        },
+        {
+          "id": "s16",
+          "decision": "preserve",
+          "confidence": "medium",
+          "evidence": "“害怕的不是死，而是无人记得”直接揭示人物核心恐惧和主题诉求。",
+          "reason": "虽为常见对照句，但承担人物内心定性，不能仅凭形式判改。"
+        }
+      ],
+      "usage": {
+        "provider": "openai",
+        "model": "gpt-5.6-sol",
+        "input": 1223,
+        "output": 1431,
+        "cache_read": 0,
+        "cache_write": 0,
+        "total_tokens": 2654
+      }
+    },
+    {
+      "round": 2,
+      "order": [
+        "s13",
+        "s01",
+        "s16",
+        "s06",
+        "s10",
+        "s03",
+        "s14",
+        "s07",
+        "s12",
+        "s05",
+        "s09",
+        "s11",
+        "s04",
+        "s15",
+        "s02",
+        "s08"
+      ],
+      "results": [
+        {
+          "id": "s01",
+          "decision": "preserve",
+          "confidence": "high",
+          "evidence": "“警报响了／灯灭了／门开了”连续改变现场状态，最终引出走廊尽头的人",
+          "reason": "短句递进承担节奏和人物登场功能，不因句式整齐而需修改。"
+        },
+        {
+          "id": "s02",
+          "decision": "preserve",
+          "confidence": "high",
+          "evidence": "湿蓑衣的童年记忆连接盔甲进水的冷感，随后补缠刀柄",
+          "reason": "比喻提供人物经历与触觉，动作则维持战斗场景的现实压力。"
+        },
+        {
+          "id": "s03",
+          "decision": "preserve",
+          "confidence": "high",
+          "evidence": "竹筏已成黑点后，陆青仍回答“追”",
+          "reason": "极简对话明确任务选择，并以距离信息强化决心和紧迫感。"
+        },
+        {
+          "id": "s04",
+          "decision": "preserve",
+          "confidence": "high",
+          "evidence": "“不是东门，是西门”纠正路线，血地图、烧黑缺口和目击证词补强信息",
+          "reason": "对举句式承担明确纠错与指路功能，并有具体证据支撑。"
+        },
+        {
+          "id": "s05",
+          "decision": "preserve",
+          "confidence": "high",
+          "evidence": "“生锈的钥匙”“折过四次的车票”“没烧完的照片”是三项具体物证",
+          "reason": "冒号和列举用于集中投放线索，每件物品均具悬念功能。"
+        },
+        {
+          "id": "s06",
+          "decision": "preserve",
+          "confidence": "high",
+          "evidence": "三次钟声依次触发“鸦飞”“守门人跪”“棺内刮木声”",
+          "reason": "句法复现服务于逐级升级的恐怖效果，每次都有新事件。"
+        },
+        {
+          "id": "s07",
+          "decision": "modify",
+          "confidence": "high",
+          "evidence": "“老管家”“智慧的导师”连续比喻都只泛指安排和指引",
+          "reason": "两组抽象褒义比喻功能重叠，缺少具体情境或新增信息。"
+        },
+        {
+          "id": "s08",
+          "decision": "modify",
+          "confidence": "high",
+          "evidence": "“不再犹豫，不再迟疑，不再踌躇”连续堆叠三个近义表达",
+          "reason": "近义词排比没有递进或新增信息，属于可定位的同义重复。"
+        },
+        {
+          "id": "s09",
+          "decision": "preserve",
+          "confidence": "high",
+          "evidence": "水、泥脚印、窗帘和鞋尖形成连续视线与调查路径",
+          "reason": "观察动作随线索推进，现场信息逐层收束，不是机械重复。"
+        },
+        {
+          "id": "s10",
+          "decision": "modify",
+          "confidence": "high",
+          "evidence": "“周衡”与“看见”连续三次机械复现，末句又直接讲解这种排列",
+          "reason": "动作同义排布缺少推进，且以元叙述自我点评，模板痕迹明确。"
+        },
+        {
+          "id": "s11",
+          "decision": "modify",
+          "confidence": "high",
+          "evidence": "“值得注意的是”仅在具体信息“三次间隔都只有七秒”前作空泛提示",
+          "reason": "异常本身已足够突出，该提示语不增加人物、信息或节奏功能。"
+        },
+        {
+          "id": "s12",
+          "decision": "preserve",
+          "confidence": "high",
+          "evidence": "证件、现金、药品、硬盘、路由器、后门构成具体撤离清单",
+          "reason": "连续动作展示任务准备，楼下巡逻队提供明确时限压力。"
+        },
+        {
+          "id": "s13",
+          "decision": "preserve",
+          "confidence": "high",
+          "evidence": "“钥匙还插在门上，齿缝里粘着一小片蓝布”提供可追查的现场线索",
+          "reason": "问句引出异常，沉默与蓝布共同制造悬念，并非空转模板。"
+        },
+        {
+          "id": "s14",
+          "decision": "preserve",
+          "confidence": "high",
+          "evidence": "“三次间隔都只有七秒”并通过回放确认“一秒不差”",
+          "reason": "冒号后是具体异常，随后有核验动作，信息与推理均有效。"
+        },
+        {
+          "id": "s15",
+          "decision": "modify",
+          "confidence": "high",
+          "evidence": "“一句话总结”“原因很简单”是对结论和原因的双重元话语提示",
+          "reason": "两处提示均可由撤离结论与车辆暴露事实直接承担，存在空转。"
+        },
+        {
+          "id": "s16",
+          "decision": "preserve",
+          "confidence": "medium",
+          "evidence": "“害怕……无人记得他来过”明确交代人物核心恐惧",
+          "reason": "虽采用“不是A而是B”，但提供了有效人物动机，不属无意义翻案。"
+        }
+      ],
+      "usage": {
+        "provider": "openai",
+        "model": "gpt-5.6-sol",
+        "input": 1223,
+        "output": 1308,
+        "cache_read": 0,
+        "cache_write": 0,
+        "total_tokens": 2531
+      }
+    },
+    {
+      "round": 3,
+      "order": [
+        "s09",
+        "s05",
+        "s12",
+        "s07",
+        "s14",
+        "s03",
+        "s10",
+        "s06",
+        "s16",
+        "s01",
+        "s13",
+        "s08",
+        "s02",
+        "s15",
+        "s04",
+        "s11"
+      ],
+      "results": [
+        {
+          "id": "s01",
+          "decision": "preserve",
+          "confidence": "high",
+          "evidence": "警报、断电、开门、走廊来人连续切换，形成突发事件的镜头式推进。",
+          "reason": "短句排列表现紧迫节奏并引出威胁，非无功能模板。"
+        },
+        {
+          "id": "s02",
+          "decision": "preserve",
+          "confidence": "high",
+          "evidence": "盔甲进水、童年湿蓑衣联想及重新缠刀柄，兼具寒冷感和备战动作。",
+          "reason": "比喻有人物记忆支撑，后续动作也推进状态，不是套话。"
+        },
+        {
+          "id": "s03",
+          "decision": "preserve",
+          "confidence": "high",
+          "evidence": "“还追吗？”与单字“追”配合河面黑点，完成追逃选择和节奏停顿。",
+          "reason": "极短对话承载人物决断与场面节拍，不属模板化空句。"
+        },
+        {
+          "id": "s04",
+          "decision": "preserve",
+          "confidence": "high",
+          "evidence": "“不是东门，是西门”被沾血地图和火燎缺口、亲眼所见具体支撑。",
+          "reason": "翻案纠正承担地点确认与证据展示功能，不是无依据点题。"
+        },
+        {
+          "id": "s05",
+          "decision": "preserve",
+          "confidence": "high",
+          "evidence": "冒号后的钥匙、车票、照片构成可追查的物证清单。",
+          "reason": "列举承担道具展示和悬念埋设功能，不应仅因句式整齐修改。"
+        },
+        {
+          "id": "s06",
+          "decision": "preserve",
+          "confidence": "high",
+          "evidence": "钟声逐次对应乌鸦飞起、守门人跪下、棺材异响，威胁层层升级。",
+          "reason": "重复句式构成倒计时和递进惊悚效果，具有明确节奏功能。"
+        },
+        {
+          "id": "s07",
+          "decision": "modify",
+          "confidence": "high",
+          "evidence": "“永不疲倦的老管家”“智慧的导师”连续泛化比喻，未提供具体场景信息。",
+          "reason": "同义拟人叠加且功能重复，属于明显模板化点题，可最小删减。"
+        },
+        {
+          "id": "s08",
+          "decision": "modify",
+          "confidence": "high",
+          "evidence": "“不再犹豫、不再迟疑、不再踌躇”三组同义否定重复同一心理。",
+          "reason": "同义词机械堆叠，删并即可保留行动信息。"
+        },
+        {
+          "id": "s09",
+          "decision": "preserve",
+          "confidence": "high",
+          "evidence": "“水”→“泥脚印”→“窗帘后的鞋尖”，线索逐步收束并制造发现悬念。",
+          "reason": "动作链和视线转移都有具体信息，非模板化空转。"
+        },
+        {
+          "id": "s10",
+          "decision": "modify",
+          "confidence": "high",
+          "evidence": "连续三句“周衡……看见……”，末句直接解释“三句话……现场却没有往前走”。",
+          "reason": "同一动作机械复现并加入自我点评，既重复又暴露写作模板。"
+        },
+        {
+          "id": "s11",
+          "decision": "modify",
+          "confidence": "high",
+          "evidence": "“值得注意的是”提示读者关注，后面重复“三次间隔七秒”的既有事实。",
+          "reason": "元提示加同义重复，删去提示语即可保留核查动作和悬念。"
+        },
+        {
+          "id": "s12",
+          "decision": "preserve",
+          "confidence": "high",
+          "evidence": "收拾、装好、拔掉、检查对应撤离任务，末句给出巡逻队逼近的时限。",
+          "reason": "排比动作推动紧迫情节，信息明确，不是机械空转。"
+        },
+        {
+          "id": "s13",
+          "decision": "preserve",
+          "confidence": "high",
+          "evidence": "无人回答与钥匙、齿缝蓝布形成矛盾，蓝布提供可追查物证。",
+          "reason": "问句、停顿和细节共同制造线索悬念，信息具体。"
+        },
+        {
+          "id": "s14",
+          "decision": "preserve",
+          "confidence": "high",
+          "evidence": "“三次间隔七秒”并由录音核对“一秒不差”，形成可验证线索。",
+          "reason": "问号后的核查动作推进谜团，表达虽规整但有明确功能。"
+        },
+        {
+          "id": "s15",
+          "decision": "modify",
+          "confidence": "high",
+          "evidence": "“一句话总结”“原因很简单”是提示式框架，后文只是直接重复撤离理由。",
+          "reason": "元叙述标签削弱现场感，可直接保留核心信息并删去框架。"
+        },
+        {
+          "id": "s16",
+          "decision": "preserve",
+          "confidence": "medium",
+          "evidence": "“不是死，而是无人记得”明确揭示人物恐惧的核心对象。",
+          "reason": "句式简洁但完成心理揭示，不能仅因常见翻案结构判改。"
+        }
+      ],
+      "usage": {
+        "provider": "openai",
+        "model": "gpt-5.6-sol",
+        "input": 1223,
+        "output": 1316,
+        "cache_read": 0,
+        "cache_write": 0,
+        "total_tokens": 2539
+      }
+    }
+  ],
+  "version": 1
+}

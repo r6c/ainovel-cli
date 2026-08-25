@@ -341,6 +341,14 @@ duplicate_paragraph
 
 Commit 和 Revision Projector 都必须复用同一个 `rules.Lint`，不要建立第二条 Prose Lint 管线。
 
+### 10.1 AI 味语义判据
+
+`assets/references/anti-ai-tone.md` 是 Writer/Editor 的语义参考，不是文本来源检测器。不得输出 AI 概率，也不得把句长、段长、问句、比喻、句内排比、冒号或“不是 A 而是 B”本身当作 AI 来源证据。
+
+正式优先级：目标风格 → 叙事功能 → 信息守恒 → 最小改动。只有能定位空转提示、同义重复、机械同构、段首零回指或无机制支撑的职业人格喻体时才建议修改；一般审美问题继续映射现有七维并引用原文，不升级为 Commit 硬门禁。
+
+校准证据位于 `evals/anti-ai-tone/`：16 条自建匿名网文最小对、独立金标、三轮盲评和 Writer 三重复 A/B。外部 `lieflat-less-ai-tone` 仅作为候选假设来源；未安装 Skill、未运行其 Python 脚本、未采用其不可复核统计阈值，也不新增第二条去 AI 味流程。
+
 ## 11. Knowledge 诊断与导出边界
 
 作者侧 `diag.Analyze` 聚合：Truth 数、角色知情关系数、读者已知 Truth 数和活跃错误信念数。本地 `/diag` 可以显示长期未纠正 belief 的 Knowledge ID、角色与形成章，但不复制 Truth 或 Belief 正文。

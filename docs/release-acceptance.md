@@ -212,6 +212,14 @@ Provider：`sss / gpt-5.6-sol`；硬预算 `$0.25`，实际费用 `$0.010818`。
 
 `larashero3-dotcom/lieflat-less-ai-tone`（MIT，审查 commit `27d29232f10124db904ca9c0536d0b67cb3b2833`）不整体安装。它与现有 `anti-ai-tone`、`rules` 和 `story-deslop` 重叠，三个 Python 脚本只做语料统计，不是小说运行时执行器。后续仅把白名单最小修改、信息守恒及少数有证据的候选规则纳入本项目网文样本校准；不直接复制 Skill 或新增第二条去 AI 味管线。
 
+### 3.10 AI 味判据证据校准
+
+使用 16 条 ainovel-cli 自建匿名中文网文最小对和独立金标，对 `sss / gpt-5.6-sol` 执行三轮顺序变化盲评。原始金标中一条单次人物核心恐惧对照句被三轮一致指出具有明确叙事功能；人工按预先协议修正后，多数票与 16 条金标全部一致。直接 Judge 响应记录 Token 7,724，但 Provider 未返回 Cost，故费用记为 unavailable，不伪报 `$0`。
+
+Writer A/B 复用 `writer_first_chapter`：旧判据与校准判据各运行 3 次，六臂全部通过确定性 Gate并完成一章；实际累计费用 `$2.343592`。匿名方向互换评审九次比较得到 calibrated 8 胜、baseline 1 胜，且九次均认为双方剧情功能完整。该结果只证明未观察到回归并存在偏好趋势，不能排除创作随机性或证明因果。
+
+版本化证据位于 [`../evals/anti-ai-tone/`](../evals/anti-ai-tone/)；真实章节与运行日志只保留在 gitignored workspace。外部 `lieflat-less-ai-tone` 未安装、未执行脚本、未作为第二条运行时管线。
+
 ## 4. 发布判定
 
 发布前必须满足：
