@@ -4,8 +4,8 @@
 
 - 日期：2026-08-25
 - 基线：`ade8108 测试：加固 Linux 与无头环境兼容性`
-- 当前里程碑：O——真实创作验收问题收敛
-- 当前阶段：阶段 123—126 全部完成
+- 当前里程碑：Q——终态恢复与正文接纳 seam 收口
+- 当前阶段：阶段 127——终态恢复红灯（planned）
 - 公共路径：Quick、Cocreate、Headless、Import、Deconstruct、读者成品导出
 
 ## Karpathy 约束下的取舍
@@ -83,3 +83,20 @@ UserRules 快照升级 v4，新增 `structured.chapter_target_chars`。Normalize
 ## 阶段 126 完成
 
 在全新隔离目录用 `sss / gpt-5.6-sol` 复用同类单章科幻需求，项目硬预算 `$0.60`。快照 v4 正确记录目标 1200，最终《静海回声》1/1 章、1311 字（+9.25%，低于 1440 上限），Markdown/其它规则违规均为 0，无 PendingCommit，退出码 0，费用约 `$0.161`。完结态再次无 Prompt 启动返回 0 且 Progress/Usage 原始字节不变；真实 ChapterRecord 全量重放与 TXT/EPUB 隔离通过。未继续调用 Provider。
+
+## 2026-08-25 全项目复审
+
+只读审查覆盖近期热区与主链：Headless、Host/Engine/Flow、Commit Saga、Revision Projector/Service、Import analyze/publish、UserRules v4、Context、Prompt、Diagnostics、Exporter、Linux/无头入口。
+
+全量 `go test ./...`、`go vet` 和 Store/Tools/Revision/Host/Headless/Import race 通过，工作区基线干净。宏观架构未跑偏。
+
+发现两个 S1：
+
+1. 最后一章在 PendingCommit 收尾前已 `phase=complete`；Headless 快路径、Resume label、Route/precheck 都可能跳过该恢复。
+2. Import 用户原文复用生成正文 Markdown 门禁；发布前只验证事实、不验证正文，可能先写 Foundation/Hold 后卡在 Publish。
+
+发现 S2：`chapter_target_chars` 无明确取消语义、无上界，存在永久规则与极端整数溢出风险。S3：Lint “只返事实不阻断”的稳定文档已与生成正文接纳政策漂移。
+
+已生成并打开临时报告：`/tmp/architecture-review-20260825-ainovel.html`。不存在 `docs/adr/`，按无 ADR 处理。两次搜索正则因括号未闭合失败，均停止重复并改用字面搜索；未修改生产代码。
+
+下一里程碑 Q 已规划为阶段 127—134：先终态恢复，再正文 provenance/Import 零污染，再 UserRules 撤销与上界，最后文档与验证。真实 Revision 验收延后，未调用 Provider。

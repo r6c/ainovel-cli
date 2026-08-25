@@ -2,10 +2,10 @@
 
 ## 当前状态
 
-- 总体状态：`complete`
-- 当前里程碑：O——真实创作验收问题收敛
-- 当前阶段：阶段 123—126 全部完成
-- 基线提交：`ade8108 测试：加固 Linux 与无头环境兼容性`
+- 总体状态：`planned`
+- 当前里程碑：Q——终态恢复与正文接纳 seam 收口
+- 当前阶段：阶段 127——终态恢复红灯
+- 基线提交：`bdba5d1 测试：记录真实模型问题修复回归结果`
 - 完整历史：[`docs/history/plans/2026-08-domain-saga-evolution/`](docs/history/plans/2026-08-domain-saga-evolution/)
 
 ## 已完成里程碑
@@ -29,6 +29,10 @@
 | M | Linux 与无头环境兼容性验收 | `ade8108` |
 | N | 端到端创作验收与发布就绪检查 | `efcef9f` |
 | N2 | sss 真实 Provider 最小 Headless 验收 | `9c0324b` |
+| O1 | Headless 已完结会话 | `652acbd` |
+| O2 | Markdown 提交前格式门禁 | `3ab06d0` |
+| O3 | 结构化单章篇幅目标 | `f99af1b` |
+| O4 | sss 问题修复真实回归 | `bdba5d1` |
 
 ## 稳定架构边界
 
@@ -632,3 +636,110 @@ git diff --check
 状态：`complete`
 
 已在全新隔离目录复用 `sss / gpt-5.6-sol` 做同类单章回归：目标 1200、实际 1311 字，Markdown/其它规则违规为 0，无 PendingCommit，完结态二次启动零写入，全量事实重放与 TXT/EPUB 隔离通过；费用约 `$0.161`。临时正文、日志和配置不进入仓库。
+
+# 里程碑 Q：终态恢复与正文接纳 seam 收口
+
+## 目标
+
+在继续真实 Revision 验收前关闭全项目复审发现的两个 S1：
+
+1. `phase=complete` 仍可能存在 PendingCommit/PendingRevision/Import 等恢复工作，不能直接静默终止。
+2. Import 用户原文复用生成正文格式门禁，可能在正式 Foundation/Hold 写入后卡死发布。
+
+原则：复用现有 Commit Saga、Revision 和 Import 工作区；不新建通用工作流框架，不静默修改用户原文。
+
+## 阶段 127：终态恢复红灯
+
+状态：`pending`
+
+公共 seam：`headless.Run`、`Host.Resume`、TUI bootstrap、`CommitChapterTool.Execute`。
+
+首个场景：构造 `phase=complete + sealed PendingCommit(progress_marked)`，Headless/TUI 必须先补 checkpoint、清 PendingCommit，再显示完成；不得直接命中完成摘要。追加：`signal_saved`、密封损坏、不同章冲突、无 Pending 的纯终态回归。
+
+## 阶段 128：确定性 PendingCommit 恢复优先级
+
+状态：`pending`
+
+优先方案：Host Resume 在生成 resume label 前，直接通过现有 `CommitChapterTool.Execute` 幂等收尾冻结 PendingCommit，不调用 Writer 模型；完成后重新读取 Progress。若测试证明该位置破坏职责，再设计 `flow.State.PendingCommit` 路由，不在 Host/Flow 两处重复恢复规则。
+
+验收：任意 phase 都能恢复四个 Commit Stage；完整性失败保留工件并返回稳定错误；不消耗预算、不改冻结正文。
+
+## 阶段 129：真正可静默终止判定
+
+状态：`pending`
+
+终态摘要只有同时满足以下条件才允许：
+
+```text
+当前项目格式
+phase=complete
+无 PendingCommit
+无 PendingRevision
+无未完成 Import 工作区
+无外部正文哈希变化
+取得书目录独占租约
+```
+
+具体 interface 由阶段 127/128 结果决定；Headless 与 TUI 必须复用同一 Store 派生判定，不各自维护文件清单。外部修订只给出 `/sync` 指引，不在无授权情况下自动调用模型。
+
+## 阶段 130：Import Markdown/篇幅政策红灯
+
+状态：`pending`
+
+公共 seam：`imp.Run/publish` + 正式 `CommitChapterTool`。
+
+构造用户源章节含 `**`、内部 `##`，以及已有书级 `chapter_target_chars` 小于原文章节长度。要求：原文逐字保留发布，Lint 事实可记录，但不能使用生成正文的 Markdown/篇幅硬门禁；若存在其它不可接纳问题，必须在任何正式 Foundation/Hold/章节写入前失败并回退可修复状态。
+
+## 阶段 131：正文 provenance 接纳 module
+
+状态：`pending`
+
+深化现有章节接纳 seam，至少区分：
+
+```text
+generated  模型新生成正文：Markdown/篇幅政策生效
+imported   用户导入原文：保留内容，只记录 Lint
+user       外部人工修订：保留内容，经 Revision 语义重建
+```
+
+推荐为 `CommitChapterTool` 增加非模型调用的 imported 接口，并将 provenance 纳入冻结意图/ChapterRecord；普通模型 `Execute` 不能自行伪造 origin。Import 发布前验证与正式提交必须消费同一接纳政策，不复制 Saga。
+
+## 阶段 132：Import 零污染与恢复矩阵
+
+状态：`pending`
+
+验证多章 Markdown 源、发布中断、stale PendingCommit、重新运行和 TXT/EPUB 原文保真。所有失败在正式写入前或由 Saga 可恢复；`NextAction` 不得永久停在 Publish。
+
+## 阶段 133：UserRules 撤销语义与数值上界
+
+状态：`pending`
+
+先由测试固定三态：未声明 / 设置正值 / 明确清除。推荐 `*int` 语义（nil=未声明，0=清除，正值=设置），但只有 strict schema 能稳定表达 nullable 时采用；否则定义显式 action 字段。禁止用负数暗号。
+
+为 `chapter_target_chars` 定义合理上界，并用溢出安全公式计算 120%；运行中“取消每章字数限制”必须清除旧快照值。旧 v1-v4 快照兼容。
+
+## 阶段 134：文档、全量验证与真实 Revision 计划门禁
+
+状态：`pending`
+
+同步规则所有权：Lint 只生成事实；正文接纳 adapter 按 provenance 决定哪些事实阻断。更新 CONTEXT、Import 文档、UserRules 文档和发布验收。
+
+最终门禁：
+
+```text
+go test ./... -timeout=5m
+go vet ./...
+go test -race ./internal/store ./internal/tools ./internal/revision ./internal/host ./internal/entry/headless ./internal/host/imp -count=1 -timeout=10m
+git diff --check
+```
+
+里程碑 Q 完成后再规划 P1 真实外部正文 Revision；未经用户重新确认预算不调用 Provider。
+
+## 本批明确不做
+
+- 新认知动作、伏笔状态或 ChapterContract 字段
+- 通用工作流/状态机框架
+- 自动清洗用户导入正文
+- 扫榜、浏览器或网络抓取
+- 数据库、Web 事实源或第四 Worker
+- 真实 Provider 调用

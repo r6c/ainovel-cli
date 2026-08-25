@@ -95,6 +95,61 @@ ingest → segment → analyze → synthesize → publish
 | Import 全书事实门禁 | `internal/host/imp/analyze.go` |
 | Writer Knowledge 净化 | `internal/tools/novel_context.go` |
 
+## 2026-08-25 全项目复审
+
+### 总体判断
+
+项目没有跑偏。最近里程碑仍复用现有 Engine、Store、Commit Saga、Revision、Import 和 Context seam；没有引入数据库、浏览器、通用状态机、第四 Worker 或并行相邻章节。
+
+### S1：`phase=complete` 不是可静默终止的充分条件
+
+最后一章提交顺序为：
+
+```text
+MarkChapterComplete
+→ MarkComplete（phase=complete）
+→ PendingCommit=progress_marked
+→ checkpoint
+→ PendingCommit=signal_saved
+→ 清理 PendingCommit
+```
+
+因此崩溃可能留下：
+
+```text
+phase=complete + PendingCommit
+```
+
+当前 `headless.completedSummary`、`host.resumeLabel`、`flow.Route` 和 `engine.precheck` 都把 `phase=complete` 直接视为终态；既可能跳过 PendingCommit 收尾，也会让 TUI/普通 Resume 无法自动恢复。Headless 的 Host 前快路径还绕过书目录租约、未完成 Import 和外部正文修订检查。
+
+下一修复必须落在 Store 事实驱动的恢复 seam，而不是只给 Headless 再加一个 if。候选方向：`flow.State` 显式携带 PendingCommit，并让冻结提交恢复优先于 PhaseComplete；Headless/TUI 的“可静默完成”判定需同时证明无 PendingCommit、无 PendingRevision、无活动 Import，并保留书目录独占纪律。具体 interface 先由失败测试决定。
+
+### S1：Import 正文发布政策与生成正文门禁冲突
+
+O2 将 `markdown_residue` 作为生成正文/Rewrite 的提交前硬门禁；但 Import 也复用 `CommitChapterTool` 发布用户原文。Import 明确保留源字符和标题行，用户源可能合法包含 `**` 或章节内 `##`。
+
+当前 Import 发布前门禁只重放 ChapterFacts，不验证实际章节正文；随后先写正式 Foundation 和 Completion Hold，再逐章 Commit。若原文触发 Markdown 门禁，会在正式 Store 已部分写入后失败，并可能持续停在 Publish。
+
+下一修复需区分正文 provenance：生成正文可要求纯小说 Markdown 形状，Import/用户修订正文应保留原文并只记录 Lint 事实，或在任何正式写入前给出明确人工裁定。不得让 Import adapter 复制 Commit 生命周期，也不得静默清理用户原文。
+
+### S2：UserRules 数值参数缺少撤销语义和上界
+
+`chapter_target_chars=0` 同时表示“未指定”和 Normalizer 的空值；`BuildSnapshot/OverlaySnapshot` 把 0 当缺失，所以运行中明确“取消每章字数限制”无法清除既有目标。该字段也只拒绝负数，没有合理上界；`target*120/100` 对极端整数存在溢出风险。
+
+下一计划需先定义三态（未声明/设置/明确清除）和合理值域，再改合并；不要用负数或 Prompt 暗号偷偷编码。
+
+### S3：规则所有权文档已漂移
+
+`rules.Lint` 仍是事实生成 module，但稳定注释和 CONTEXT 还写“绝不阻断 Commit”；实际上生成正文 adapter 已将 `markdown_residue` 用作接纳前置条件。应改成：Lint 不裁决；不同正文 provenance 的接纳 adapter 决定哪些事实阻断。
+
+### 暂不处理
+
+- Import ChapterRecord 当前标为 `generated`，因为领域只有 generated/user 两种 origin。它不会被误计为用户修订风格，暂不为命名纯度新增第三状态。
+- `commit_chapter.go` 文件较大，但本轮没有仅凭行数提出拆分；先修真实恢复与发布 seam。
+- 真实 Revision/Cocreate/Import/Deconstruct 人工验收延后到上述 S1 闭环之后。
+
+架构可视化报告：`/tmp/architecture-review-20260825-ainovel.html`（临时文件，不入仓库）。
+
 ## 保持不动的架构边界
 
 - Engine/Route 继续按 Store 事实确定性派发。
@@ -169,4 +224,6 @@ Knowledge 诊断已作为当前投影的只读消费完成，不是新事实源�
 - 用户授权后已用 `sss / gpt-5.6-sol` 完成真实 Headless 单章闭环：强杀恢复、预算硬停、模型自修正提交、事实重放、TXT/EPUB 隔离均通过，总费用约 `$0.410`。
 - 真实验收发现 3 项 P2：目标约 1200 字实际 2092 字；正文残留 6 个 `**`（Lint 已报告）；完结态无 Prompt Headless 重启使用错误退出码和不够准确的文案。
 - 首轮真实验收发现的 3 项 P2 已在里程碑 O 修复，并用同一 `sss / gpt-5.6-sol` 做二次单章回归：目标 1200、实际 1311 字，Markdown/其它规则违规为 0，无 PendingCommit，完结态重启零写入，全量重放和 TXT/EPUB 隔离通过，费用约 `$0.161`。
+- 2026-08-25 全项目复审发现阻塞恢复窗口：最后一章 `MarkComplete` 早于 PendingCommit 进入 `progress_marked/signal_saved` 并清理；Headless 完结快路径若只看 `phase=complete`，可能跳过仍需收尾的 PendingCommit。下一计划必须先让终态判定同时证明无 PendingCommit，再谈新的真实协同验收。
+- 本轮架构审查尝试读取 `docs/adr/`，目录不存在；结论为当前无 ADR 可核对，不将其视为产品错误，也不再重复访问。
 - Cocreate、PendingCommit 中间 Stage 强杀、Revision、Import 后续写和 Deconstruct 文学效果仍未做真实模型验证。
