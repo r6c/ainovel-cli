@@ -165,4 +165,7 @@ Knowledge 诊断已作为当前投影的只读消费完成，不是新事实源�
 - Deconstruct 已覆盖显式目录、扫描扩展名、增量复用、合规 Prompt 和画像导入。
 - TXT/EPUB 已覆盖不泄露 Knowledge。
 - `internal/entry/headless` 原先没有测试；现已补齐空 Prompt/空工作区的真实入口失败边界和脱敏诊断导出契约，没有为测试增加 Host 注入框架。
-- 代表性自动化路径全部通过，未发现 P0/P1；真实 Provider 文学质量验收需要用户配置和额度，当前保持未执行并由发布清单指导人工操作。
+- 代表性自动化路径全部通过，未发现 P0/P1。
+- 用户授权后已用 `sss / gpt-5.6-sol` 完成真实 Headless 单章闭环：强杀恢复、预算硬停、模型自修正提交、事实重放、TXT/EPUB 隔离均通过，总费用约 `$0.410`。
+- 真实验收发现 3 项 P2：目标约 1200 字实际 2092 字；正文残留 6 个 `**`（Lint 已报告）；完结态无 Prompt Headless 重启使用错误退出码和不够准确的文案。
+- Cocreate、PendingCommit 中间 Stage 强杀、Revision、Import 后续写和 Deconstruct 文学效果仍未做真实模型验证。

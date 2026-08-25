@@ -125,9 +125,9 @@ linux/amd64 与 linux/arm64 静态跨编译
 Linux 缺 notify-send 时日志降级
 ```
 
-## 3. 人工真实模型验收（未执行）
+## 3. 人工真实模型验收清单
 
-> 状态：未执行。以下步骤会调用真实 Provider 并产生费用，必须由操作者明确选择模型、预算和测试目录后手动执行。
+> 执行状态见第 5 节。以下步骤会调用真实 Provider 并产生费用，必须由操作者明确选择模型、预算和测试目录后手动执行；未在第 5 节记录的项目均视为未执行。
 
 ### 3.1 Quick 短篇闭环
 
@@ -196,3 +196,55 @@ Linux 缺 notify-send 时日志降级
 ```
 
 真实模型验收未执行时，发布说明必须如实标记，不得用 fake-model 自动化结果替代文学质量结论。
+
+## 5. 真实 Provider 验收记录
+
+### 2026-08-25 · sss / gpt-5.6-sol · Headless 单章短篇
+
+状态：**通过工程闭环，发现 3 项 P2；其余人工场景未执行。**
+
+范围与费用：
+
+```text
+单章完结科幻短篇
+目标约 1200 字
+首次硬预算 $0.25；恢复后上调为 $0.60
+实际累计费用约 $0.410
+```
+
+实际过程：
+
+1. 在独立临时目录启动 Headless，完成启动裁定与 Foundation。
+2. 外部测试执行器在约 120 秒处终止进程；当时 Progress 为 outline、零章节、无 PendingCommit。
+3. 无 Prompt 恢复后进入第 1 章写作；预算在累计约 $0.264 时安全硬停，仍无章节、无 ChapterRecord、无 PendingCommit。
+4. 将隔离项目预算上调到 $0.60 后再次无 Prompt 恢复。
+5. Writer 两次提交因未知 Foreshadow/Knowledge ID 被前置门禁拒绝，第三次自修复成功。
+6. 最终完成 1/1 章、2092 字，进程退出码 0，无 PendingCommit；全量 ChapterRecord 重放验证通过。
+7. TXT 与 EPUB 均成功导出，未发现 Knowledge、PendingCommit 或内部协议泄漏。
+8. 已完结目录再次无 Prompt Headless 启动不发模型请求、不改工件和费用，但当前返回退出码 1。
+
+通过项：
+
+- 强杀后可从 Foundation/Outline 状态恢复，不重复章节。
+- 预算告警和硬停有效；停机点没有留下部分提交。
+- 提交前 Knowledge/Foreshadow 引用校验可被真实模型根据错误自修复。
+- Progress、ChapterRecord、Timeline、Relationship、StateChange 和 Checkpoint 自洽。
+- `revision.ValidateRecordSet` 对真实 ChapterRecord 重放通过。
+- TXT/EPUB 成品不泄露作者侧认知状态。
+- `diag-export.md` 正文出包为 0，且未发现运行时异常。
+
+P2：
+
+1. **篇幅偏差**：用户目标约 1200 字，实际 2092 字；当前没有机械字数门禁。
+2. **Markdown 残留**：正文含 6 个 `**` 标记；`markdown_residue` 已正确记录 warning，但未自动返修。
+3. **完结态 Headless 文案/退出码**：完结后无 Prompt 再启动返回“需要 --prompt 或可恢复会话”和退出码 1；无数据或费用副作用，但不够友好。
+
+未执行：
+
+- 真实 Cocreate 五阶段完整会话
+- 真实 PendingCommit 中间 Stage 强杀
+- 真实外部正文 Revision
+- 真实 Import 后续写
+- 真实 Deconstruct 文学效果对比
+
+停止扩展原因：单章工程闭环已经覆盖核心 Provider、恢复、预算、提交、投影和导出；继续执行其余场景会产生额外真实费用，应由操作者单独确认预算后进行。

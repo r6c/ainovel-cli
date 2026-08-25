@@ -3,8 +3,8 @@
 ## 当前状态
 
 - 总体状态：`complete`
-- 当前里程碑：N——端到端创作验收与发布就绪检查
-- 当前阶段：阶段 112—118 全部完成
+- 当前里程碑：N2——真实 Provider 人工验收
+- 当前阶段：阶段 119—122 全部完成
 - 基线提交：`ade8108 测试：加固 Linux 与无头环境兼容性`
 - 完整历史：[`docs/history/plans/2026-08-domain-saga-evolution/`](docs/history/plans/2026-08-domain-saga-evolution/)
 
@@ -27,7 +27,8 @@
 | K | 现有 cocreate 阶段化访谈 | `91b0224` |
 | L1 | 本地拆文独立命令 | `4ed5e6b` |
 | M | Linux 与无头环境兼容性验收 | `ade8108` |
-| N | 端到端创作验收与发布就绪检查 | 本次提交 |
+| N | 端到端创作验收与发布就绪检查 | `efcef9f` |
+| N2 | sss 真实 Provider 最小 Headless 验收 | 本次提交 |
 
 ## 稳定架构边界
 
@@ -563,3 +564,37 @@ git diff --check
 ```text
 测试：建立端到端创作发布验收基线
 ```
+
+# 里程碑 N2：真实 Provider 人工验收
+
+## 边界
+
+- 使用用户已明确授权的 `sss / gpt-5.6-sol`，会产生真实 API 用量。
+- 在系统临时目录运行，不污染仓库或正式小说目录。
+- 首个切片仅跑单章约 1200 字科幻短篇 Headless 闭环；15 分钟超时。
+- 项目级配置关闭通知并设置小额硬预算；不修改用户全局配置、不输出密钥。
+- 先检查创作工件、PendingCommit、Checkpoint、Progress、诊断和日志，再决定是否扩大到强杀恢复或 Cocreate。
+
+## 阶段 119：sss 最小 Headless 闭环
+
+状态：`complete`
+
+构建当前二进制，在独立工作区真实运行 `--headless --prompt`，记录耗时、退出码和工件完整性。
+
+## 阶段 120：工件与质量检查
+
+状态：`complete`
+
+检查章节、ChapterRecord、Knowledge/Foreshadow、Progress、Checkpoint、PendingCommit、诊断、规则违规和读者成品；不把内部创作事实写入公开日志。
+
+## 阶段 121：恢复与共创决策
+
+状态：`complete`
+
+根据首轮成本与结果决定是否继续真实强杀恢复/Cocreate；未经再次成本判断不自动扩大调用。
+
+## 阶段 122：记录结果
+
+状态：`complete`
+
+只提交脱敏验收结论和文档状态，不提交临时小说、日志、配置或任何凭证。
