@@ -2,9 +2,9 @@
 
 ## 当前状态
 
-- 总体状态：`in_progress`
+- 总体状态：`complete`
 - 当前里程碑：O——真实创作验收问题收敛
-- 当前阶段：阶段 126——真实 sss 回归决策
+- 当前阶段：阶段 123—126 全部完成
 - 基线提交：`ade8108 测试：加固 Linux 与无头环境兼容性`
 - 完整历史：[`docs/history/plans/2026-08-domain-saga-evolution/`](docs/history/plans/2026-08-domain-saga-evolution/)
 
@@ -629,6 +629,6 @@ git diff --check
 
 ## 阶段 126：真实 sss 回归决策
 
-状态：`in_progress`
+状态：`complete`
 
-O1—O3 全部通过自动化后，再根据预算决定是否复用同一单章需求做一次真实回归；未经明确成本判断不调用 Provider。
+已在全新隔离目录复用 `sss / gpt-5.6-sol` 做同类单章回归：目标 1200、实际 1311 字，Markdown/其它规则违规为 0，无 PendingCommit，完结态二次启动零写入，全量事实重放与 TXT/EPUB 隔离通过；费用约 `$0.161`。临时正文、日志和配置不进入仓库。

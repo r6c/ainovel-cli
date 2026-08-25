@@ -168,4 +168,5 @@ Knowledge 诊断已作为当前投影的只读消费完成，不是新事实源�
 - 代表性自动化路径全部通过，未发现 P0/P1。
 - 用户授权后已用 `sss / gpt-5.6-sol` 完成真实 Headless 单章闭环：强杀恢复、预算硬停、模型自修正提交、事实重放、TXT/EPUB 隔离均通过，总费用约 `$0.410`。
 - 真实验收发现 3 项 P2：目标约 1200 字实际 2092 字；正文残留 6 个 `**`（Lint 已报告）；完结态无 Prompt Headless 重启使用错误退出码和不够准确的文案。
+- 首轮真实验收发现的 3 项 P2 已在里程碑 O 修复，并用同一 `sss / gpt-5.6-sol` 做二次单章回归：目标 1200、实际 1311 字，Markdown/其它规则违规为 0，无 PendingCommit，完结态重启零写入，全量重放和 TXT/EPUB 隔离通过，费用约 `$0.161`。
 - Cocreate、PendingCommit 中间 Stage 强杀、Revision、Import 后续写和 Deconstruct 文学效果仍未做真实模型验证。

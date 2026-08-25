@@ -251,14 +251,30 @@ P2：
 
 ### 自动化修复后的二次真实回归
 
-状态：**未执行。**
+状态：**通过。**
 
-复用同类单章需求时，验收目标为：
+环境：`sss / gpt-5.6-sol`，全新隔离目录，单章科幻短篇，目标约 1200 字，项目硬预算 `$0.60`。
+
+结果：
 
 ```text
-正文不超过目标的 120%
-markdown_residue = 0
-完结态无 Prompt Headless 返回 0
-无 PendingCommit 残留
-全量事实重放与 TXT/EPUB 隔离继续通过
+作品：《静海回声》
+UserRules 快照版本：4
+chapter_target_chars：1200
+实际正文：1311 字（目标 +9.25%，低于 1440 字上限）
+markdown_residue：0
+其它 rule violations：0
+PendingCommit：无
+全书完成：1/1 章
+退出码：0
+实际费用：约 $0.161
 ```
+
+额外验证：
+
+- Architect/Writer 一次完成，没有触发篇幅或 Markdown 工具重试。
+- 完结态再次无 Prompt Headless 返回 0；Progress 与 Usage 原始字节均不变。
+- 真实 ChapterRecord 通过 `revision.ValidateRecordSet` 全量重放。
+- TXT/EPUB 导出成功，未发现 Knowledge、PendingCommit、`chapter_target_chars` 或平台参考泄漏。
+
+结论：首轮发现的 3 项 P2 均已通过自动化与同 Provider 真实回归；其余 Cocreate/Revision/Import/Deconstruct 人工场景仍未执行。
