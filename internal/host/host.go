@@ -1771,9 +1771,18 @@ func (h *Host) importModelRuntime(role string, model agentcore.ChatModel) imp.Mo
 	return rt
 }
 
-// Simulate 读取 simulate 目录并生成或增量更新仿写画像。
+// Simulate 读取 cwd/simulate 目录并生成或增量更新方法画像。
 func (h *Host) Simulate(ctx context.Context) (<-chan sim.Event, error) {
-	if err := h.acquireExclusive("生成仿写画像"); err != nil {
+	wd, err := os.Getwd()
+	if err != nil {
+		return nil, fmt.Errorf("get working dir: %w", err)
+	}
+	return h.SimulateDir(ctx, filepath.Join(wd, "simulate"))
+}
+
+// SimulateDir 从显式本地目录生成或增量更新方法画像。
+func (h *Host) SimulateDir(ctx context.Context, sourceDir string) (<-chan sim.Event, error) {
+	if err := h.acquireExclusive("生成拆文方法画像"); err != nil {
 		return nil, err
 	}
 	ctx, cancel := context.WithCancel(ctx)
@@ -1781,11 +1790,6 @@ func (h *Host) Simulate(ctx context.Context) (<-chan sim.Event, error) {
 	h.exclusiveCancel = cancel
 	h.mu.Unlock()
 
-	wd, err := os.Getwd()
-	if err != nil {
-		h.releaseExclusive()
-		return nil, fmt.Errorf("get working dir: %w", err)
-	}
 	deps := sim.Deps{
 		Store: h.store,
 		LLM:   h.models.ForRole("architect"),
@@ -1794,7 +1798,7 @@ func (h *Host) Simulate(ctx context.Context) (<-chan sim.Event, error) {
 			Merge:  h.bundle.Prompts.SimulationMerge,
 		},
 	}
-	ch, err := sim.Run(ctx, deps, sim.Options{SourceDir: filepath.Join(wd, "simulate")})
+	ch, err := sim.Run(ctx, deps, sim.Options{SourceDir: sourceDir})
 	if err != nil {
 		h.releaseExclusive()
 		return nil, err
@@ -1802,9 +1806,9 @@ func (h *Host) Simulate(ctx context.Context) (<-chan sim.Event, error) {
 	return superviseExclusive(h, ch), nil
 }
 
-// ImportSimulationProfile 导入此前生成的仿写画像。
+// ImportSimulationProfile 导入此前生成的拆文方法画像。
 func (h *Host) ImportSimulationProfile(ctx context.Context, path string) (<-chan sim.Event, error) {
-	if err := h.acquireExclusive("导入仿写画像"); err != nil {
+	if err := h.acquireExclusive("导入拆文方法画像"); err != nil {
 		return nil, err
 	}
 	ctx, cancel := context.WithCancel(ctx)

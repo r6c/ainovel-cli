@@ -135,10 +135,18 @@ Knowledge 诊断已作为当前投影的只读消费完成，不是新事实源�
 
 冷启动共创现由 Session 维护五阶段；阶段状态不落正式 Store，最终仍是一段 StartPrompt。运行中阶段共创继续复用已有 Pause/Resume/Cancel，不使用开书访谈。代码会把接受后的 stage/ready/Draft 规范化写回模型历史，避免模型自报跳级与确定性状态分叉。
 
+## 本地拆文复用决策
+
+现有 `host/sim` 已是本地拆文主体：扫描本地语料、按 SHA 增量、单篇结构化报告、聚合 `SimulationProfile`，并通过 `novel_context` 注入 Architect/Writer/Editor。下一步只暴露独立 CLI 并收敛合规文案，不建立 BenchmarkPipeline 或第二套 DTO。扫榜涉及实时来源和许可，延期为 L2。
+
+## 本地拆文命令稳定边界
+
+`ainovel-cli deconstruct <目录>` 仅暴露现有 SimulationProfile 管线；TUI `/simulate` 与 `/importsim` 保持兼容。用户与模型可见文案统一为“拆文方法画像”，内部 Simulation 类型/文件版本不迁移。命令只读本地三种文本扩展，不抓榜、不下载 URL、不建立第二套 Benchmark 协议。
+
 ## 后续优先级
 
 核心领域、事务、平台软参考与阶段化开书已完成一轮加固。下一项适合独立规划：
 
-1. 扫榜与拆文独立命令。
+1. 扫榜独立模块（L2，尚未规划；须先确认来源与许可）。
 
 暂不增加 `doubt/suspect/forget/reader belief` 等认知动作，除非出现明确产品需求。

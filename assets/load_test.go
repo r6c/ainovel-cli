@@ -78,6 +78,22 @@ func TestKnowledgePromptsDescribeTruthAndLearningBoundaries(t *testing.T) {
 	}
 }
 
+func TestSimulationPromptsDescribeAbstractDeconstructionNotAuthorImitation(t *testing.T) {
+	for name, prompt := range map[string]string{
+		"source": mustRead(promptsFS, "prompts/simulation-source.md"),
+		"merge":  mustRead(promptsFS, "prompts/simulation-merge.md"),
+	} {
+		for _, phrase := range []string{"拆文方法画像", "不得模仿具体作者", "不得输出连续原文表达"} {
+			if !strings.Contains(prompt, phrase) {
+				t.Fatalf("%s prompt missing compliance boundary %q", name, phrase)
+			}
+		}
+		if strings.Contains(prompt, "仿写画像") {
+			t.Fatalf("%s prompt still uses imitation-facing name", name)
+		}
+	}
+}
+
 func TestLoadIncludesBoundedFanqieRubricAndOverrides(t *testing.T) {
 	builtin := Load("default", LoadOptions{}).References.FanqieRubric
 	for _, phrase := range []string{

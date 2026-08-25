@@ -9,6 +9,7 @@ import (
 
 	"github.com/voocel/ainovel-cli/assets"
 	"github.com/voocel/ainovel-cli/internal/bootstrap"
+	"github.com/voocel/ainovel-cli/internal/entry/deconstruct"
 	"github.com/voocel/ainovel-cli/internal/entry/headless"
 	"github.com/voocel/ainovel-cli/internal/entry/startup"
 	"github.com/voocel/ainovel-cli/internal/entry/tui"
@@ -27,9 +28,12 @@ var (
 var headlessMode bool
 
 func main() {
-	// 子命令在常规 flag 解析之前拦截：eval 是离线评测 harness，参数体系独立。
+	// 子命令在常规 flag 解析之前拦截，各自维护独立参数体系。
 	if len(os.Args) > 1 && os.Args[1] == "eval" {
 		os.Exit(eval.Command(os.Args[2:]))
+	}
+	if handled, code := runSubcommand(os.Args[1:], os.Stdout, os.Stderr); handled {
+		os.Exit(code)
 	}
 
 	opts, args, err := parseCLIOptions(os.Args[1:])
@@ -70,6 +74,13 @@ func main() {
 	}
 
 	runWithConfig(cfg, opts, args)
+}
+
+func runSubcommand(args []string, stdout, stderr io.Writer) (bool, int) {
+	if len(args) == 0 || args[0] != "deconstruct" {
+		return false, 0
+	}
+	return true, deconstruct.Command(args[1:], stdout, stderr)
 }
 
 // die 统一处理致命错误退出：打印到 stderr、落盘到 ~/.ainovel/last-error.log，

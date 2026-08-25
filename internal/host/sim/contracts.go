@@ -28,7 +28,7 @@ var sourceReportContract = llmcontract.Contract{
 
 var synthesisContract = llmcontract.Contract{
 	Name:        "simulation_synthesis",
-	Description: "把既有画像和语料报告合成为可执行的仿写方法画像",
+	Description: "把既有画像和语料报告合成为可执行的拆文方法画像",
 	Schema: schema.Object(
 		schema.Property("style", schema.Object(
 			schema.Property("narrative_voice", textList("叙述人称、距离与信息控制")).Required(),
@@ -43,7 +43,7 @@ var synthesisContract = llmcontract.Contract{
 			schema.Property("emotion_words", textList("情绪词类别")).Required(),
 			schema.Property("scene_words", textList("场景词类别")).Required(),
 			schema.Property("transition_words", textList("转场词类别")).Required(),
-			schema.Property("signature_phrases", textList("抽象后的口吻特征，不含原句")).Required(),
+			schema.Property("signature_phrases", textList("抽象语言特征类别；不得包含连续原文表达或可识别签名短语")).Required(),
 		)).Required(),
 		schema.Property("plot_design", schema.Object(
 			schema.Property("opening_patterns", textList("开局方式")).Required(),

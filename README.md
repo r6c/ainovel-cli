@@ -357,24 +357,32 @@ Provider 详情中的 API Key 与 Base URL 支持原位编辑，已有 Key 只�
 
 `/diag` 同时会写出一份**已脱敏**的 `meta/diag-export.md`（移除小说正文，仅保留工具调用、错误串、重复次数等行为骨架）。遇到死循环 / 中断类问题，把它贴到 GitHub issue 即可，方便维护者在拿不到本地数据的情况下定位。
 
-## 仿写画像
+## 本地拆文方法画像
 
-把参考文章放到当前启动目录的 `simulate/` 文件夹中，然后在 TUI 输入 `/simulate`。系统会递归读取 `.txt`、`.md`、`.markdown` 文件，用 architect 模型分析语料，并写入：
+把你有权分析的本地文章放入一个目录，使用独立命令：
+
+```bash
+ainovel-cli deconstruct ./我的语料
+```
+
+命令递归读取 `.txt`、`.md`、`.markdown`，使用现有 architect 模型提炼结构、节奏、钩子、信息释放和读者收益，结果写入当前配置书目录：
 
 ```text
 output/novel/meta/simulation_profile.json
 ```
 
-再次运行 `/simulate` 时，会按 `relative_path + sha256` 跳过未变化文件；如果没有新增或变更内容，会提示“画像已是最新”并且不会调用 LLM。若已有画像且 `simulate/` 中出现新增或修改文章，系统会在原画像基础上继续合成。
+进度与错误输出到 stderr，成功时 stdout 只打印画像路径，便于脚本消费。再次运行会按 `relative_path + sha256` 跳过未变化文件；没有新增或变更时不会调用 LLM。
 
-也可以导入之前生成的画像，避免重复分析同一批文章：
+TUI 兼容入口继续可用：
 
 ```text
-/simulate
-/importsim ./profile.json
+/simulate                    # 读取当前启动目录的 ./simulate
+/importsim ./profile.json    # 导入已有 simulation_profile.v1
 ```
 
-`/importsim` 只接受本功能生成的 `simulation_profile.v1` JSON，并按语料指纹合并，重复来源会跳过。只导入可信来源的画像文件；导入内容会成为后续 Agent 的上下文参考。画像会以 compact 形式注入 `novel_context`，Architect、Writer、Editor 都能读取；各 Agent 只借鉴结构、节奏、钩子和吸引读者手法，不复制原文表达或专有设定。
+`/importsim` 按语料指纹合并，重复来源会跳过。方法画像以 compact 形式注入 `novel_context`，Architect、Writer、Editor 直接复用；内部类型仍叫 `SimulationProfile` 以保持文件和旧命令兼容。
+
+本功能只分析用户本地文件，不抓取排行榜、网页或 URL。只导入可信且有权使用的语料；Agent 只能借鉴抽象方法，不得模仿具体作者，不得复制连续原文表达、人物、地名、专有设定或签名短语。
 
 ## 接纳手动修订
 

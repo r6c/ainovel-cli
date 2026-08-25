@@ -367,7 +367,21 @@ core → customization → title → confirmation → ready
 
 运行中阶段共创使用 `NewStageCoCreateSession`，继续按“有后续方向 Draft 即可应用”的原协议，不套冷启动访谈阶段。
 
-## 14. 常用验证
+## 14. 本地拆文方法画像
+
+独立命令：
+
+```text
+ainovel-cli deconstruct <本地语料目录>
+```
+
+它只读取本地 `.txt/.md/.markdown`，复用现有 `internal/host/sim` 与 `SimulationProfile`，写入当前配置 `OutputDir/meta/simulation_profile.json`；不启动 Engine。TUI `/simulate` 继续委托 `Host.Simulate()` 读取 cwd/simulate，独立命令通过 `Host.SimulateDir()` 传显式目录。
+
+`SimulationProfile` 已是单篇报告、聚合方法画像、SHA 增量和 Agent Context 的唯一协议，不得另建 Benchmark DTO/Pipeline。内部 Simulation 命名为兼容保留；用户和 Prompt 统一称“拆文方法画像”。
+
+安全边界：不抓排行榜、网页或 URL；不输出连续原文表达、签名短语、人物、地名或专有设定；不得模仿具体作者。扫榜如未来实现，必须作为独立模块重新审查来源、许可和实时数据，不得塞进该命令。
+
+## 15. 常用验证
 
 ```bash
 go test ./... -timeout=5m

@@ -267,9 +267,9 @@ func buildLoadingSummary(result map[string]any, chapter int) string {
 		items = append(items, "记忆策略:ok")
 	}
 	if _, ok := working["simulation_profile"]; ok {
-		items = append(items, "仿写画像:ok")
+		items = append(items, "拆文方法画像:ok")
 	} else if _, ok := planning["simulation_profile"]; ok {
-		items = append(items, "仿写画像:ok")
+		items = append(items, "拆文方法画像:ok")
 	}
 	if warnings, ok := result["_warnings"].([]string); ok && len(warnings) > 0 {
 		items = append(items, fmt.Sprintf("告警:%d", len(warnings)))

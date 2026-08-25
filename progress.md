@@ -3,94 +3,65 @@
 ## 当前会话
 
 - 日期：2026-08-25
-- 基线：`6b4050f 功能：试点番茄平台创作评审参考`
-- 当前里程碑：K——现有 cocreate 阶段化访谈
-- 当前阶段：阶段 91—98 全部完成
-- 公共接缝：`startup.CoCreateSession`、Host 共创 XML 协议、TUI cocreate 行为
+- 基线：`91b0224 功能：为共创模式增加阶段化访谈`
+- 当前里程碑：L1——本地拆文独立命令
+- 当前阶段：阶段 99—105 全部完成
+- 公共接缝：独立命令入口、`Host` 显式语料目录、既有 `sim.Event`/`SimulationProfile`
 
-## 基线盘点
+## Karpathy 约束下的取舍
 
-- 现有启动模式只有 quick / cocreate；不需要第三种 interview 模式。
-- 冷启动和运行中阶段共创共用四段 XML 协议：reply / draft / ready / suggestions。
-- `CoCreateSession.CanStart()` 当前只检查 Draft 非空，忽略模型 Ready；第一轮有 Draft 就可 Ctrl+S。
-- 协议没有阶段字段，模型可直接宣告 ready，代码无法约束核心定位、深度定制、标题与确认顺序。
-- `startup.CoCreateSession` 是非 UI 状态的最佳接缝；TUI 只应展示阶段和调用现有启动/恢复入口。
-- 运行中阶段共创已有 story state 摘要、Pause/Resume/Cancel 和独占性测试，本批保持不动。
-
-## 阶段定义
+用户说“继续”可对应“扫榜 + 拆文”两个大模块，但二者边界完全不同。最小实现选择本地拆文：
 
 ```text
-core           题材/主角/核心冲突/规模倾向
-customization  世界观、视角、基调、受众、感情线等关键定制
-title          书名与无剧透简介候选，用户选择或明确授权
-confirmation   汇总完整创作指令并要求用户确认
-ready          已确认，可 Ctrl+S 走现有 StartPrepared
+ainovel-cli deconstruct <本地语料目录>
+→ 复用 host/sim
+→ OutputDir/meta/simulation_profile.json
 ```
 
-## 兼容决策
+理由：仓库现有 SimulationProfile 已覆盖单篇报告、聚合画像、增量指纹和 Agent Context 消费；再建 BenchmarkPipeline 是重复抽象。扫榜需要实时网络、来源许可、站点适配和反爬，不应在本批静默加入。
 
-- 阶段状态只存在于冷启动会话内，不落正式 Store。
-- 模型回报阶段只能保持或推进一格，不能跳级/回退。
-- 回复缺 stage 或非法 stage 时保持当前阶段。
-- 阶段共创使用无冷启动阶段门禁的会话构造器，保留现有 Ctrl+S 行为。
-- 最终输出仍是一段 Draft Prompt，不直接写 Book/Foundation。
+## 成功标准
 
-### 阶段 98 完成
+1. 参数错误在调用模型前失败。
+2. 本地 txt/md/markdown 可从 CLI 独立运行。
+3. 使用现有配置模型和 OutputDir，不启动 Engine。
+4. 输出仍是现有 SimulationProfile，Agent 无需新接线。
+5. 既有 TUI `/simulate` 继续默认读取 `./simulate`。
+6. 无网页抓取、无原文注入、无作者模仿。
 
-全量门禁初次通过后仍发现占位符、标题子串匹配和共享 ready 文案三个协议精度问题；均经新增失败测试修复。最终 startup/host/TUI、全量测试、vet、race、diff 与范围扫描全部通过。
+## 阶段 105 完成
 
-### 阶段 97 范围审计
+全量测试、vet、race、diff、Markdown 链接和无网络/无第二 DTO 范围扫描全部通过。按 Karpathy 简化原则移除 `writeEvents` 未使用的 stdout 参数；事件只写 stderr，最终路径由 Command 单独写 stdout。
 
-确认启动模式仍只有 quick/cocreate，Flow/Domain/Store 无 Interview 状态。补真实 Ctrl+S 未 ready 不启动契约，并修正 Host 过期“四段式”注释。
+## 阶段 104 文档与范围
 
-### 阶段 96 完成
+README/CONTEXT 增加独立命令、兼容入口、产物路径和本地/合规边界；不写扫榜设计。一次对 commands.go 单文件路径使用目录搜索返回 ENOTDIR，未重复。
 
-新增 TUI 请求失败保留阶段/Draft、取消恢复初始输入的契约；共创日志记录模型回报的 parsed_stage，仅用于诊断，不作为恢复事实。半成品仍不写 Book/Foundation。
+## 阶段 103 完成
 
-### 阶段 96 兼容审计
+核心 Prompt/Runner 合规契约已绿。剩余用户可见 TUI/Context/import 文案统一为“拆文方法画像”；保留 `/simulate`、`/importsim` 和内部 Simulation 类型用于兼容。
 
-冷启动回复缺 Draft 时，真实红灯显示 Session 投影保留旧 draftPrompt，但规范化 History 写空 draft。现先应用非空 Prompt 覆盖，再以最终保留 Draft 计算 Ready 并构造 History；阶段共创继续保留原始 Raw。
+## 阶段 102 完成
+
+现有 Runner 增量测试直接满足重复运行零模型调用；新增 scanner 契约锁定只读 txt/md/markdown、忽略 JSON/HTML、拒绝单文件路径。无生产改动。
+
+## 阶段 101 完成
+
+命令尚无 sim.Event 消费的红灯已修复。实际执行体直接复用现有配置、Bundle、Host 与 SimulateDir；不新增依赖注入框架。成功时 stdout 只打印 `meta/simulation_profile.json` 路径，进度与错误写 stderr。
+
+## 阶段 100 完成
+
+`Host.SimulateDir` 缺失后已最小提取。首轮手工 Host 缺 engine/models；补齐后仍在 `superviseExclusive` 异步生命周期因其它私有字段 panic。按三次失败协议停止继续猜测并读取 panic 行，确认唯一缺口是 `superviseExclusive` 使用 nil `runCtx`。精确补 `context.Background()` 到测试 Host；目录校验仍由 sim scanner 唯一拥有，不在 Host 复制。
+
+## 阶段 103 审计
+
+现有数据结构已是抽象画像，无需改 DTO；合规红灯确认 Prompt/Runner 仍用“仿写”命名，signature_phrases 描述也过宽。现只收敛用户/模型可见文案和字段说明，内部类型/JSON/命令名保持兼容。两次对 README/CONTEXT 单文件路径使用目录搜索返回 ENOTDIR，未重复，改用直接读取/后续文档编辑。
 
 ## 错误记录
 
-- TUI 探索猜测不存在的 `model_test.go`，并使用未转义 `{` 的正则导致搜索失败；不重复。阶段可见性直接测试同包渲染函数，Ctrl+S 复用 Session CanStart 门禁。
-
-- 读取猜测的 `internal/host/cocreate_test.go` 返回 ENOENT；Host 共创测试分散在其它文件，后续通过字面搜索真实接缝，不重复猜文件名。
+- 对 `cmd/ainovel-cli` 单文件路径调用目录搜索返回 ENOTDIR；改为直接读取 main.go。
+- 猜测 `internal/host/sim/source.go` 返回 ENOENT；真实扫描实现是 `scanner.go`，不重复猜路径。
 
 ## 下一步
 
-### 阶段 92 完成
-
-完整 XML 中的 `<stage>` 原先被 Host 丢弃。现支持五阶段值域解析；缺失/非法值返回空，由 Session 保守保持。流式预览与 TUI 历史不显示 stage；阶段共创旧四段响应继续兼容，Host 全包通过。
-
-### 阶段 93 首个红灯
-
-冷启动 Prompt 完全缺少阶段顺序和最低覆盖。首次编辑因“每一轮回复”在冷启动/阶段共创中各出现一次而被原子拒绝；第二次又因 `</draft>` 重复而原子拒绝，两次均未部分修改。停止批量编辑，改用三个独立唯一片段分别修改冷启动前言、冷启动 draft 尾部和共享输出规范。首次编译发现新增文字在 Go raw string 内使用反引号，提前结束字符串；改用普通文本后，Prompt 契约又发现共享尾部仍向阶段共创暴露 `<stage>`。现将共享尾部收窄为“使用本模式前文标签”，由冷启动/阶段共创各自示例定义五/四标签。
-
-### 阶段 95 首个红灯
-
-ready 阶段只要 Draft 非空就会放行。现增加四个规范二级标题的形状检查；阶段共创不应用，BuildPrompt 仍原样返回已确认 Draft。接入后阶段顺序测试的“最终创作指令”旧夹具不再合法，已同步为完整四节指令。
-
-### 阶段 96 审计
-
-代码拒绝跳级后，历史仍保存模型原始跳级 stage/ready，真实红灯确认下一轮上下文会分叉。现先裁决阶段/完整性，再把接受后的五段协议规范化写入冷启动 History；阶段共创仍保存原始 Raw。Prompt 契约随后红灯：模型仍被要求写“主题/关键要素/待澄清”旧章节，可能永远过不了四标题门禁。现同步 `<draft>` 为固定四节；早期未完成节可标待确认，confirmation/ready 禁止占位。
-
-### 阶段 95 完成
-
-最终 Draft 使用四个规范章节：`## 核心定位`、`## 深度定制`、`## 书名与简介`、`## 规划确认`。Session 只校验章节存在，不理解正文语义；语义仍由模型与用户确认负责。
-
-### 阶段 94 首个红灯
-
-冷启动面板只有“继续对话中”，缺少阶段信息。最小增加 TUI 显示映射，阶段来源仍是 Session；运行中阶段共创 Stage 为空，不显示冷启动进度。
-
-### 阶段 94 完成
-
-TUI 只增加冷启动阶段可见性：核心定位 1/5、深度定制 2/5、标题简介 3/5、规划确认 4/5、已确认 5/5。运行中阶段共创不显示该进度；Ctrl+S 继续调用 Session CanStart。
-
-### 阶段 93 完成
-
-冷启动 `<stage>` 定义为“下一轮当前阶段”：本轮信息不足则保持，满足最低覆盖后最多前进一格。这样与 Session 单步裁决一致，也避免“本轮完成阶段/当前阶段”歧义。阶段共创不继承该标签。
-
-### 阶段 91 完成
-
-首个红灯准确：`CoCreateReply` 无 Stage，Session 无阶段访问器/门禁，也没有阶段共创专用构造器。现由 Session 限制冷启动每次最多推进一格；缺失/非法/跳级保持当前阶段，只有 ready + draft + 模型 ready 才可启动。阶段共创使用专用构造器，保留有 Draft 即可应用。
+阶段 99 参数契约已绿；main 分发红灯证明缺少入口。现仅增加 deconstruct 顶层分发 helper，eval 和普通 flags 保持原路径。

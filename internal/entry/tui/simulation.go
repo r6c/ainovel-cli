@@ -141,11 +141,11 @@ func (s *simulationState) refresh(contentW int) {
 	case !s.done:
 		b.WriteString(dimStyle.Render("Esc 取消"))
 	case s.err != nil:
-		b.WriteString(errStyle.Render("仿写画像处理失败"))
+		b.WriteString(errStyle.Render("拆文方法画像处理失败"))
 		b.WriteString("\n")
 		b.WriteString(dimStyle.Render("Esc 关闭面板"))
 	default:
-		b.WriteString(okStyle.Render("仿写画像已就绪，后续 Agent 会从 novel_context 读取"))
+		b.WriteString(okStyle.Render("拆文方法画像已就绪，后续 Agent 会从 novel_context 读取"))
 		b.WriteString("\n")
 		b.WriteString(dimStyle.Render("Esc 关闭面板"))
 	}
@@ -170,7 +170,7 @@ func renderSimulationModal(width, height int, s *simulationState) string {
 		s.viewport.Height = boxH - 4
 	}
 	hint := "  ↑↓ 滚动 · Esc 取消/关闭"
-	modal := renderPaddedModalFrame(boxW, boxH, "仿写画像", hint, strings.Split(s.viewport.View(), "\n"))
+	modal := renderPaddedModalFrame(boxW, boxH, "拆文方法画像", hint, strings.Split(s.viewport.View(), "\n"))
 	return lipgloss.Place(width, height, lipgloss.Center, lipgloss.Center, modal)
 }
 
@@ -208,7 +208,7 @@ func startSimulate(rt *host.Host, reqID int, args []string, width, height int) (
 		cancel()
 		return nil, nil, err
 	}
-	state := newSimulationState(reqID, "生成仿写画像", "./simulate", width, height, cancel)
+	state := newSimulationState(reqID, "生成拆文方法画像", "./simulate", width, height, cancel)
 	return state, listenSimulationEvent(reqID, ch), nil
 }
 
@@ -222,7 +222,7 @@ func startImportSimulation(rt *host.Host, reqID int, args []string, width, heigh
 		cancel()
 		return nil, nil, err
 	}
-	state := newSimulationState(reqID, "导入仿写画像", args[0], width, height, cancel)
+	state := newSimulationState(reqID, "导入拆文方法画像", args[0], width, height, cancel)
 	return state, listenSimulationEvent(reqID, ch), nil
 }
 

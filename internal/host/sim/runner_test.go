@@ -34,6 +34,26 @@ func (s *scriptedLLM) Generate(_ context.Context, _ []agentcore.Message, _ []age
 	}, nil
 }
 
+func TestRunnerUsesDeconstructionMethodProfileLanguage(t *testing.T) {
+	dir := t.TempDir()
+	st := store.NewStore(filepath.Join(dir, "out"))
+	if err := st.Init(); err != nil {
+		t.Fatal(err)
+	}
+	events, err := Run(t.Context(), Deps{Store: st, LLM: &scriptedLLM{}, Prompts: Prompts{Source: "x", Merge: "y"}}, Options{SourceDir: filepath.Join(dir, "missing")})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var messages []string
+	for ev := range events {
+		messages = append(messages, ev.Message)
+	}
+	joined := strings.Join(messages, "\n")
+	if strings.Contains(joined, "仿写") || !strings.Contains(joined, "拆文") {
+		t.Fatalf("runner language not deconstruction-safe: %s", joined)
+	}
+}
+
 func TestRunnerGeneratesProfileThenSkipsUnchanged(t *testing.T) {
 	dir := t.TempDir()
 	sourceDir := filepath.Join(dir, "simulate")

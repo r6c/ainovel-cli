@@ -3,9 +3,9 @@
 ## 当前状态
 
 - 总体状态：`complete`
-- 当前里程碑：K——现有 cocreate 阶段化访谈
-- 当前阶段：阶段 91—98 全部完成
-- 基线提交：`6b4050f 功能：试点番茄平台创作评审参考`
+- 当前里程碑：L1——本地拆文独立命令
+- 当前阶段：阶段 99—105 全部完成
+- 基线提交：`91b0224 功能：为共创模式增加阶段化访谈`
 - 完整历史：[`docs/history/plans/2026-08-domain-saga-evolution/`](docs/history/plans/2026-08-domain-saga-evolution/)
 
 ## 已完成里程碑
@@ -24,6 +24,7 @@
 | H | 确定性重复段落 Prose Lint | `83fbb92` |
 | I | Knowledge 最小诊断与脱敏统计 | `25a43d5` |
 | J | 番茄平台 Rubric 试点 | `6b4050f` |
+| K | 现有 cocreate 阶段化访谈 | `91b0224` |
 
 ## 稳定架构边界
 
@@ -354,17 +355,81 @@ git diff --check
 功能：为共创模式增加阶段化访谈
 ```
 
-## K 之后的候选顺序
+# 里程碑 L1：本地拆文独立命令
 
-1. L：扫榜与拆文独立命令。
+## 边界与假设
+
+- 命令：`ainovel-cli deconstruct <本地语料目录>`。
+- 只读取用户本地 `.txt/.md/.markdown`；不抓站、不收 URL、不做扫榜。
+- 复用现有 `host/sim`、`SimulationProfile`、结构化契约和 Agent Context；不新增 Benchmark DTO/Pipeline。
+- 输出写入当前配置 `OutputDir/meta/simulation_profile.json`，与现有 `/simulate` 和 `/importsim` 兼容。
+- 分析只保留抽象写法、结构、钩子、节奏与读者收益；不输出原文段落或模仿具体作者。
+- 扫榜作为 L2 独立规划，须另行处理实时来源、许可和平台适配。
+
+## 阶段 99：命令契约
+
+状态：`complete`
+
+先锁定参数、帮助、缺目录错误和退出码；不先改 sim runner。
+
+## 阶段 100：任意本地目录运行
+
+状态：`complete`
+
+让 Host 现有 Simulate 支持显式 SourceDir；TUI `/simulate` 保持默认 `./simulate`。
+
+## 阶段 101：命令执行与事件输出
+
+状态：`complete`
+
+构造现有 Host、消费 sim.Event、输出画像路径；不启动 Engine。
+
+## 阶段 102：增量与错误回归
+
+状态：`complete`
+
+覆盖空目录、不支持文件、重复运行无新增、模型/Store 失败和取消。
+
+## 阶段 103：合规命名与 Prompt 审计
+
+状态：`complete`
+
+用户可见文案从“仿写”收敛为“拆文/方法画像”，保持内部兼容名；确认不输出原文、作者模仿指令或签名短语。
+
+## 阶段 104：文档与范围审计
+
+状态：`complete`
+
+同步 README/CONTEXT；确认没有网页抓取、排名事实、第二套画像协议或 Engine Route。
+
+## 阶段 105：全量验证与中文提交
+
+状态：`complete`
+
+```text
+go test ./cmd/ainovel-cli ./internal/entry/deconstruct ./internal/host ./internal/host/sim -count=1
+go test ./... -timeout=5m
+go vet ./...
+git diff --check
+```
+
+提交信息：
+
+```text
+功能：增加本地语料拆文命令
+```
+
+## L1 之后
+
+- L2 扫榜：尚未规划，不得顺带实现。
 
 ## 本批明确不做
 
-- 第三种启动模式、第四个 Worker 或新 Engine Route
-- 新 Foundation 事实源、Store schema 或数据库
-- 运行中阶段共创的冷启动访谈改造
-- 自动替用户选择标题或篡改已确认要求
-- 并行写相邻章节、通用问卷/表单框架
+- 排行榜抓取、浏览器自动化、URL 下载或反爬
+- 第二套 Benchmark/Simulation 领域模型
+- 新 Engine Route、Worker、Store schema 或数据库
+- 自动注入原文、复制签名短语或模仿具体作者
+- 多平台抓取器、插件系统或通用数据源框架
 
 ## 错误记录
 
