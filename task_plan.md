@@ -2,9 +2,9 @@
 
 ## 当前状态
 
-- 总体状态：`complete`
-- 当前里程碑：N2——真实 Provider 人工验收
-- 当前阶段：阶段 119—122 全部完成
+- 总体状态：`in_progress`
+- 当前里程碑：O——真实创作验收问题收敛
+- 当前阶段：阶段 124——Markdown 提交前格式门禁
 - 基线提交：`ade8108 测试：加固 Linux 与无头环境兼容性`
 - 完整历史：[`docs/history/plans/2026-08-domain-saga-evolution/`](docs/history/plans/2026-08-domain-saga-evolution/)
 
@@ -28,7 +28,7 @@
 | L1 | 本地拆文独立命令 | `4ed5e6b` |
 | M | Linux 与无头环境兼容性验收 | `ade8108` |
 | N | 端到端创作验收与发布就绪检查 | `efcef9f` |
-| N2 | sss 真实 Provider 最小 Headless 验收 | 本次提交 |
+| N2 | sss 真实 Provider 最小 Headless 验收 | `9c0324b` |
 
 ## 稳定架构边界
 
@@ -598,3 +598,37 @@ git diff --check
 状态：`complete`
 
 只提交脱敏验收结论和文档状态，不提交临时小说、日志、配置或任何凭证。
+
+# 里程碑 O：真实创作验收问题收敛
+
+## 公共接缝与成功标准
+
+1. O1：`headless.Run`——已完结工作区无 Prompt 启动返回成功摘要，不调用模型、不改工件/费用；空工作区仍报错。
+2. O2：`CommitChapterTool.Execute`——正文含确定性 Markdown 残留时，在创建 PendingCommit 前返回可修正错误；重复段落等审美 warning 仍不阻断。
+3. O3：`UserRules → novel_context/Chapter Contract → Commit`——明确篇幅目标结构化传递，并在提交前给出有界、可修正约束；不建立新配置系统。
+
+每项独立红→绿并独立提交；未完成 O1 前不修改 O2/O3。
+
+## 阶段 123：Headless 完结态
+
+状态：`complete`
+
+首个失败测试：已完结 Store 调用 `headless.Run`，期望返回 nil、输出标题/章数/字数摘要，usage、Progress、章节与 PendingCommit 不变。
+
+## 阶段 124：Markdown 提交前格式门禁
+
+状态：`in_progress`
+
+只拦截确定性 Markdown 残留，发生在 PendingCommit 创建前；保留 `rules.Lint` 的其他 warning 语义。
+
+## 阶段 125：结构化篇幅目标
+
+状态：`pending`
+
+先盘点 UserRules/Chapter Contract 既有字段与字符计数口径，再确定最小模型；不得用脆弱正则替代已有 Normalizer。
+
+## 阶段 126：真实 sss 回归决策
+
+状态：`pending`
+
+O1—O3 全部通过自动化后，再根据预算决定是否复用同一单章需求做一次真实回归；未经明确成本判断不调用 Provider。
