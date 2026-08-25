@@ -752,19 +752,19 @@ git diff --check
 
 ## 阶段 135：Revision 自动化验收基线
 
-状态：`pending`
+状态：`complete`
 
 复跑并补齐：外部修改扫描、Prepared/RecordsApplied/ProjectionsApplied 三阶段恢复、候选全书事实验证、规则投影刷新、完结书 `/sync` 工作台路径。只补真实缺口，不复制现有 Revision 大矩阵。
 
 ## 阶段 136：隔离真实作品与修改方案
 
-状态：`pending`
+状态：`complete`
 
 从临时验收作品复制到新的隔离目录，不修改原真实验收目录。选择一处明确但有限的事实变化，保存修改前 ChapterRecord、投影、Progress、Usage 与正文摘要；不记录 Provider 密钥。
 
 ## 阶段 137：用户确认预算
 
-状态：`pending`
+状态：`in_progress`
 
 向用户确认本次 Revision 真实模型预算上限；未确认前停止。建议上限 `$0.25`，通知关闭，超限硬停。
 
@@ -779,3 +779,7 @@ git diff --check
 状态：`pending`
 
 验证 Context 使用新事实、TXT/EPUB 反映修改正文且不泄露内部状态；把费用、工件和 P0/P1/P2 脱敏写入发布验收，临时正文/日志/配置不进 Git。
+
+# 后续候选：AI 味判据证据校准
+
+不整体安装 `lieflat-less-ai-tone`，也不新增第二条去 AI 味 Skill。P1 完成后可单独规划小批次：用本项目网文样本为 worked examples，对比其白名单规则与现有 `anti-ai-tone.md/story-deslop`；优先吸收段首零回指评论、提示性冒号、理想化职业人格喻体和信息守恒，先移除/收窄无统计依据且与其研究冲突的句长、段长、问句、句内排比、比喻泛化规则。任何规则进入 Writer/Editor 前必须先有本项目样本评测。

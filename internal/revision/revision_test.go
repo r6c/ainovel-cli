@@ -737,6 +737,58 @@ func TestServiceAcceptsRevisionAndRefreshesFacts(t *testing.T) {
 	}
 }
 
+func TestServiceAcceptsExternalRevisionWithoutReopeningCompletedBook(t *testing.T) {
+	st := newRevisionTestStore(t, 1)
+	acceptTestChapter(t, st, 1, "林墨公开了完整日志。", domain.ChapterFacts{
+		Title: "第一章", Summary: "完整日志公开", Characters: []string{"林墨"}, KeyEvents: []string{"公开完整日志"},
+	})
+	if err := st.Progress.MarkComplete(); err != nil {
+		t.Fatal(err)
+	}
+	changed := "林墨只公开了损坏摘要，完整副本仍留在读取器中。"
+	if err := st.Drafts.SaveFinalChapter(1, changed); err != nil {
+		t.Fatal(err)
+	}
+	model := &revisionModel{response: `{
+  "change_summary":"完整日志改为只公开损坏摘要",
+  "story_changed":true,
+  "facts":{
+    "title":"第一章","summary":"林墨只公开损坏摘要","characters":["林墨"],"key_events":["只公开损坏摘要"],
+    "timeline_events":[{"time":"当夜","event":"林墨只公开损坏摘要","characters":["林墨"]}],
+    "foreshadow_updates":[],"relationship_changes":[],
+    "state_changes":[{"entity":"完整日志","field":"location","old_value":"已公开","new_value":"留在读取器","reason":"林墨保留副本"}],
+    "knowledge_updates":[],"cast_intros":[],"hook_type":null,"dominant_strand":null
+  },
+  "style_delta":{"prose":[],"dialogue":[],"taboos":[]},
+  "outline_impact":null,"downstream_issues":[]
+}`}
+	result, err := NewService(st, model, "分析用户修订", nil).Sync(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(result.Applied) != 1 || result.Applied[0] != 1 {
+		t.Fatalf("completed revision apply result=%+v", result)
+	}
+	progress, err := st.Progress.Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if progress == nil || progress.Phase != domain.PhaseComplete {
+		t.Fatalf("external revision must not reopen completed book: %+v", progress)
+	}
+	record, err := st.ChapterRecords.Load(1)
+	if err != nil || record == nil || record.Revision != 2 || record.Origin != domain.ChapterOriginUser || record.Content != changed {
+		t.Fatalf("completed revision record wrong: record=%+v err=%v", record, err)
+	}
+	changes, err := Scan(st)
+	if err != nil || len(changes) != 0 {
+		t.Fatalf("completed revision remains dirty: changes=%+v err=%v", changes, err)
+	}
+	if pending, err := st.Revisions.LoadPending(); err != nil || pending != nil {
+		t.Fatalf("completed revision pending not cleared: pending=%+v err=%v", pending, err)
+	}
+}
+
 func TestServiceResumesProjectionWithoutCallingModel(t *testing.T) {
 	st := newRevisionTestStore(t, 1)
 	oldFacts := domain.ChapterFacts{Title: "第一章", Summary: "旧摘要", KeyEvents: []string{"旧事件"}}
