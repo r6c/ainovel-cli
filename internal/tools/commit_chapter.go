@@ -11,7 +11,6 @@ import (
 	"slices"
 	"strings"
 	"time"
-	"unicode/utf8"
 
 	"github.com/voocel/agentcore/schema"
 	"github.com/voocel/ainovel-cli/internal/chapterfacts"
@@ -321,8 +320,11 @@ func (t *CommitChapterTool) Execute(_ context.Context, args json.RawMessage) (js
 		if err := validateFinalChapterFormat(content); err != nil {
 			return nil, err
 		}
+		if err := t.validateChapterTarget(content); err != nil {
+			return nil, err
+		}
 	}
-	wordCount := utf8.RuneCountInString(content)
+	wordCount := domain.WordCount(content)
 
 	var pending domain.PendingCommit
 	if existingPending != nil {
@@ -598,6 +600,9 @@ func (t *CommitChapterTool) validateRewriteDraft(chapter int, title string, prog
 	if err := validateFinalChapterFormat(content); err != nil {
 		return "", err
 	}
+	if err := t.validateChapterTarget(content); err != nil {
+		return "", err
+	}
 	changed, err := t.rewriteChanged(chapter, content, title)
 	if err != nil {
 		return "", err
@@ -638,6 +643,24 @@ func (t *CommitChapterTool) appendCommitCheckpoint(chapter int) error {
 	return err
 }
 
+func (t *CommitChapterTool) validateChapterTarget(text string) error {
+	snap, err := t.store.UserRules.Load()
+	if err != nil {
+		return fmt.Errorf("读取章节篇幅目标: %w: %w", errs.ErrStoreRead, err)
+	}
+	if snap == nil || snap.Structured.ChapterTargetChars <= 0 {
+		return nil
+	}
+	target := snap.Structured.ChapterTargetChars
+	maxChars := target * 120 / 100
+	actual := domain.WordCount(text)
+	if actual <= maxChars {
+		return nil
+	}
+	return fmt.Errorf("正文篇幅超出用户目标：目标约 %d 字，上限 %d 字，当前 %d 字；请保留必要情节并压缩后重新提交: %w",
+		target, maxChars, actual, errs.ErrToolPrecondition)
+}
+
 func validateFinalChapterFormat(text string) error {
 	for _, violation := range rules.Lint(text) {
 		if violation.Rule != "markdown_residue" {
@@ -670,7 +693,7 @@ func (t *CommitChapterTool) executeRewriteCommit(a commitArgs, progress *domain.
 	if content == "" {
 		return nil, fmt.Errorf("第 %d 章返工提交缺少 draft_content，无法安全恢复: %w", chapter, errs.ErrToolConflict)
 	}
-	wordCount := utf8.RuneCountInString(content)
+	wordCount := domain.WordCount(content)
 
 	// 2. 正文或标题至少一项发生变化；标题打磨无需伪造正文改动。
 	if !recovering {

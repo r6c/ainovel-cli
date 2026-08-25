@@ -59,10 +59,11 @@ output/novel/meta/user_rules.json
 
 ```json
 {
-  "version": 3,
+  "version": 4,
   "status": "ready",
   "structured": {
     "platform": "fanqie",
+    "chapter_target_chars": 1200,
     "genre": "修仙",
     "forbidden_chars": [],
     "forbidden_phrases": ["某种程度上"],
@@ -83,7 +84,7 @@ output/novel/meta/user_rules.json
 
 - `version`：快照 schema 版本，便于未来迁移。
 - `status`：`ready` / `degraded`，标记归一化是否完整成功；只用于回显与诊断，不进入创作判断。
-- `structured`：代码能机械检查或稳定消费的参数。`platform` 是条件选择参考资料的稳定参数，不是机械违规规则。
+- `structured`：代码能机械检查或稳定消费的参数。`platform` 是条件选择参考资料的稳定参数；`chapter_target_chars` 是明确单章目标，Commit 仅拒绝超过目标 120% 的正文，不设机械下限。
 - `preferences`：不能机械检查、但对创作长期有效的自然语言偏好。
 - `sources`：来源审计，不进入创作判断。
 - `uncertain`：归一化诊断，只用于回显和排查，不进入创作判断。
@@ -120,6 +121,7 @@ rules 文件是普通长期提示词，不是运行时 prompt，也不是配置�
 {
   "structured": {
     "platform": "",
+    "chapter_target_chars": 0,
     "forbidden_phrases": ["某种程度上"]
   },
   "preferences": "每章 1200-1600 字；主角冷静克制，不要圣母；少解释，多用行动和对话推进。"
@@ -172,7 +174,8 @@ LLM 侧职责：
 - `platform` 当前只支持 `fanqie`；仅当用户明确写出番茄小说/番茄平台/发布到番茄时设置。免费阅读平台、移动端平台等含糊表达保持空值，不猜测。
 - `forbidden_chars` / `forbidden_phrases` 是 error 级字段，必须尤其保守；只有“不要出现 X”“禁用 X”“别写 X”这类明确禁止才提升。
 - `fatigue_words` 只有用户给出明确词和阈值时才提升；“少用比喻”“别太书面”“减少口头禅”这类无阈值要求进入 `preferences`。
-- 字数/篇幅类意愿（“每章 3000 字”“短一点”）一律进入 `preferences`：章节长短是叙事节奏的语义裁量，不做机械检查——数字化成硬线会诱导模型为跨线注水。
+- 只有明确的单章/每章正文单一目标值（如“每章约 1200 字”）可提升为 `chapter_target_chars`；区间、全书总字数、“短一点”等仍进入 `preferences`/`uncertain`，不得换算或猜测。
+- `chapter_target_chars` 使用现有章节 Unicode 字符计数口径；Commit 只拒绝超过目标 120% 的正文，不设置机械下限，避免为达标注水。
 - 不可机械化、无明确阈值、依赖语境判断的要求都进入 `preferences`。
 
 原则：

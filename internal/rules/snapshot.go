@@ -33,11 +33,12 @@ const (
 )
 
 // SnapshotVersion 是当前快照 schema 版本，便于未来迁移。
+// v4：structured 增加可选 chapter_target_chars；仅结构化明确单章目标，提交只限制超过 120% 的正文。
 // v3：structured 增加可选 platform；旧快照缺字段时自然解码为空。
-// v2：chapter_words 退出 structured（字数是语义软约束，走 preferences）。
-// v1/v2 快照直接加载兼容：未知或缺失字段按零值解码，下次叠加保存时自然收敛为 v3；
+// v2：chapter_words 退出 structured；v4 以更窄的单章目标语义重新引入，不设置机械下限。
+// v1-v3 快照直接加载兼容：未知或缺失字段按零值解码，下次叠加保存时自然收敛为 v4；
 // 刻意不做"版本不符即重建"——那会丢掉 AddRuntimeRule 运行中追加的不可再生规则。
-const SnapshotVersion = 3
+const SnapshotVersion = 4
 
 // Candidate 是单个来源归一化后的候选结果。
 //
@@ -78,6 +79,9 @@ func BuildSnapshot(cands []Candidate) Snapshot {
 		s := sanitizeStructured(c.Structured)
 		if s.Platform != "" {
 			snap.Structured.Platform = s.Platform
+		}
+		if s.ChapterTargetChars > 0 {
+			snap.Structured.ChapterTargetChars = s.ChapterTargetChars
 		}
 		if s.Genre != "" {
 			snap.Structured.Genre = s.Genre
@@ -121,6 +125,9 @@ func OverlaySnapshot(base Snapshot, cand Candidate) Snapshot {
 	s := sanitizeStructured(cand.Structured)
 	if s.Platform != "" {
 		out.Structured.Platform = s.Platform
+	}
+	if s.ChapterTargetChars > 0 {
+		out.Structured.ChapterTargetChars = s.ChapterTargetChars
 	}
 	if s.Genre != "" {
 		out.Structured.Genre = s.Genre
@@ -205,6 +212,9 @@ func sanitizeStructured(s Structured) Structured {
 	out := Structured{}
 	if platform := strings.ToLower(strings.TrimSpace(s.Platform)); platform == "fanqie" {
 		out.Platform = platform
+	}
+	if s.ChapterTargetChars > 0 {
+		out.ChapterTargetChars = s.ChapterTargetChars
 	}
 	if g := strings.TrimSpace(s.Genre); g != "" {
 		out.Genre = g

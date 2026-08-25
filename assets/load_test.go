@@ -144,6 +144,33 @@ func TestWriterAndArchitectPromptsTreatPlatformRubricAsConditionalSoftReference(
 	}
 }
 
+func TestPromptsConsumeStructuredChapterTargetWithoutEncouragingPadding(t *testing.T) {
+	writer := mustRead(promptsFS, "prompts/writer.md")
+	for _, phrase := range []string{"structured.chapter_target_chars", "120%", "不得为达到下限注水", "提交前"} {
+		if !strings.Contains(writer, phrase) {
+			t.Fatalf("Writer 提示缺少篇幅目标纪律 %q", phrase)
+		}
+	}
+
+	for name, prompt := range map[string]string{
+		"architect_short": mustRead(promptsFS, "prompts/architect-short.md"),
+		"architect_long":  mustRead(promptsFS, "prompts/architect-long.md"),
+	} {
+		for _, phrase := range []string{"structured.chapter_target_chars", "单章承载量", "规划规模相容", "不得宣称最终正文"} {
+			if !strings.Contains(prompt, phrase) {
+				t.Fatalf("%s 提示缺少篇幅规划纪律 %q", name, phrase)
+			}
+		}
+	}
+
+	editor := mustRead(promptsFS, "prompts/editor.md")
+	for _, phrase := range []string{"structured.chapter_target_chars", "120%", "偏短", "pacing", "不得要求注水"} {
+		if !strings.Contains(editor, phrase) {
+			t.Fatalf("Editor 提示缺少篇幅审阅边界 %q", phrase)
+		}
+	}
+}
+
 func TestEditorPromptConsumesDuplicateParagraphFacts(t *testing.T) {
 	editor := mustRead(promptsFS, "prompts/editor.md")
 	for _, phrase := range []string{"duplicate_paragraph", "rule_violations", "有意复沓", "不新增评审维度"} {

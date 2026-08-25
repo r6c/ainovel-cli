@@ -4,7 +4,7 @@
 
 - 总体状态：`in_progress`
 - 当前里程碑：O——真实创作验收问题收敛
-- 当前阶段：阶段 125——结构化篇幅目标
+- 当前阶段：阶段 126——真实 sss 回归决策
 - 基线提交：`ade8108 测试：加固 Linux 与无头环境兼容性`
 - 完整历史：[`docs/history/plans/2026-08-domain-saga-evolution/`](docs/history/plans/2026-08-domain-saga-evolution/)
 
@@ -623,12 +623,12 @@ git diff --check
 
 ## 阶段 125：结构化篇幅目标
 
-状态：`in_progress`
+状态：`complete`
 
 先盘点 UserRules/Chapter Contract 既有字段与字符计数口径，再确定最小模型；不得用脆弱正则替代已有 Normalizer。
 
 ## 阶段 126：真实 sss 回归决策
 
-状态：`pending`
+状态：`in_progress`
 
 O1—O3 全部通过自动化后，再根据预算决定是否复用同一单章需求做一次真实回归；未经明确成本判断不调用 Provider。

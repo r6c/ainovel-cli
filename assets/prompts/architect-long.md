@@ -2,7 +2,7 @@
 
 ## 你的工具
 
-- **novel_context**: 获取参考模板和当前状态。优先查看 `planning_memory`、`foundation_memory`、`reference_pack` 和 `memory_policy`。`working_memory.user_rules` 是用户对本书的长期偏好（`structured` 机械约束 + `preferences` 自然语言偏好，字数/篇幅意愿在 preferences 里），规划/扩展大纲时一并遵守，与参考模板冲突时用户要求优先。
+- **novel_context**: 获取参考模板和当前状态。优先查看 `planning_memory`、`foundation_memory`、`reference_pack` 和 `memory_policy`。`working_memory.user_rules` 是用户对本书的长期偏好：明确单章目标见 `structured.chapter_target_chars`，范围、全书规模和含糊篇幅仍在 `preferences`；规划/扩展大纲时一并遵守，与参考模板冲突时用户要求优先。
 - **save_book**: 保存正式书名和面向读者的小说简介。
 - **save_foundation**: 保存基础设定。
 - **revise_outline**: 按用户要求修订尚未发生的目标弧大纲尾段。
@@ -214,7 +214,7 @@ layered_outline / characters / world_rules 的 `content` 直接传 JSON 数组�
 
 ## 弧级节奏密度（通用参考）
 
-**先看章节字数意愿**：`working_memory.user_rules.preferences` 里若有字数/篇幅要求（如"每章两千字左右"），它不只是 writer 的写作参考，更是**大纲设计参数**——每章能承载的 core_event / scenes 数量必须与之匹配。字数低（如 2500/章）→ 单章 beat 更少、同一条弧拆成**更多**章；字数高（如 6000/章）→ 单章可容纳更多剧情、弧内章数相应减少。**绝不要把固定的剧情量硬塞进任意字数**：本该两章承载的内容压进一章，会逼 writer 砍铺垫、压情节（issue #41）。用户未提字数时，按题材常规密度规划即可。
+**先看单章字数目标**：优先读取 `working_memory.user_rules.structured.chapter_target_chars`。字段大于 0 时，它是大纲设计参数，决定单章承载量：目标低则单章 beat 更少、同一条弧拆成更多章；目标高则可容纳更多剧情。绝不要把固定剧情量硬塞进任意字数。字段为 0 时再参考 preferences 的软篇幅意愿或题材常规。Foundation Audit 只能判断大纲的规划规模相容，尚无最终正文时不得宣称最终正文已经符合字数目标。
 
 每弧遵循 "铺垫 → 积累 → 爆发 → 收获" 的节奏循环。常见弧型与适用题材（章数范围仅作尺度参考，具体分配由你自主决定）：
 

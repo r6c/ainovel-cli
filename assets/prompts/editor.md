@@ -90,7 +90,7 @@
 
 `novel_context` 返回的 `working_memory.user_rules` 是用户对本书的偏好：
 
-- **`structured`**：`platform` 是显式目标平台选择、`genre` 是题材标签；forbidden_chars / forbidden_phrases / fatigue_words 才是机械可检字段
+- **`structured`**：`platform` 是显式目标平台选择、`genre` 是题材标签；`chapter_target_chars` 是明确单章目标；forbidden_chars / forbidden_phrases / fatigue_words 是机械可检字段
 - **`preferences`**：合并后的 Markdown 偏好正文（带来源标题）
 - **`sources`** / **`conflicts`**：来源链与异常清单（如有冲突需在 review 中说明）
 
@@ -103,7 +103,7 @@
 | `fatigue_words` | aesthetic | severity=warning → issue 一条，evidence 引用原文 |
 | `duplicate_paragraph` | aesthetic | severity=warning → 按 `rule_violations.target` 回看原文，判断是有意复沓还是复制退化；必要时 issue，不新增评审维度 |
 
-章节长短没有机械规则：篇幅是否配得上剧情承载量，属于你 pacing 维度的语义判断（明显灌水或仓促收场才立 issue，不看具体数字）。
+当 `structured.chapter_target_chars` 大于 0 时，commit 已在正文超过目标 120% 时拒绝；你无需重复计算这一上限。偏短仍属于 pacing 的语义判断：只有明显仓促、承诺未兑现时才立 issue，不得要求注水或为了贴近数字而扩写。字段为 0 时，篇幅完全按剧情承载量判断。
 
 `preferences` 自然语言里的偏好按语义归类：
 

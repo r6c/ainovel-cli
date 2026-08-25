@@ -34,19 +34,21 @@ func (k SourceKind) String() string {
 }
 
 // Structured 装载可机械检查的规则与可稳定消费的参数（归一化各来源后的候选/合并结果）。
-// 章节字数刻意不在此列：多长算一章是叙事完整性问题，属语义裁量（writer/editor），
-// 数字化成机械硬线会诱导模型为跨线注水——字数意愿走 preferences 自然语言通道。
+// chapter_target_chars 只承载用户明确给出的单章目标；Commit 仅拒绝超过 120% 的正文，
+// 不设置机械下限，避免诱导模型为跨线注水。范围、全书规模和含糊篇幅仍走 preferences。
 type Structured struct {
-	Platform         string         `json:"platform,omitempty"` // 目标发布平台；当前仅支持 fanqie，空表示未指定
-	Genre            string         `json:"genre,omitempty"`
-	ForbiddenChars   []string       `json:"forbidden_chars,omitempty"`
-	ForbiddenPhrases []string       `json:"forbidden_phrases,omitempty"`
-	FatigueWords     map[string]int `json:"fatigue_words,omitempty"`
+	Platform           string         `json:"platform,omitempty"`             // 目标发布平台；当前仅支持 fanqie，空表示未指定
+	ChapterTargetChars int            `json:"chapter_target_chars,omitempty"` // 用户明确给出的单章正文目标字符数；0 表示未指定
+	Genre              string         `json:"genre,omitempty"`
+	ForbiddenChars     []string       `json:"forbidden_chars,omitempty"`
+	ForbiddenPhrases   []string       `json:"forbidden_phrases,omitempty"`
+	FatigueWords       map[string]int `json:"fatigue_words,omitempty"`
 }
 
 // IsEmpty 用于判定是否完全没有结构化规则；checker 可据此跳过。
 func (s Structured) IsEmpty() bool {
 	return s.Platform == "" &&
+		s.ChapterTargetChars == 0 &&
 		s.Genre == "" &&
 		len(s.ForbiddenChars) == 0 &&
 		len(s.ForbiddenPhrases) == 0 &&

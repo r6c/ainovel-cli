@@ -23,6 +23,22 @@ func TestBuildSnapshot_FieldOverridePrecedence(t *testing.T) {
 	}
 }
 
+func TestBuildSnapshot_ChapterTargetUsesExplicitOverride(t *testing.T) {
+	snap := BuildSnapshot([]Candidate{
+		{Source: "global", Structured: Structured{ChapterTargetChars: 3000}},
+		{Source: "empty", Structured: Structured{ChapterTargetChars: 0}},
+		{Source: "startup", Structured: Structured{ChapterTargetChars: 1200}},
+	})
+	if snap.Structured.ChapterTargetChars != 1200 {
+		t.Fatalf("explicit chapter target should use highest priority value, got %d", snap.Structured.ChapterTargetChars)
+	}
+
+	invalid := BuildSnapshot([]Candidate{{Source: "bad", Structured: Structured{ChapterTargetChars: -1}}})
+	if invalid.Structured.ChapterTargetChars != 0 {
+		t.Fatalf("negative chapter target must not enter snapshot, got %d", invalid.Structured.ChapterTargetChars)
+	}
+}
+
 func TestBuildSnapshot_PlatformUsesExplicitOverride(t *testing.T) {
 	snap := BuildSnapshot([]Candidate{
 		{Source: "startup_prompt", Structured: Structured{Platform: "fanqie"}},
@@ -36,6 +52,16 @@ func TestBuildSnapshot_PlatformUsesExplicitOverride(t *testing.T) {
 	invalid := BuildSnapshot([]Candidate{{Source: "project:bad.md", Structured: Structured{Platform: "unknown"}}})
 	if invalid.Structured.Platform != "" {
 		t.Fatalf("unsupported platform must not enter runtime snapshot, got %q", invalid.Structured.Platform)
+	}
+}
+
+func TestSnapshotLegacyV3WithoutChapterTargetLoadsAsUnspecified(t *testing.T) {
+	var snap Snapshot
+	if err := json.Unmarshal([]byte(`{"version":3,"status":"ready","structured":{"platform":"fanqie","genre":"都市"},"preferences":"","sources":[],"uncertain":[]}`), &snap); err != nil {
+		t.Fatal(err)
+	}
+	if snap.Structured.ChapterTargetChars != 0 || snap.Structured.Platform != "fanqie" {
+		t.Fatalf("legacy v3 snapshot compatibility failed: %+v", snap.Structured)
 	}
 }
 

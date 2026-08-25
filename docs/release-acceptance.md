@@ -221,7 +221,7 @@ Linux 缺 notify-send 时日志降级
 5. Writer 两次提交因未知 Foreshadow/Knowledge ID 被前置门禁拒绝，第三次自修复成功。
 6. 最终完成 1/1 章、2092 字，进程退出码 0，无 PendingCommit；全量 ChapterRecord 重放验证通过。
 7. TXT 与 EPUB 均成功导出，未发现 Knowledge、PendingCommit 或内部协议泄漏。
-8. 已完结目录再次无 Prompt Headless 启动不发模型请求、不改工件和费用，但当前返回退出码 1。
+8. 已完结目录再次无 Prompt Headless 启动不发模型请求、不改工件和费用，但当时返回退出码 1。
 
 通过项：
 
@@ -235,9 +235,9 @@ Linux 缺 notify-send 时日志降级
 
 P2：
 
-1. **篇幅偏差**：用户目标约 1200 字，实际 2092 字；当前没有机械字数门禁。
-2. **Markdown 残留**：正文含 6 个 `**` 标记；`markdown_residue` 已正确记录 warning，但未自动返修。
-3. **完结态 Headless 文案/退出码**：完结后无 Prompt 再启动返回“需要 --prompt 或可恢复会话”和退出码 1；无数据或费用副作用，但不够友好。
+1. **篇幅偏差**：用户目标约 1200 字，实际 2092 字。自动化修复：UserRules v4 结构化明确单章目标，Commit 在超过 120% 时于 PendingCommit 前拒绝；不设机械下限。真实 sss 回归待执行。
+2. **Markdown 残留**：正文含 6 个 `**` 标记。自动化修复：普通提交与 Rewrite 在 PendingCommit 前拒绝 `markdown_residue`，重复段落等 warning 仍不阻断。真实 sss 回归待执行。
+3. **完结态 Headless 文案/退出码**：已修复并在原真实作品目录回归；现在只读输出完成摘要、返回 0，不构造 Host、不刷新 Usage。
 
 未执行：
 
@@ -248,3 +248,17 @@ P2：
 - 真实 Deconstruct 文学效果对比
 
 停止扩展原因：单章工程闭环已经覆盖核心 Provider、恢复、预算、提交、投影和导出；继续执行其余场景会产生额外真实费用，应由操作者单独确认预算后进行。
+
+### 自动化修复后的二次真实回归
+
+状态：**未执行。**
+
+复用同类单章需求时，验收目标为：
+
+```text
+正文不超过目标的 120%
+markdown_residue = 0
+完结态无 Prompt Headless 返回 0
+无 PendingCommit 残留
+全量事实重放与 TXT/EPUB 隔离继续通过
+```

@@ -15,7 +15,7 @@
 1. 这个流程必须被**保证**？→ 不写 prompt，写代码约束（StopAfterTools / 工具守卫 / Flow Router）
 2. 这是裁定判据？→ 查表型流程写 `internal/flow/router.go`；语义判断写 `prompts/arbiter-*.md`
 3. 这是某个角色的审美 / 执行标准？→ `prompts/<role>.md`
-4. 这是可机械枚举的默认规则（禁词 / 阈值）？→ `internal/rules/snapshot.go` 的 `SystemDefaults()`；用户自定义规则写进 `.ainovel/rules/*.md`，由归一化快照消费（字数/篇幅是语义软约束，走 preferences，不做机械规则）
+4. 这是可机械枚举的默认规则（禁词 / 阈值）？→ `internal/rules/snapshot.go` 的 `SystemDefaults()`；用户自定义规则写进 `.ainovel/rules/*.md`，由归一化快照消费。明确单章目标可进入 `structured.chapter_target_chars`，只限制超过 120% 的正文；范围、全书规模和含糊篇幅仍走 preferences。
 5. 这是写作知识材料？→ `references/`（记得三处接线）
 
 ## 一致性保障

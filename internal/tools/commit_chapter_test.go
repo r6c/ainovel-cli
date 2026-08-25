@@ -33,6 +33,131 @@ func saveTestChapterRecord(t *testing.T, st *store.Store, chapter int, content s
 	}
 }
 
+func TestCommitChapterRejectsChapterOverTargetBeforePendingCommit(t *testing.T) {
+	s := store.NewStore(t.TempDir())
+	if err := s.Init(); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Progress.Init(1); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Progress.UpdatePhase(domain.PhaseWriting); err != nil {
+		t.Fatal(err)
+	}
+	snap := rules.BuildSnapshot([]rules.Candidate{{
+		Source: "startup_prompt", Structured: rules.Structured{ChapterTargetChars: 100},
+	}})
+	if err := s.UserRules.Save(&snap); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Drafts.SaveDraft(1, strings.Repeat("月", 121)); err != nil {
+		t.Fatal(err)
+	}
+	args, _ := json.Marshal(map[string]any{
+		"chapter": 1, "title": "第一章", "summary": "篇幅检查", "characters": []string{"林墨"}, "key_events": []string{"完成事件"},
+		"timeline_events": []any{}, "foreshadow_updates": []any{}, "relationship_changes": []any{}, "state_changes": []any{},
+		"knowledge_updates": []any{}, "cast_intros": []any{}, "hook_type": nil, "dominant_strand": nil, "feedback": nil,
+	})
+
+	_, err := newTestCommitChapterTool(s).Execute(context.Background(), args)
+	if err == nil || !errors.Is(err, errs.ErrToolPrecondition) || !strings.Contains(err.Error(), "目标约 100 字") || !strings.Contains(err.Error(), "上限 120 字") || !strings.Contains(err.Error(), "当前 121 字") {
+		t.Fatalf("over-target chapter should return actionable precondition error, got %v", err)
+	}
+	if pending, loadErr := s.Signals.LoadPendingCommit(); loadErr != nil || pending != nil {
+		t.Fatalf("length failure must precede pending commit: pending=%v err=%v", pending, loadErr)
+	}
+	if final, loadErr := s.Drafts.LoadChapterText(1); loadErr != nil || final != "" {
+		t.Fatalf("length failure must not save final chapter: final=%q err=%v", final, loadErr)
+	}
+}
+
+func TestCommitChapterDoesNotBlockChapterBelowTarget(t *testing.T) {
+	s := store.NewStore(t.TempDir())
+	if err := s.Init(); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Progress.Init(1); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Progress.UpdatePhase(domain.PhaseWriting); err != nil {
+		t.Fatal(err)
+	}
+	snap := rules.BuildSnapshot([]rules.Candidate{{
+		Source: "startup_prompt", Structured: rules.Structured{ChapterTargetChars: 100},
+	}})
+	if err := s.UserRules.Save(&snap); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Drafts.SaveDraft(1, strings.Repeat("月", 80)); err != nil {
+		t.Fatal(err)
+	}
+	args, _ := json.Marshal(map[string]any{
+		"chapter": 1, "title": "第一章", "summary": "偏短但叙事完整", "characters": []string{"林墨"}, "key_events": []string{"完成事件"},
+		"timeline_events": []any{}, "foreshadow_updates": []any{}, "relationship_changes": []any{}, "state_changes": []any{},
+		"knowledge_updates": []any{}, "cast_intros": []any{}, "hook_type": nil, "dominant_strand": nil, "feedback": nil,
+	})
+
+	if _, err := newTestCommitChapterTool(s).Execute(context.Background(), args); err != nil {
+		t.Fatalf("chapter below target must not be padded by a mechanical minimum: %v", err)
+	}
+}
+
+func TestCommitChapterRewriteRejectsChapterOverTargetBeforePendingCommit(t *testing.T) {
+	s := store.NewStore(t.TempDir())
+	if err := s.Init(); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Progress.Init(1); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Progress.UpdatePhase(domain.PhaseWriting); err != nil {
+		t.Fatal(err)
+	}
+	oldFinal := "旧终稿。"
+	if err := s.Drafts.SaveFinalChapter(1, oldFinal); err != nil {
+		t.Fatal(err)
+	}
+	saveTestChapterRecord(t, s, 1, oldFinal)
+	if err := s.Progress.MarkChapterComplete(1, len([]rune(oldFinal)), "", ""); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Progress.SetPendingRewrites([]int{1}, "压缩篇幅"); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Progress.SetFlow(domain.FlowRewriting); err != nil {
+		t.Fatal(err)
+	}
+	snap := rules.BuildSnapshot([]rules.Candidate{{
+		Source: "startup_prompt", Structured: rules.Structured{ChapterTargetChars: 100},
+	}})
+	if err := s.UserRules.Save(&snap); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Drafts.SaveDraft(1, strings.Repeat("月", 121)); err != nil {
+		t.Fatal(err)
+	}
+	args, _ := json.Marshal(map[string]any{
+		"chapter": 1, "title": "第一章", "summary": "压缩篇幅", "characters": []string{"林墨"}, "key_events": []string{"完成重写"},
+		"timeline_events": []any{}, "foreshadow_updates": []any{}, "relationship_changes": []any{}, "state_changes": []any{},
+		"knowledge_updates": []any{}, "cast_intros": []any{}, "hook_type": nil, "dominant_strand": nil, "feedback": nil,
+	})
+
+	_, err := newTestCommitChapterTool(s).Execute(context.Background(), args)
+	if err == nil || !errors.Is(err, errs.ErrToolPrecondition) || !strings.Contains(err.Error(), "当前 121 字") {
+		t.Fatalf("rewrite over target should be rejected, got %v", err)
+	}
+	if pending, loadErr := s.Signals.LoadPendingCommit(); loadErr != nil || pending != nil {
+		t.Fatalf("rewrite length failure must precede pending commit: pending=%v err=%v", pending, loadErr)
+	}
+	if final, loadErr := s.Drafts.LoadChapterText(1); loadErr != nil || final != oldFinal {
+		t.Fatalf("rewrite length failure must preserve old final: final=%q err=%v", final, loadErr)
+	}
+	progress, loadErr := s.Progress.Load()
+	if loadErr != nil || !slices.Equal(progress.PendingRewrites, []int{1}) {
+		t.Fatalf("rewrite queue must remain for retry: progress=%+v err=%v", progress, loadErr)
+	}
+}
+
 func TestCommitChapterRejectsMarkdownResidueBeforePendingCommit(t *testing.T) {
 	s := store.NewStore(t.TempDir())
 	if err := s.Init(); err != nil {

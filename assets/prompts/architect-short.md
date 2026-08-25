@@ -99,7 +99,7 @@
 要求：
 
 - 每章都必须推动主冲突
-- **每章剧情密度匹配字数意愿**：`working_memory.user_rules.preferences` 里若有字数/篇幅要求，每章承载的 core_event/scenes 数量要与之匹配——字数低就单章 beat 更少、把内容拆成更多章，绝不把固定剧情量硬塞进任意字数逼 writer 压缩（issue #41）；用户未提则按题材常规密度
+- **每章剧情密度匹配字数目标**：优先读取 `working_memory.user_rules.structured.chapter_target_chars`。字段大于 0 时，它决定单章承载量：目标低就减少 core_event/scenes 与次要铺垫，必要时拆章；不得把固定剧情量硬塞进任意字数逼 writer 压缩。字段为 0 时再参考 preferences 的软篇幅意愿或题材常规。Foundation Audit 只能判断大纲的规划规模相容，尚无最终正文时不得宣称最终正文已经符合字数目标
 - 不允许“中期再慢慢展开”的拖延式设计
 - 配角数量控制在必要范围
 - 世界规则只保留会直接影响剧情的部分

@@ -1398,6 +1398,40 @@ func TestContextToolLoadsArcReviewAffectingEarlierChapter(t *testing.T) {
 	}
 }
 
+func TestContextToolInjectsChapterTargetForArchitectAndWriter(t *testing.T) {
+	s := store.NewStore(t.TempDir())
+	if err := s.Init(); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Progress.Init(1); err != nil {
+		t.Fatal(err)
+	}
+	snap := rules.BuildSnapshot([]rules.Candidate{{
+		Source: "startup_prompt", Structured: rules.Structured{ChapterTargetChars: 1200},
+	}})
+	if err := s.UserRules.Save(&snap); err != nil {
+		t.Fatal(err)
+	}
+
+	tool := newTestContextTool(s, References{}, "default")
+	for name, chapter := range map[string]int{"architect": 0, "writer": 1} {
+		raw, err := tool.Execute(context.Background(), json.RawMessage(fmt.Sprintf(`{"chapter":%d}`, chapter)))
+		if err != nil {
+			t.Fatalf("[%s] Execute: %v", name, err)
+		}
+		var result map[string]any
+		if err := json.Unmarshal(raw, &result); err != nil {
+			t.Fatal(err)
+		}
+		working := result["working_memory"].(map[string]any)
+		userRules := working["user_rules"].(map[string]any)
+		structured := userRules["structured"].(map[string]any)
+		if got := int(structured["chapter_target_chars"].(float64)); got != 1200 {
+			t.Fatalf("[%s] chapter target = %d, want 1200", name, got)
+		}
+	}
+}
+
 func TestContextToolDoesNotInjectUserDirectives(t *testing.T) {
 	// save_directive 已移除：novel_context 不再注入 working_memory.user_directives，
 	// 长期写作要求统一走 user_rules。锁死这条，防止回归。

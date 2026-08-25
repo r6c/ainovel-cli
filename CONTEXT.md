@@ -353,7 +353,19 @@ Diagnostics 只是当前投影的只读 Adapter，不得修改 Knowledge、自�
 
 Rubric 区分官方可核事实与 ainovel-cli 产品软评价，映射现有七维，不新增平台评分状态、Verdict 或 Route。官方公开资料未提供黄金三章字数、爽点数量或推荐算法阈值，禁止编造这些硬指标。用户偏好、章节合同与人物逻辑优先。
 
-## 13. 阶段化冷启动共创
+## 13. 单章篇幅目标
+
+用户规则快照 v4 支持：
+
+```text
+structured.chapter_target_chars
+```
+
+仅当用户明确给出单章/每章正文的单一目标值时，由 UserRules Normalizer 提升；区间、全书总字数和“短一点”等含糊要求继续留在 `preferences/uncertain`，不得用正则猜测或换算。
+
+Architect、Writer 和 Editor 通过现有 `working_memory.user_rules` 消费同一字段。Commit 使用 `domain.WordCount` 的现有 Unicode 字符口径，只在正文超过目标 120% 时于 PendingCommit 创建前拒绝；不设置机械下限，偏短章节仍由 Editor 在 pacing 维度判断，避免为达标注水。普通提交与 Rewrite 必须使用同一上限规则。
+
+## 14. 阶段化冷启动共创
 
 启动模式仍只有 quick 与 cocreate，没有第三种 interview 模式。冷启动 cocreate 由 `startup.CoCreateSession` 确定性维护：
 
@@ -367,7 +379,7 @@ core → customization → title → confirmation → ready
 
 运行中阶段共创使用 `NewStageCoCreateSession`，继续按“有后续方向 Draft 即可应用”的原协议，不套冷启动访谈阶段。
 
-## 14. 本地拆文方法画像
+## 15. 本地拆文方法画像
 
 独立命令：
 
@@ -383,7 +395,7 @@ ainovel-cli deconstruct <本地语料目录>
 
 扫榜功能已从产品路线移除。为保持 Linux、服务器、NAS 和无头环境可移植性，不引入 Chrome/CDP、浏览器登录态、平台爬虫、反爬或番茄/起点/晋江页面适配。需要分析的资料必须由用户以本地文本主动提供。
 
-## 15. Linux 与无头环境边界
+## 16. Linux 与无头环境边界
 
 顶层 `--help/-h/help` 和 `deconstruct --help` 必须在配置、首次引导、TTY、模型和 Host 初始化之前返回；它们可用于 Linux/Docker 无配置健康检查。
 
@@ -391,7 +403,7 @@ Linux amd64/arm64 发布目标均使用 `CGO_ENABLED=0`。CI 除 Ubuntu/Windows 
 
 桌面通知是 best-effort Adapter：Linux 缺少 `notify-send` 时只降级日志，不能影响 Engine、Route 或恢复流程。生产代码不得引入 Chrome/CDP、浏览器登录态、GUI 动态库或绝对临时目录依赖。
 
-## 16. 常用验证
+## 17. 常用验证
 
 ```bash
 go test ./... -timeout=5m
