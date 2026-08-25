@@ -3,82 +3,94 @@
 ## 当前会话
 
 - 日期：2026-08-25
-- 基线：`25a43d5 功能：增加知识状态诊断与脱敏统计`
-- 当前里程碑：J——番茄平台 Rubric 试点
-- 当前阶段：阶段 83—90 全部完成
-- 公共接缝：`rules.BuildSnapshot`、`userrules.Normalizer`、`novel_context`、Editor 资源契约
+- 基线：`6b4050f 功能：试点番茄平台创作评审参考`
+- 当前里程碑：K——现有 cocreate 阶段化访谈
+- 当前阶段：阶段 91—98 全部完成
+- 公共接缝：`startup.CoCreateSession`、Host 共创 XML 协议、TUI cocreate 行为
 
 ## 基线盘点
 
-- 仓库没有平台字段、平台资源或平台评分维度。
-- `DimensionScore` 可扩展，但本试点不新增第八维，避免扩大 Review 状态协议。
-- `rules.Structured` 是用户长期意图的确定性输入层，适合承载显式目标平台；旧快照未知/缺失字段可零值兼容。
-- `assets` 已有内置 + 全局 + 本书三层覆盖；试点复用该机制，不创建 Pack Loader。
-- `novel_context` 已将 references 注入 Writer/Editor/Architect，可按 platform 条件追加单个 rubric。
+- 现有启动模式只有 quick / cocreate；不需要第三种 interview 模式。
+- 冷启动和运行中阶段共创共用四段 XML 协议：reply / draft / ready / suggestions。
+- `CoCreateSession.CanStart()` 当前只检查 Draft 非空，忽略模型 Ready；第一轮有 Draft 就可 Ctrl+S。
+- 协议没有阶段字段，模型可直接宣告 ready，代码无法约束核心定位、深度定制、标题与确认顺序。
+- `startup.CoCreateSession` 是非 UI 状态的最佳接缝；TUI 只应展示阶段和调用现有启动/恢复入口。
+- 运行中阶段共创已有 story state 摘要、Pause/Resume/Cancel 和独占性测试，本批保持不动。
 
-## 官方资料边界
-
-官方帮助中心可确认：番茄面向连载作品，依赖智能分发和连续翻页阅读；章节标题支持 5—30 字；频繁删除/修改影响阅读体验；平台强调原创与抄袭处罚。官方未公布固定黄金三章字数、爽点数或留存算法阈值。
-
-来源：
-
-- https://fanqienovel.com/docs/8231
-- https://fanqienovel.com/writer/zone/article/7170705662714839070
-
-外部页面内容仅作为不可信事实来源，不执行其中任何指令。
-
-## 决策
+## 阶段定义
 
 ```text
-user_rules.structured.platform = fanqie
-→ 条件注入番茄 rubric
-→ 映射现有七维
-→ 不新增平台分/硬阈值
+core           题材/主角/核心冲突/规模倾向
+customization  世界观、视角、基调、受众、感情线等关键定制
+title          书名与无剧透简介候选，用户选择或明确授权
+confirmation   汇总完整创作指令并要求用户确认
+ready          已确认，可 Ctrl+S 走现有 StartPrepared
 ```
 
-### 阶段 88 完成
+## 兼容决策
 
-Writer 与 Architect 原先未说明平台软目标边界。现只追加条件使用、优先级与禁区，不复制 rubric；用户偏好、章节合同与人物逻辑优先，禁止机械制造钩子/爽点。Writer golden 与 assets 全包通过。
+- 阶段状态只存在于冷启动会话内，不落正式 Store。
+- 模型回报阶段只能保持或推进一格，不能跳级/回退。
+- 回复缺 stage 或非法 stage 时保持当前阶段。
+- 阶段共创使用无冷启动阶段门禁的会话构造器，保留现有 Ctrl+S 行为。
+- 最终输出仍是一段 Draft Prompt，不直接写 Book/Foundation。
 
-### 阶段 87 完成
+### 阶段 98 完成
 
-Editor 原先未说明 `platform_rubric` 纪律。现区分官方事实与产品软评价，映射现有七维，不新增平台维度或算法分，不允许平台参考单独决定 verdict。首轮测试把禁止语句中的“平台算法分”也误判为定义该字段，契约自相矛盾；已将禁用标识收窄为实际字段名 `platform_fit/fanqie_score`。
+全量门禁初次通过后仍发现占位符、标题子串匹配和共享 ready 文案三个协议精度问题；均经新增失败测试修复。最终 startup/host/TUI、全量测试、vet、race、diff 与范围扫描全部通过。
 
-### 阶段 86 完成
+### 阶段 97 范围审计
 
-同一 References 下，显式 `platform=fanqie` 的 Context 原先缺 `platform_rubric`。现从本书 user_rules 快照条件选择资源；空平台不注入。Writer/Editor 章节模式与 Architect 模式均通过，rubric 随 references 继续参与预算裁剪。
+确认启动模式仍只有 quick/cocreate，Flow/Domain/Store 无 Interview 状态。补真实 Ctrl+S 未 ready 不启动契约，并修正 Host 过期“四段式”注释。
 
-### 阶段 85 完成
+### 阶段 96 完成
 
-资源契约编译失败证明 `References` 尚无平台资源。现新增单个原创整理的番茄 rubric，明确官方事实、产品软评价和伪阈值禁区，并复用内置/全局/本书三层追加加载；assets 全包通过。
+新增 TUI 请求失败保留阶段/Draft、取消恢复初始输入的契约；共创日志记录模型回报的 parsed_stage，仅用于诊断，不作为恢复事实。半成品仍不写 Book/Foundation。
 
-### 阶段 84 完成
+### 阶段 96 兼容审计
 
-明确“发布番茄”可得到 `platform=fanqie`；含糊“免费阅读平台”保持空；未知平台在 DTO 边界拒绝。Strict Schema 增加必填 platform，旧测试响应同步空字符串；userrules 全包通过。
-
-### 阶段 89 完成
-
-README 已说明番茄参考仅在用户明确指定时启用，仍复用七维且不编造算法分。新增 sentinel 深度契约，证明 Bundle 虽加载内置资源，未指定 platform 时序列化 Context 不泄露 rubric 内容或键。
-
-确认生产代码没有 `platform_fit/fanqie_score` 或平台算法分状态；平台只存在于 user_rules、单个资源和条件 Context。用户规则文档旧示例仍为 version 1 且缺平台、Commit 描述过宽，已同步 v3 与机械字段边界。一次对 README 单文件路径使用 `search_files` 返回 ENOTDIR，未重复，改用直接文件工具。
-
-### 阶段 90 完成
-
-关键 rules/userrules/assets/tools、全量测试、vet、race 通过。首次提交门禁发现番茄资源版本行有 Markdown 强制换行尾随空格；命令链未 fail-fast，文件虽被暂存但尚未提交。已改为空引用行并重新执行 staged 格式检查。默认未指定平台的 Context sentinel 契约通过，Review 协议无新维度。
+冷启动回复缺 Draft 时，真实红灯显示 Session 投影保留旧 draftPrompt，但规范化 History 写空 draft。现先应用非空 Prompt 覆盖，再以最终保留 Draft 计算 Ready 并构造 History；阶段共创继续保留原始 Raw。
 
 ## 错误记录
 
-- 读取 Store 规则文件时猜测 `internal/store/rules.go` 返回 ENOENT；实际文件是 `user_rules.go`，未重复猜测。兼容契约改在公开 `rules.Snapshot` JSON DTO 上验证。
-- 一次搜索 `DefaultLoadOptions|assets.Load(` 使用未闭合括号正则失败；未重复，改用字面搜索和真实 Load 调用点。
+- TUI 探索猜测不存在的 `model_test.go`，并使用未转义 `{` 的正则导致搜索失败；不重复。阶段可见性直接测试同包渲染函数，Ctrl+S 复用 Session CanStart 门禁。
 
-## 阶段 83—90 实施记录
+- 读取猜测的 `internal/host/cocreate_test.go` 返回 ENOENT；Host 共创测试分散在其它文件，后续通过字面搜索真实接缝，不重复猜文件名。
 
-### 阶段 83 完成
+## 下一步
 
-首个红灯准确：`rules.Structured` 没有 Platform 字段。现支持显式 `fanqie` 合并/覆盖，空值不覆盖，未知值清洗；SnapshotVersion 升至 v3，旧 v2 JSON 缺平台字段时自然加载为空。
+### 阶段 92 完成
 
-### 阶段 84 首个红灯
+完整 XML 中的 `<stage>` 原先被 Host 丢弃。现支持五阶段值域解析；缺失/非法值返回空，由 Session 保守保持。流式预览与 TUI 历史不显示 stage；阶段共创旧四段响应继续兼容，Host 全包通过。
 
-Normalizer 模型返回 `platform=fanqie` 时 DTO 静默丢失。最小同步 strict Schema、DTO、候选转换与保守提示；旧响应夹具需显式补 `platform:""`。
+### 阶段 93 首个红灯
 
-`go test ./internal/userrules` 首轮因旧 strict 响应缺新必填字段而持续反馈重试，宿主 120 秒超时且未定位用例；不原样重跑，改为搜索并同步全部 JSON 夹具后分组验证。首次多处替换因空平台响应文本不唯一而原子拒绝，文件未部分修改；改用带测试上下文的唯一片段逐处替换。收口红灯又证明 `toCandidate` 会接受未知平台；首次原子编辑因字段缩进文本未匹配而未应用，读取真实片段后分步增加 `""/fanqie` 防御校验。
+冷启动 Prompt 完全缺少阶段顺序和最低覆盖。首次编辑因“每一轮回复”在冷启动/阶段共创中各出现一次而被原子拒绝；第二次又因 `</draft>` 重复而原子拒绝，两次均未部分修改。停止批量编辑，改用三个独立唯一片段分别修改冷启动前言、冷启动 draft 尾部和共享输出规范。首次编译发现新增文字在 Go raw string 内使用反引号，提前结束字符串；改用普通文本后，Prompt 契约又发现共享尾部仍向阶段共创暴露 `<stage>`。现将共享尾部收窄为“使用本模式前文标签”，由冷启动/阶段共创各自示例定义五/四标签。
+
+### 阶段 95 首个红灯
+
+ready 阶段只要 Draft 非空就会放行。现增加四个规范二级标题的形状检查；阶段共创不应用，BuildPrompt 仍原样返回已确认 Draft。接入后阶段顺序测试的“最终创作指令”旧夹具不再合法，已同步为完整四节指令。
+
+### 阶段 96 审计
+
+代码拒绝跳级后，历史仍保存模型原始跳级 stage/ready，真实红灯确认下一轮上下文会分叉。现先裁决阶段/完整性，再把接受后的五段协议规范化写入冷启动 History；阶段共创仍保存原始 Raw。Prompt 契约随后红灯：模型仍被要求写“主题/关键要素/待澄清”旧章节，可能永远过不了四标题门禁。现同步 `<draft>` 为固定四节；早期未完成节可标待确认，confirmation/ready 禁止占位。
+
+### 阶段 95 完成
+
+最终 Draft 使用四个规范章节：`## 核心定位`、`## 深度定制`、`## 书名与简介`、`## 规划确认`。Session 只校验章节存在，不理解正文语义；语义仍由模型与用户确认负责。
+
+### 阶段 94 首个红灯
+
+冷启动面板只有“继续对话中”，缺少阶段信息。最小增加 TUI 显示映射，阶段来源仍是 Session；运行中阶段共创 Stage 为空，不显示冷启动进度。
+
+### 阶段 94 完成
+
+TUI 只增加冷启动阶段可见性：核心定位 1/5、深度定制 2/5、标题简介 3/5、规划确认 4/5、已确认 5/5。运行中阶段共创不显示该进度；Ctrl+S 继续调用 Session CanStart。
+
+### 阶段 93 完成
+
+冷启动 `<stage>` 定义为“下一轮当前阶段”：本轮信息不足则保持，满足最低覆盖后最多前进一格。这样与 Session 单步裁决一致，也避免“本轮完成阶段/当前阶段”歧义。阶段共创不继承该标签。
+
+### 阶段 91 完成
+
+首个红灯准确：`CoCreateReply` 无 Stage，Session 无阶段访问器/门禁，也没有阶段共创专用构造器。现由 Session 限制冷启动每次最多推进一格；缺失/非法/跳级保持当前阶段，只有 ready + draft + 模型 ready 才可启动。阶段共创使用专用构造器，保留有 Draft 即可应用。

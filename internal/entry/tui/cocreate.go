@@ -114,6 +114,7 @@ const stageCoCreateSystemLine = "已暂停创作，进入阶段共创 —— AI 
 // StageCoCreateStream、Ctrl+S 走 ResumeFromCoCreate。
 func newStageCoCreateState() *cocreateState {
 	s := newCoCreateState(stageCoCreateOpener)
+	s.session = startup.NewStageCoCreateSession(stageCoCreateOpener)
 	s.stage = true
 	return s
 }
@@ -285,7 +286,7 @@ func renderCoCreateBody(width, height int, state *cocreateState, errMsg, inputVi
 }
 
 // extractReplyForDisplay 从 assistant 历史内容中切出 <reply>...</reply> 段。
-// 其他标签（<draft>/<ready>/<suggestions>）是给下一轮模型看的协议字段，不应裸暴露给用户。
+// 其他标签（<draft>/<stage>/<ready>/<suggestions>）是给下一轮模型看的协议字段，不应裸暴露给用户。
 // 模型半遵守（漏 <reply> 开标签）时，开头到 </reply> 或下一个开标签都算 reply。
 // 完全不含任何标签时（降级路径）原样返回。
 func extractReplyForDisplay(content string) string {
@@ -297,7 +298,7 @@ func extractReplyForDisplay(content string) string {
 		return strings.TrimSpace(rest[:cIdx])
 	}
 	cut := len(rest)
-	for _, mark := range []string{"<draft>", "<ready>", "<suggestions>"} {
+	for _, mark := range []string{"<draft>", "<stage>", "<ready>", "<suggestions>"} {
 		if idx := strings.Index(rest, mark); idx >= 0 && idx < cut {
 			cut = idx
 		}
@@ -548,6 +549,12 @@ func renderCoCreatePromptPanel(width, height int, state *cocreateState) string {
 	if state.awaiting {
 		status = lipgloss.NewStyle().Foreground(colorMuted).Italic(true).Render("AI 整理中")
 	}
+	if !state.stage {
+		if label, index := coCreateInterviewProgress(state.session.Stage()); label != "" {
+			progress := lipgloss.NewStyle().Foreground(colorAccent2).Bold(true).Render("访谈 " + index + " · " + label)
+			status = progress + " · " + status
+		}
+	}
 
 	// 内容宽 = 列总宽 - 2（padding 0,1 占用 2 列，无 border）。
 	contentW := width - 2
@@ -605,6 +612,23 @@ func renderCoCreatePromptPanel(width, height int, state *cocreateState) string {
 			Render(hint)
 	}
 	return style.Render(body)
+}
+
+func coCreateInterviewProgress(stage string) (label, index string) {
+	switch stage {
+	case "core":
+		return "核心定位", "1/5"
+	case "customization":
+		return "深度定制", "2/5"
+	case "title":
+		return "标题简介", "3/5"
+	case "confirmation":
+		return "规划确认", "4/5"
+	case "ready":
+		return "已确认", "5/5"
+	default:
+		return "", ""
+	}
 }
 
 func renderMarkdownPreview(text string, width int) string {

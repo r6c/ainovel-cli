@@ -353,7 +353,21 @@ Diagnostics 只是当前投影的只读 Adapter，不得修改 Knowledge、自�
 
 Rubric 区分官方可核事实与 ainovel-cli 产品软评价，映射现有七维，不新增平台评分状态、Verdict 或 Route。官方公开资料未提供黄金三章字数、爽点数量或推荐算法阈值，禁止编造这些硬指标。用户偏好、章节合同与人物逻辑优先。
 
-## 13. 常用验证
+## 13. 阶段化冷启动共创
+
+启动模式仍只有 quick 与 cocreate，没有第三种 interview 模式。冷启动 cocreate 由 `startup.CoCreateSession` 确定性维护：
+
+```text
+core → customization → title → confirmation → ready
+```
+
+模型通过 `<stage>` 回报下一轮当前阶段，代码只允许保持或前进一格；缺失、非法、跳级或回退都保持当前阶段。只有 ready、模型 ready=true，且 Draft 同时包含 `## 核心定位`、`## 深度定制`、`## 书名与简介`、`## 规划确认` 时，Ctrl+S 才放行。
+
+阶段状态和半成品 Draft 只存在于当前内存会话与诊断性的 `meta/sessions/cocreate.jsonl`，不是正式事实源。最终 BuildPrompt 仍作为一段用户创作需求进入现有 `StartPrepared` / PlanStart / Architect 流程，不直接写 Book、Premise 或 Foundation。
+
+运行中阶段共创使用 `NewStageCoCreateSession`，继续按“有后续方向 Draft 即可应用”的原协议，不套冷启动访谈阶段。
+
+## 14. 常用验证
 
 ```bash
 go test ./... -timeout=5m

@@ -15,14 +15,25 @@ type CoCreateSession struct {
 	streamReply    string
 	streamThinking string
 	suggestions    []string
+	stage          string
+	staged         bool // true=运行中阶段共创，不应用冷启动访谈门禁
 }
 
 func NewCoCreateSession(initial string) *CoCreateSession {
 	return &CoCreateSession{
+		stage: "core",
 		history: []host.CoCreateMessage{
 			{Role: "user", Content: strings.TrimSpace(initial)},
 		},
 	}
+}
+
+// NewStageCoCreateSession 创建运行中阶段共创会话，保留原有“有草稿即可应用”语义。
+func NewStageCoCreateSession(initial string) *CoCreateSession {
+	s := NewCoCreateSession(initial)
+	s.stage = ""
+	s.staged = true
+	return s
 }
 
 func (s *CoCreateSession) History() []host.CoCreateMessage {
@@ -38,25 +49,44 @@ func (s *CoCreateSession) ApplyReply(reply host.CoCreateReply) {
 	}
 	s.streamReply = ""
 	s.streamThinking = ""
-	// history 里 assistant 存完整三段 Raw（含 [DRAFT]），下一轮模型才能看到
-	// 自己上一轮写的草稿、在它基础上累积更新；只存 Message 会让 [DRAFT] 完全
-	// 不进上下文，模型每轮只能凭对话重新归纳，早期细节容易丢。降级路径下
-	// Raw == Message，等价。
+	// 仅当本轮带来非空 Prompt 才覆盖；格式降级时保留上一轮累计草稿。
+	if prompt := strings.TrimSpace(reply.Prompt); prompt != "" {
+		s.draftPrompt = prompt
+	}
+	if !s.staged {
+		s.advanceStage(reply.Stage)
+		s.ready = reply.Ready && s.stage == "ready" && completeInterviewDraft(s.draftPrompt)
+	} else {
+		s.ready = reply.Ready
+	}
+	// history 里保存完整协议，让下一轮模型看到累计草稿。冷启动会先由代码裁决
+	// stage/ready，再写回规范化协议，避免模型跳级与确定性 Session 状态分叉。
 	text := strings.TrimSpace(reply.Raw)
+	if !s.staged && strings.TrimSpace(reply.Message) != "" {
+		reply.Prompt = s.draftPrompt
+		text = normalizedColdStartReply(reply, s.stage, s.ready)
+	}
 	if text == "" {
 		text = strings.TrimSpace(reply.Message)
 	}
 	if text != "" {
 		s.history = append(s.history, host.CoCreateMessage{Role: "assistant", Content: text})
 	}
-	// 仅当 Prompt 非空才覆盖 draft：parse 降级路径会返回 Prompt=""，此时
-	// 必须保留上一轮 draft，否则用户已积累的"当前创作指令"会被截断的回复清空。
-	if prompt := strings.TrimSpace(reply.Prompt); prompt != "" {
-		s.draftPrompt = prompt
-	}
-	s.ready = reply.Ready
 	// suggestions 直接覆盖（包括覆盖为空）：每轮的引导只对当下有意义。
 	s.suggestions = append(s.suggestions[:0], reply.Suggestions...)
+}
+
+func normalizedColdStartReply(reply host.CoCreateReply, stage string, ready bool) string {
+	var suggestions strings.Builder
+	for _, suggestion := range reply.Suggestions {
+		if suggestion = strings.TrimSpace(suggestion); suggestion != "" {
+			suggestions.WriteString("- ")
+			suggestions.WriteString(suggestion)
+			suggestions.WriteByte('\n')
+		}
+	}
+	return fmt.Sprintf("<reply>%s</reply>\n<draft>%s</draft>\n<stage>%s</stage>\n<ready>%t</ready>\n<suggestions>%s</suggestions>",
+		strings.TrimSpace(reply.Message), strings.TrimSpace(reply.Prompt), stage, ready, strings.TrimSpace(suggestions.String()))
 }
 
 func (s *CoCreateSession) AppendUser(text string) {
@@ -116,6 +146,30 @@ func (s *CoCreateSession) Suggestions() []string {
 	return s.suggestions
 }
 
+// Stage 返回冷启动访谈当前阶段；运行中阶段共创返回空字符串。
+func (s *CoCreateSession) Stage() string {
+	if s == nil {
+		return ""
+	}
+	return s.stage
+}
+
+func (s *CoCreateSession) advanceStage(reported string) {
+	reported = strings.TrimSpace(reported)
+	if reported == "" || reported == s.stage {
+		return
+	}
+	next := map[string]string{
+		"core":          "customization",
+		"customization": "title",
+		"title":         "confirmation",
+		"confirmation":  "ready",
+	}
+	if next[s.stage] == reported {
+		s.stage = reported
+	}
+}
+
 func (s *CoCreateSession) Ready() bool {
 	if s == nil {
 		return false
@@ -124,7 +178,29 @@ func (s *CoCreateSession) Ready() bool {
 }
 
 func (s *CoCreateSession) CanStart() bool {
-	return strings.TrimSpace(s.DraftPrompt()) != ""
+	if s == nil || strings.TrimSpace(s.DraftPrompt()) == "" {
+		return false
+	}
+	if s.staged {
+		return true
+	}
+	return s.stage == "ready" && s.ready && completeInterviewDraft(s.draftPrompt)
+}
+
+func completeInterviewDraft(draft string) bool {
+	if strings.Contains(draft, "待确认") {
+		return false
+	}
+	headings := make(map[string]struct{})
+	for _, line := range strings.Split(strings.ReplaceAll(draft, "\r\n", "\n"), "\n") {
+		headings[strings.TrimSpace(line)] = struct{}{}
+	}
+	for _, heading := range []string{"## 核心定位", "## 深度定制", "## 书名与简介", "## 规划确认"} {
+		if _, ok := headings[heading]; !ok {
+			return false
+		}
+	}
+	return true
 }
 
 func (s *CoCreateSession) InitialInput() string {
@@ -136,7 +212,7 @@ func (s *CoCreateSession) InitialInput() string {
 
 func (s *CoCreateSession) BuildPrompt() (string, error) {
 	if s == nil || !s.CanStart() {
-		return "", fmt.Errorf("cocreate draft prompt is required")
+		return "", fmt.Errorf("cocreate interview must be confirmed with a complete draft")
 	}
 	return s.DraftPrompt(), nil
 }

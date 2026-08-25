@@ -3,9 +3,9 @@
 ## 当前状态
 
 - 总体状态：`complete`
-- 当前里程碑：J——番茄平台 Rubric 试点
-- 当前阶段：阶段 83—90 全部完成
-- 基线提交：`25a43d5 功能：增加知识状态诊断与脱敏统计`
+- 当前里程碑：K——现有 cocreate 阶段化访谈
+- 当前阶段：阶段 91—98 全部完成
+- 基线提交：`6b4050f 功能：试点番茄平台创作评审参考`
 - 完整历史：[`docs/history/plans/2026-08-domain-saga-evolution/`](docs/history/plans/2026-08-domain-saga-evolution/)
 
 ## 已完成里程碑
@@ -23,6 +23,7 @@
 | G | 稳定文档与规划历史归档 | `2f6768b` |
 | H | 确定性重复段落 Prose Lint | `83fbb92` |
 | I | Knowledge 最小诊断与脱敏统计 | `25a43d5` |
+| J | 番茄平台 Rubric 试点 | `6b4050f` |
 
 ## 稳定架构边界
 
@@ -283,19 +284,87 @@ git diff --check
 功能：试点番茄平台创作评审参考
 ```
 
-## J 之后的候选顺序
+# 里程碑 K：现有 cocreate 阶段化访谈
 
-1. K：在现有 cocreate 上增加阶段化访谈。
-2. L：扫榜与拆文独立命令。
+## 边界
+
+- 不新增第三种启动模式；继续使用 `startupModeCoCreate`。
+- 冷启动阶段：`core → customization → title → confirmation → ready`。
+- 运行中阶段共创保持原协议，不套冷启动访谈。
+- 阶段由 `startup.CoCreateSession` 确定性维护；模型只回报本轮完成阶段，不得自行跳过。
+- 旧/降级回复缺阶段时保持当前阶段；Draft 非空但未到 ready 不允许 Ctrl+S 启动。
+- 最终仍产出一段现有创作指令，继续走 `StartPrepared`，不新增 Foundation 事实源。
+
+## 阶段 91：访谈阶段状态
+
+状态：`complete`
+
+定义稳定阶段、顺序推进与冷启动/阶段共创兼容，首个测试锁定不能跳级和只有 ready 可启动。
+
+## 阶段 92：Host 输出协议
+
+状态：`complete`
+
+新增 `<stage>` 标签和值域；解析缺失/非法阶段时保守保持，不破坏旧降级路径。
+
+## 阶段 93：阶段覆盖条件
+
+状态：`complete`
+
+Prompt 明确各阶段最低信息：核心定位、深度定制、标题简介候选、规划确认；每轮最多问 1—2 个关键问题。
+
+## 阶段 94：TUI 阶段可见性与门禁
+
+状态：`complete`
+
+显示当前阶段/进度，Ctrl+S 仅在 ready 放行；阶段共创保持既有提示与完成行为。
+
+## 阶段 95：最终指令完整性
+
+状态：`complete`
+
+BuildPrompt 必须保留已确认核心定位、定制项、选定标题/简介与规划确认，不创建第二份 Foundation。
+
+## 阶段 96：恢复、取消与流式回归
+
+状态：`complete`
+
+覆盖请求失败、缺标签、建议快捷键、取消、阶段共创、流式预览，不持久化半成品为正式事实。
+
+## 阶段 97：文档与范围审计
+
+状态：`complete`
+
+同步 README/CONTEXT；确认不新增 Engine、Worker、Store schema 或启动模式。
+
+## 阶段 98：全量验证与中文提交
+
+状态：`complete`
+
+```text
+go test ./internal/entry/startup ./internal/host ./internal/entry/tui -count=1
+go test ./... -timeout=5m
+go vet ./...
+git diff --check
+```
+
+提交信息：
+
+```text
+功能：为共创模式增加阶段化访谈
+```
+
+## K 之后的候选顺序
+
+1. L：扫榜与拆文独立命令。
 
 ## 本批明确不做
 
-- 第二个平台或通用 Pack/Registry/Service 框架
-- 新评审维度、平台算法分、Verdict 或 Route
-- 新领域动作或状态
-- 数据库、Web 事实源、Service/Repository
-- 强制迁移或重建旧 user_rules 快照
-- 第三方黄金三章公式、爽点数量或推荐算法伪阈值
+- 第三种启动模式、第四个 Worker 或新 Engine Route
+- 新 Foundation 事实源、Store schema 或数据库
+- 运行中阶段共创的冷启动访谈改造
+- 自动替用户选择标题或篡改已确认要求
+- 并行写相邻章节、通用问卷/表单框架
 
 ## 错误记录
 

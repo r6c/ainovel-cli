@@ -188,6 +188,7 @@ type CoCreateMessage struct {
 // Suggestions 是 AI 主动给的"接下来你可能想说"，用户卡壳时按数字键一键填入输入框。
 type CoCreateReply struct {
 	Message     string
+	Stage       string // 冷启动访谈阶段；阶段共创与旧降级回复为空
 	Prompt      string
 	Ready       bool
 	Suggestions []string

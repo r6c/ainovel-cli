@@ -127,11 +127,18 @@ Knowledge 诊断已作为当前投影的只读消费完成，不是新事实源�
 
 目标平台属于用户意图，不是作品事实；使用 `user_rules.structured.platform` 持久化。只有显式 `fanqie` 才加载番茄 rubric，未指定时保持原行为。Rubric 只为现有七维提供软参考，不新增平台评分维度、算法分或自动返工路径。
 
+## 阶段化共创架构决策
+
+现有 cocreate 已覆盖冷启动和运行中阶段规划，缺口只是冷启动没有确定性访谈进度。阶段状态应由 `startup.CoCreateSession` 维护，不新增 interview 模式、Store 工件或 Worker。模型只回报当前完成阶段，代码限制每次最多前进一格；最终仍构建现有创作指令并走 `StartPrepared`。
+
+## 阶段化共创稳定边界
+
+冷启动共创现由 Session 维护五阶段；阶段状态不落正式 Store，最终仍是一段 StartPrompt。运行中阶段共创继续复用已有 Pause/Resume/Cancel，不使用开书访谈。代码会把接受后的 stage/ready/Draft 规范化写回模型历史，避免模型自报跳级与确定性状态分叉。
+
 ## 后续优先级
 
-核心领域与事务已完成一轮加固。下一项建议转向低风险质量增量：
+核心领域、事务、平台软参考与阶段化开书已完成一轮加固。下一项适合独立规划：
 
-1. 扩展现有 cocreate 访谈。
-2. 扫榜与拆文独立命令。
+1. 扫榜与拆文独立命令。
 
 暂不增加 `doubt/suspect/forget/reader belief` 等认知动作，除非出现明确产品需求。

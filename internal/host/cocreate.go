@@ -15,15 +15,27 @@ import (
 // 冷启动共创：从零澄清需求，产出整本书的创作指令。
 const coCreateSystemPrompt = `你是一个小说共创助手。你的任务不是直接开始写小说，而是通过多轮简短对话帮助用户澄清创作需求，并持续整理出一段可直接交给创作引擎的中文创作指令。
 
-每一轮回复严格按以下 XML 格式输出，包含四个标签，依次出现，每个标签都必须有正确的开闭标签：
+访谈严格按 core → customization → title → confirmation → ready 顺序推进：
+
+- core：澄清题材、主角、核心冲突、规模倾向；这些信息未覆盖时保持 core。
+- customization：澄清世界观、视角、基调、目标读者，以及本书确实需要的感情线、平台或禁区；不相关的项目不要机械追问。
+- title：给出 2—4 组书名与无剧透简介候选，必须由用户明确选择或授权你代选，不能自行假定。
+- confirmation：把前述结论汇总为完整创作指令，明确请用户确认或修正。
+- ready：只有用户明确确认完整指令后才能进入。
+
+每轮最多提出 1 到 2 个当前最关键的问题。<stage> 表示下一轮当前阶段：信息不足时保持本阶段，满足最低覆盖后最多前进一格，不得跳级或回退。
+
+每一轮回复严格按以下 XML 格式输出，包含五个标签，依次出现，每个标签都必须有正确的开闭标签：
 
 <reply>
 给用户看的中文自然回复：先回应用户的输入，再最多提出 1 到 2 个当前最关键的问题。如果信息已足够开始创作，告诉用户可以按 Ctrl+S 开始。
 </reply>
 
 <draft>
-当前完整的创作指令草稿，使用 Markdown：直接从二级标题开始，例如 "## 主题"、"## 关键要素"、"## 待澄清信息"；用项目符号列出要点。每一轮都要在已有结论上**累积更新**，吸收用户最新意图；即使本轮没有新增也要把完整草稿原样再写一次——不要省略、不要写"（保持上一轮）"之类的占位。
+当前完整的创作指令草稿，使用 Markdown，并始终保留四个二级标题："## 核心定位"、"## 深度定制"、"## 书名与简介"、"## 规划确认"。每节用项目符号记录已确认要点；尚未完成的节明确写待确认，不要凭空补全。每一轮都要在已有结论上**累积更新**，吸收用户最新意图；即使本轮没有新增也要把完整草稿原样再写一次——不要省略、不要写"（保持上一轮）"之类的占位。进入 confirmation/ready 时四节都必须是已确认内容，不得保留待确认占位。
 </draft>
+
+<stage>core</stage>
 ` + coCreateProtocolTail
 
 // 阶段共创：小说已写了一部分，规划"后续阶段"的走向。调用方需把当前故事状态摘要
@@ -61,11 +73,11 @@ const coCreateProtocolTail = `
 </suggestions>
 
 输出规范：
-- 必须使用四个 XML 标签：<reply> / <draft> / <ready> / <suggestions>，每个都必须完整开闭。
+- 必须使用本模式前文列出的 XML 标签，每个都必须完整开闭。
 - 标签名只能小写英文，不要改写成 <REPLY> / <REWRITE> / <回复> 等任何变体。
 - 标签外不要添加任何说明、思考或代码围栏。
 - <draft> 内允许多行 Markdown，直接换行书写，不需要任何转义。
-- <ready> 只写 true 或 false。信息已足够时填 true。
+- <ready> 只写 true 或 false，并严格按本模式前文定义的完成条件填写。
 - <ready>true</ready> 时 <suggestions> 可以为空（保留空标签 <suggestions></suggestions> 即可）。`
 
 // CoCreateProgressKind 标识流式回调的内容类型。
@@ -74,12 +86,13 @@ const (
 	CoCreateProgressReply    = "reply"
 )
 
-// 四段式 XML 标签输出。XML 风格比方括号 marker 更鲁棒——Claude/GPT 训练数据里
+// XML 标签输出（冷启动五段、阶段共创四段）。XML 风格比方括号 marker 更鲁棒——Claude/GPT 训练数据里
 // 大量 <thinking>...</thinking> 这类格式，模型几乎不会把 <reply> 改写成 <REWRITE>
 // 或其他变体；闭合标签也让流式中段截断更精确（不依赖找下一个 marker 来断尾）。
 const (
 	tagReply       = "reply"
 	tagDraft       = "draft"
+	tagStage       = "stage"
 	tagReady       = "ready"
 	tagSuggestions = "suggestions"
 )
@@ -123,6 +136,7 @@ func coCreateStream(ctx context.Context, models *bootstrap.ModelSet, sessions *s
 			Thinking:     thinking.String(),
 			ParsedReply:  reply.Message,
 			ParsedDraft:  reply.Prompt,
+			ParsedStage:  reply.Stage,
 			ParsedReady:  reply.Ready,
 			ParsedSugs:   reply.Suggestions,
 			Error:        errString(err),
@@ -187,6 +201,7 @@ type coCreateLogEntry struct {
 	Thinking     string            `json:"thinking,omitempty"`
 	ParsedReply  string            `json:"parsed_reply"`
 	ParsedDraft  string            `json:"parsed_draft"`
+	ParsedStage  string            `json:"parsed_stage,omitempty"`
 	ParsedReady  bool              `json:"parsed_ready"`
 	ParsedSugs   []string          `json:"parsed_sugs,omitempty"`
 	Error        string            `json:"error,omitempty"`
@@ -215,13 +230,14 @@ func parseCoCreateResponse(raw string) (CoCreateReply, error) {
 		return CoCreateReply{}, fmt.Errorf("cocreate empty response")
 	}
 
-	reply, draft, ready, suggestions := splitCoCreateMarkers(raw)
+	reply, draft, stage, ready, suggestions := splitCoCreateMarkers(raw)
 	if reply == "" {
 		// 模型没遵守 XML 协议：整段作为 reply。
 		return CoCreateReply{Message: raw, Prompt: "", Ready: false, Raw: raw}, nil
 	}
 	return CoCreateReply{
 		Message:     reply,
+		Stage:       stage,
 		Prompt:      draft,
 		Ready:       ready,
 		Suggestions: suggestions,
@@ -229,12 +245,13 @@ func parseCoCreateResponse(raw string) (CoCreateReply, error) {
 	}, nil
 }
 
-// splitCoCreateMarkers 按四个 XML 标签切分文本。
+// splitCoCreateMarkers 按共创 XML 标签切分文本；stage 在阶段共创中可缺失。
 // 标签可能缺失（流式中段或模型遗漏），缺失部分对应字段为空 / false / nil。
 // 缺失闭标签时，extractTagContent 会取到字符串末尾，仍尽力解析。
-func splitCoCreateMarkers(s string) (reply, draft string, ready bool, suggestions []string) {
+func splitCoCreateMarkers(s string) (reply, draft, stage string, ready bool, suggestions []string) {
 	reply = extractTagContent(s, tagReply)
 	draft = extractTagContent(s, tagDraft)
+	stage = validCoCreateStage(extractTagContent(s, tagStage))
 	readyStr := strings.ToLower(extractTagContent(s, tagReady))
 	ready = readyStr == "true" || readyStr == "yes"
 	suggestions = parseSuggestions(extractTagContent(s, tagSuggestions))
@@ -257,7 +274,7 @@ func extractTagContent(s, tag string) string {
 			return strings.TrimSpace(rest[:cIdx])
 		}
 		// 有开无闭 → 切到下一个已知开标签前
-		for _, other := range []string{"<reply>", "<draft>", "<ready>", "<suggestions>"} {
+		for _, other := range []string{"<reply>", "<draft>", "<stage>", "<ready>", "<suggestions>"} {
 			if other == open {
 				continue
 			}
@@ -272,7 +289,7 @@ func extractTagContent(s, tag string) string {
 	if cIdx := strings.Index(s, closeTag); cIdx >= 0 {
 		prefix := s[:cIdx]
 		start := 0
-		for _, t := range []string{"</reply>", "</draft>", "</ready>", "</suggestions>"} {
+		for _, t := range []string{"</reply>", "</draft>", "</stage>", "</ready>", "</suggestions>"} {
 			if t == closeTag {
 				continue
 			}
@@ -285,6 +302,16 @@ func extractTagContent(s, tag string) string {
 		return strings.TrimSpace(prefix[start:])
 	}
 	return ""
+}
+
+func validCoCreateStage(stage string) string {
+	stage = strings.ToLower(strings.TrimSpace(stage))
+	switch stage {
+	case "core", "customization", "title", "confirmation", "ready":
+		return stage
+	default:
+		return ""
+	}
 }
 
 // parseSuggestions 把 <suggestions> 段每行抠出来，去掉 "- " / "* " / "1. " 等列表前缀。
