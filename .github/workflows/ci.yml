@@ -49,3 +49,26 @@ jobs:
         env:
           GOWORK: "off"
         run: go test -race -buildvcs=false -count=1 ./internal/host ./internal/store ./internal/tools
+
+      - name: Cross-build Linux release targets
+        if: runner.os == 'Linux'
+        env:
+          CGO_ENABLED: "0"
+          GOWORK: "off"
+        run: |
+          GOOS=linux GOARCH=amd64 go build -buildvcs=false -o "$RUNNER_TEMP/ainovel-cli-linux-amd64" ./cmd/ainovel-cli
+          GOOS=linux GOARCH=arm64 go build -buildvcs=false -o "$RUNNER_TEMP/ainovel-cli-linux-arm64" ./cmd/ainovel-cli
+
+      - name: Smoke test Linux binary without config or display
+        if: runner.os == 'Linux'
+        run: |
+          mkdir -p "$RUNNER_TEMP/ainovel-empty-home"
+          HOME="$RUNNER_TEMP/ainovel-empty-home" DISPLAY= "$RUNNER_TEMP/ainovel-cli-linux-amd64" --help
+          HOME="$RUNNER_TEMP/ainovel-empty-home" DISPLAY= "$RUNNER_TEMP/ainovel-cli-linux-amd64" deconstruct --help
+
+      - name: Smoke test Docker entrypoint without network or config
+        if: runner.os == 'Linux'
+        run: |
+          docker build --tag ainovel-cli:ci .
+          docker run --rm --network none ainovel-cli:ci --help
+          docker run --rm --network none ainovel-cli:ci deconstruct --help

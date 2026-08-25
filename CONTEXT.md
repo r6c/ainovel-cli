@@ -383,7 +383,15 @@ ainovel-cli deconstruct <本地语料目录>
 
 扫榜功能已从产品路线移除。为保持 Linux、服务器、NAS 和无头环境可移植性，不引入 Chrome/CDP、浏览器登录态、平台爬虫、反爬或番茄/起点/晋江页面适配。需要分析的资料必须由用户以本地文本主动提供。
 
-## 15. 常用验证
+## 15. Linux 与无头环境边界
+
+顶层 `--help/-h/help` 和 `deconstruct --help` 必须在配置、首次引导、TTY、模型和 Host 初始化之前返回；它们可用于 Linux/Docker 无配置健康检查。
+
+Linux amd64/arm64 发布目标均使用 `CGO_ENABLED=0`。CI 除 Ubuntu/Windows 测试外，显式跨编译两个 Linux 架构，并在 Ubuntu 原生执行帮助命令；Docker 入口以无网络、无挂载、无 TTY 方式冒烟。
+
+桌面通知是 best-effort Adapter：Linux 缺少 `notify-send` 时只降级日志，不能影响 Engine、Route 或恢复流程。生产代码不得引入 Chrome/CDP、浏览器登录态、GUI 动态库或绝对临时目录依赖。
+
+## 16. 常用验证
 
 ```bash
 go test ./... -timeout=5m

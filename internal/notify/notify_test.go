@@ -124,6 +124,19 @@ func TestFindPowerShellPrefersPwsh(t *testing.T) {
 	}
 }
 
+func TestLinuxSystemNotificationWithoutNotifySendDegradesCleanly(t *testing.T) {
+	if runtime.GOOS != "linux" {
+		t.Skip("Linux notify-send 降级仅在 Linux 运行")
+	}
+	t.Setenv("PATH", t.TempDir())
+
+	if err := New("", nil).deliverError(Notification{
+		Kind: KindRunEnd, Level: "info", Title: "完成", Body: "无桌面通知也应继续",
+	}); err != nil {
+		t.Fatalf("缺少 notify-send 时应降级为日志，got %v", err)
+	}
+}
+
 func TestWindowsNotificationScriptUsesEnvironmentWithoutInterpolation(t *testing.T) {
 	for _, want := range []string{"$env:NOTIFY_TITLE", "$env:NOTIFY_BODY", "$env:NOTIFY_LEVEL", "ShowBalloonTip"} {
 		if !strings.Contains(windowsNotificationScript, want) {

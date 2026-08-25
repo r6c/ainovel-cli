@@ -76,7 +76,23 @@ func main() {
 	runWithConfig(cfg, opts, args)
 }
 
+const topLevelUsage = `用法：ainovel-cli [选项]
+       ainovel-cli deconstruct <本地语料目录>
+       ainovel-cli eval [选项]
+
+选项：
+  --headless              无头模式
+  --prompt <文本>         无头模式创作需求
+  --prompt-file <路径>    从文件读取创作需求，- 表示 stdin
+  --version, -v           显示版本
+  update [版本]           更新程序
+  --help, -h, help        显示帮助`
+
 func runSubcommand(args []string, stdout, stderr io.Writer) (bool, int) {
+	if len(args) == 1 && (args[0] == "--help" || args[0] == "-h" || args[0] == "help") {
+		fmt.Fprintln(stdout, topLevelUsage)
+		return true, 0
+	}
 	if len(args) == 0 || args[0] != "deconstruct" {
 		return false, 0
 	}

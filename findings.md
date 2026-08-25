@@ -143,7 +143,11 @@ Knowledge 诊断已作为当前投影的只读消费完成，不是新事实源�
 
 `ainovel-cli deconstruct <目录>` 仅暴露现有 SimulationProfile 管线；TUI `/simulate` 与 `/importsim` 保持兼容。用户与模型可见文案统一为“拆文方法画像”，内部 Simulation 类型/文件版本不迁移。命令只读本地三种文本扩展，不抓榜、不下载 URL、不建立第二套 Benchmark 协议。
 
-## 后续优先级
+## Linux/无头兼容性盘点
+
+现有 CI 已在 Ubuntu/Windows 运行全量测试，并在 Ubuntu 跑关键 race；GoReleaser 与 Dockerfile 已声明 Linux amd64/arm64。补强后，CI 显式双架构跨编译、原生执行无配置帮助命令，并构建本地 Docker 镜像做无网络入口冒烟。Linux `notify-send` 缺失时继续降级日志，没有重写通知实现。
+
+本地完整 Dockerfile 首次构建因拉取 Go 基础镜像超过宿主工具时限而未完成；随后使用 Alpine 容器真实运行 arm64 静态二进制和 Linux 通知测试，均通过。完整镜像构建与 ENTRYPOINT 冒烟由 Ubuntu CI 作为正式门禁。
 
 ## 扫榜能力决策
 

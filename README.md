@@ -221,7 +221,16 @@ ainovel-cli
 
 ### Headless 模式
 
-`--headless` 无需 TUI，适合在服务器、NAS、CI 或后台任务中持续运行。它不提供首次配置引导，请先运行一次 `ainovel-cli` 完成配置，或手动创建 `~/.ainovel/config.json`。
+`--headless` 无需 TUI，适合在 Linux 服务器、NAS、CI 或后台任务中持续运行。它不提供首次配置引导，请先运行一次 `ainovel-cli` 完成配置，或手动创建 `~/.ainovel/config.json`。
+
+以下帮助命令不读取配置、不启动首次引导或模型，也不要求 TTY、`DISPLAY` 或桌面通知服务：
+
+```bash
+ainovel-cli --help
+ainovel-cli deconstruct --help
+```
+
+Linux amd64/arm64 均使用 `CGO_ENABLED=0` 构建。系统没有 `notify-send` 时，桌面通知只降级为日志，不影响创作流程。
 
 ```bash
 # 使用一句话需求启动新任务
@@ -238,7 +247,14 @@ ainovel-cli --headless
 
 ### Docker
 
-Docker 镜像适合在服务器/NAS 上运行 headless 长任务，也可以用 `-it` 进入 TUI。配置和作品目录建议挂载到宿主机：
+Docker 镜像适合在服务器/NAS 上运行 headless 长任务，也可以用 `-it` 进入 TUI。镜像支持 linux/amd64 与 linux/arm64。帮助命令可在无配置挂载、无 TTY、无网络时运行：
+
+```bash
+docker run --rm --network none ghcr.io/voocel/ainovel-cli:latest --help
+docker run --rm --network none ghcr.io/voocel/ainovel-cli:latest deconstruct --help
+```
+
+正式创作时，配置和作品目录建议挂载到宿主机：
 
 ```bash
 mkdir -p config workspace

@@ -3,9 +3,9 @@
 ## 当前状态
 
 - 总体状态：`complete`
-- 当前里程碑：L1——本地拆文独立命令
-- 当前阶段：阶段 99—105 全部完成
-- 基线提交：`4ed5e6b 功能：增加本地语料拆文命令`
+- 当前里程碑：M——Linux 与无头环境兼容性验收
+- 当前阶段：阶段 106—111 全部完成
+- 基线提交：`a3d24a1 文档：从产品路线移除扫榜功能`
 - 完整历史：[`docs/history/plans/2026-08-domain-saga-evolution/`](docs/history/plans/2026-08-domain-saga-evolution/)
 
 ## 已完成里程碑
@@ -25,6 +25,8 @@
 | I | Knowledge 最小诊断与脱敏统计 | `25a43d5` |
 | J | 番茄平台 Rubric 试点 | `6b4050f` |
 | K | 现有 cocreate 阶段化访谈 | `91b0224` |
+| L1 | 本地拆文独立命令 | `4ed5e6b` |
+| M | Linux 与无头环境兼容性验收 | 本次提交 |
 
 ## 稳定架构边界
 
@@ -436,3 +438,63 @@ git diff --check
 | 错误 | 处理 |
 |---|---|
 | 搜索 Projector 声明时使用未闭合括号正则 | 停止重复该查询，改用字面搜索确认 `ValidateRecordSet` 与 `Projector.Apply` |
+
+# 里程碑 M：Linux 与无头环境兼容性验收
+
+## 边界与成功标准
+
+- 公共接缝：顶层 CLI 帮助、`deconstruct --help`、现有通知 Adapter、Linux CI、Docker 镜像入口。
+- `--help/-h/help` 必须在配置加载、首次引导、TTY 和模型初始化之前退出。
+- CI 必须显式构建 Linux amd64/arm64，并在 Ubuntu 原生执行帮助命令。
+- Docker 镜像必须能在无配置、无 TTY、无 DISPLAY 情况下执行帮助命令。
+- Linux 缺少桌面通知能力时只降级日志，不影响创作控制流。
+- 不新增浏览器、GUI 库、平台爬虫、配置框架或第二套发布系统。
+
+## 阶段 106：顶层无配置帮助命令
+
+状态：`complete`
+
+先写顶层 CLI 公开行为失败测试：`--help/-h/help` 返回 0、写 stdout，并在常规配置解析前完成；`deconstruct --help` 保持现状。
+
+## 阶段 107：Linux 跨编译门禁
+
+状态：`complete`
+
+在现有 CI 中显式构建 `linux/amd64` 与 `linux/arm64`，使用 `CGO_ENABLED=0`，不创建新的构建框架。
+
+## 阶段 108：Ubuntu 无头与通知降级回归
+
+状态：`complete`
+
+CI 原生执行顶层/deconstruct 帮助；锁定通知缺少 system 通道时为 best-effort，不重写已满足的生产逻辑。
+
+## 阶段 109：Docker 无头冒烟
+
+状态：`complete`
+
+复用现有 Dockerfile，在 Ubuntu CI 构建本地镜像并执行 `--help` 与 `deconstruct --help`；不调用模型、不挂用户配置。
+
+## 阶段 110：Linux 文档与范围审计
+
+状态：`complete`
+
+同步 README/CONTEXT，说明无头帮助、通知降级和扫榜移除边界；确认无生产 `/tmp`、Chrome/CDP 或 GUI 强依赖。
+
+## 阶段 111：全量验证与中文提交
+
+状态：`complete`
+
+```text
+go test ./cmd/ainovel-cli ./internal/entry/deconstruct ./internal/notify -count=1
+go test ./... -timeout=5m
+go vet ./...
+CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build ./cmd/ainovel-cli
+CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build ./cmd/ainovel-cli
+git diff --check
+```
+
+预定提交信息：
+
+```text
+测试：加固 Linux 与无头环境兼容性
+```

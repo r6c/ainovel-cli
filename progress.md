@@ -3,65 +3,55 @@
 ## 当前会话
 
 - 日期：2026-08-25
-- 基线：`4ed5e6b 功能：增加本地语料拆文命令`
-- 当前里程碑：L1——本地拆文独立命令
-- 当前阶段：阶段 99—105 全部完成
-- 公共接缝：独立命令入口、`Host` 显式语料目录、既有 `sim.Event`/`SimulationProfile`
+- 基线：`a3d24a1 文档：从产品路线移除扫榜功能`
+- 当前里程碑：M——Linux 与无头环境兼容性验收
+- 当前阶段：阶段 106—111 全部完成
+- 公共接缝：顶层 CLI、deconstruct 子命令、通知 Adapter、Linux CI、Docker ENTRYPOINT
 
-## Karpathy 约束下的取舍
+## 基线盘点
 
-本地拆文已作为唯一保留的对标分析能力：
-
-```text
-ainovel-cli deconstruct <本地语料目录>
-→ 复用 host/sim
-→ OutputDir/meta/simulation_profile.json
-```
-
-理由：仓库现有 SimulationProfile 已覆盖单篇报告、聚合画像、增量指纹和 Agent Context 消费；再建 BenchmarkPipeline 是重复抽象。扫榜现已从路线图移除，避免为 Linux/无头运行引入 Chrome、登录态、站点适配和反爬维护。
+1. `.github/workflows/ci.yml` 已在 Ubuntu/Windows 跑 format、vet、全量测试；Ubuntu 另跑关键 race。
+2. `.goreleaser.yml` 已覆盖 linux/darwin/windows × amd64/arm64，且 `CGO_ENABLED=0`。
+3. Dockerfile 已使用 TARGETOS/TARGETARCH 和 Alpine 运行时；docker workflow 发布 linux/amd64、linux/arm64。
+4. Linux 通知缺少 `notify-send` 时已降级为日志；通知本身异步且不介入 Host 控制流。
+5. 顶层 `--help` 当前没有专门分支，会进入常规配置/首次引导路径；这是首个真实产品缺口。
+6. CI 尚无显式 Linux 双架构构建门禁、原生帮助冒烟或 Docker 帮助冒烟。
 
 ## 成功标准
 
-1. 参数错误在调用模型前失败。
-2. 本地 txt/md/markdown 可从 CLI 独立运行。
-3. 使用现有配置模型和 OutputDir，不启动 Engine。
-4. 输出仍是现有 SimulationProfile，Agent 无需新接线。
-5. 既有 TUI `/simulate` 继续默认读取 `./simulate`。
-6. 无网页抓取、无原文注入、无作者模仿。
+- 顶层帮助无需配置、TTY、DISPLAY 或模型。
+- Linux amd64/arm64 都能静态跨编译。
+- Ubuntu 原生二进制可执行帮助命令。
+- Docker 镜像可在无挂载、无 TTY 下执行帮助命令。
+- 通知不可用不影响主流程。
+- 不新增 GUI、浏览器或网络抓取依赖。
 
-## 阶段 105 完成
+## 阶段 106 完成
 
-全量测试、vet、race、diff、Markdown 链接和无网络/无第二 DTO 范围扫描全部通过。按 Karpathy 简化原则移除 `writeEvents` 未使用的 stdout 参数；事件只写 stderr，最终路径由 Command 单独写 stdout。
+公开测试先证明 `--help/-h/help` 均未被顶层分发处理。最小实现只扩展 `runSubcommand`，三种形式均在配置、首次引导、TTY 和模型之前写 stdout 并返回 0；普通 flags 与 deconstruct 分发保持不变。实际构建后二进制已在空 HOME、空 DISPLAY 下执行帮助成功。
 
-## 阶段 104 文档与范围
+## 阶段 107 完成
 
-README/CONTEXT 增加独立命令、兼容入口、产物路径和本地/合规边界；不写扫榜设计。一次对 commands.go 单文件路径使用目录搜索返回 ENOTDIR，未重复。
+现有 CI 已增加 `CGO_ENABLED=0` 的 Linux amd64/arm64 双架构构建门禁，产物写入 RUNNER_TEMP。本机真实跨编译后，`file` 分别确认静态链接 x86-64 与 aarch64 ELF；未新增 workflow 或构建框架。
 
-## 阶段 103 完成
+## 阶段 108 完成
 
-核心 Prompt/Runner 合规契约已绿。剩余用户可见 TUI/Context/import 文案统一为“拆文方法画像”；保留 `/simulate`、`/importsim` 和内部 Simulation 类型用于兼容。
+Ubuntu CI 会以空 HOME、空 DISPLAY 原生执行构建出的 amd64 `--help` 与 `deconstruct --help`。新增 Linux-only 通知 Adapter 测试：PATH 中没有 `notify-send` 时返回 nil，只降级日志；当前 macOS 合理 skip，Ubuntu CI 真实执行。相关 Go 包全绿。
 
-## 阶段 102 完成
+## 阶段 109
 
-现有 Runner 增量测试直接满足重复运行零模型调用；新增 scanner 契约锁定只读 txt/md/markdown、忽略 JSON/HTML、拒绝单文件路径。无生产改动。
+复用现有 Dockerfile，在 Ubuntu CI 构建本地镜像，并以 `--network none`、无挂载、无 TTY 执行两条帮助命令。发布 Docker workflow 保持原状。
 
-## 阶段 101 完成
+本机 Docker daemon 可用，但首次真实构建在拉取 `golang:1.25` 基础镜像时超过宿主工具时限，未形成代码失败证据。没有原样重复长拉取；随后用 Alpine 容器真实运行 arm64 静态二进制的两条帮助命令，并执行 Linux-only 通知测试，均在 `--network none` 下通过。完整 Dockerfile 构建与 ENTRYPOINT 冒烟由 Ubuntu CI 作为正式门禁。
 
-命令尚无 sim.Event 消费的红灯已修复。实际执行体直接复用现有配置、Bundle、Host 与 SimulateDir；不新增依赖注入框架。成功时 stdout 只打印 `meta/simulation_profile.json` 路径，进度与错误写 stderr。
+## 阶段 110 完成
 
-## 阶段 100 完成
+README/CONTEXT 已记录无配置帮助、Linux 双架构、Docker 健康检查和通知降级边界。扫描确认生产代码没有 Chrome/CDP、浏览器登录态、GUI 动态库或绝对临时目录；macOS `osascript` 和 Linux `notify-send` 仅存在于通知 Adapter。
 
-`Host.SimulateDir` 缺失后已最小提取。首轮手工 Host 缺 engine/models；补齐后仍在 `superviseExclusive` 异步生命周期因其它私有字段 panic。按三次失败协议停止继续猜测并读取 panic 行，确认唯一缺口是 `superviseExclusive` 使用 nil `runCtx`。精确补 `context.Background()` 到测试 Host；目录校验仍由 sim scanner 唯一拥有，不在 Host 复制。
+## 阶段 111 完成
 
-## 阶段 103 审计
+以下门禁全部通过：关键包、全量测试、`go vet`、关键 race、gofmt/diff、Markdown 链接、CI YAML 解析、CI 关键步骤审计，以及 Linux amd64/arm64 静态跨编译。范围扫描仅在测试文件发现绝对 `/tmp`，生产代码无 Chrome/CDP、浏览器或绝对临时目录依赖。
 
-现有数据结构已是抽象画像，无需改 DTO；合规红灯确认 Prompt/Runner 仍用“仿写”命名，signature_phrases 描述也过宽。现只收敛用户/模型可见文案和字段说明，内部类型/JSON/命令名保持兼容。两次对 README/CONTEXT 单文件路径使用目录搜索返回 ENOTDIR，未重复，改用直接读取/后续文档编辑。
+本地 Alpine 容器在 `--network none` 下真实执行 arm64 顶层帮助、deconstruct 帮助和 Linux 通知降级测试。完整 Dockerfile 首次基础镜像拉取受宿主工具时限影响，未伪报成功；Ubuntu CI 已配置完整构建和 ENTRYPOINT 冒烟。
 
-## 错误记录
-
-- 对 `cmd/ainovel-cli` 单文件路径调用目录搜索返回 ENOTDIR；改为直接读取 main.go。
-- 猜测 `internal/host/sim/source.go` 返回 ENOENT；真实扫描实现是 `scanner.go`，不重复猜路径。
-
-## 路线调整
-
-用户确认移除扫榜候选。生产代码本来没有扫榜、排行榜或浏览器自动化实现；本次只更新稳定路线与规划文本。历史归档保留原样，作为当时决策快照。
+提交信息：`测试：加固 Linux 与无头环境兼容性`。
