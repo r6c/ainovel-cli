@@ -317,6 +317,11 @@ func (t *CommitChapterTool) Execute(_ context.Context, args json.RawMessage) (js
 	if content == "" {
 		return nil, fmt.Errorf("no content found for chapter %d: %w", a.Chapter, errs.ErrToolPrecondition)
 	}
+	if existingPending == nil {
+		if err := validateFinalChapterFormat(content); err != nil {
+			return nil, err
+		}
+	}
 	wordCount := utf8.RuneCountInString(content)
 
 	var pending domain.PendingCommit
@@ -590,6 +595,9 @@ func (t *CommitChapterTool) validateRewriteDraft(chapter int, title string, prog
 	if content == "" {
 		return "", fmt.Errorf("no content found for chapter %d: %w", chapter, errs.ErrToolPrecondition)
 	}
+	if err := validateFinalChapterFormat(content); err != nil {
+		return "", err
+	}
 	changed, err := t.rewriteChanged(chapter, content, title)
 	if err != nil {
 		return "", err
@@ -628,6 +636,17 @@ func (t *CommitChapterTool) appendCommitCheckpoint(chapter int) error {
 		store.ChapterRecordPath(chapter),
 	)
 	return err
+}
+
+func validateFinalChapterFormat(text string) error {
+	for _, violation := range rules.Lint(text) {
+		if violation.Rule != "markdown_residue" {
+			continue
+		}
+		return fmt.Errorf("正文仍包含 Markdown 标记 %q（%v 处），请改为普通小说文本后重新提交: %w",
+			violation.Target, violation.Actual, errs.ErrToolPrecondition)
+	}
+	return nil
 }
 
 // checkRules 对章节正文做机械检查：内置产品底线 Lint（机制残留，始终执行）

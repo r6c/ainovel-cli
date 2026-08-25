@@ -5,7 +5,7 @@
 - 日期：2026-08-25
 - 基线：`ade8108 测试：加固 Linux 与无头环境兼容性`
 - 当前里程碑：O——真实创作验收问题收敛
-- 当前阶段：阶段 124——Markdown 提交前格式门禁
+- 当前阶段：阶段 125——结构化篇幅目标
 - 公共路径：Quick、Cocreate、Headless、Import、Deconstruct、读者成品导出
 
 ## Karpathy 约束下的取舍
@@ -69,3 +69,7 @@ P2：目标约 1200 字但实际 2092 字；正文残留 6 个 `**` 且 Lint 已
 ## 阶段 123 完成
 
 已完结当前格式项目在无 Prompt Headless 启动时，直接只读 Progress/Book，输出标题、章数和字数摘要并返回成功；不构造 Host，不刷新 Usage、不写 Progress、不创建 PendingCommit，也不调用模型。空工作区和旧格式项目仍走既有错误/迁移路径。真实《月背回声》目录回归：退出码 0，Progress 与 Usage 原始字节均不变。全量测试、vet、Headless/Host race 和 diff check 通过。
+
+## 阶段 124 完成
+
+`CommitChapterTool.Execute` 在首次冻结普通/Rewrite PendingCommit 前，复用 `rules.Lint` 并仅将 `markdown_residue` 升格为最终正文格式门禁。错误包含具体标记与次数，真实模型可在同一回合修正；旧终稿和返工队列保持不变。`duplicate_paragraph` 等审美 warning 继续成功提交并持久化。全量测试、vet、Tools/Revision/Rules race 和 diff check 通过。

@@ -4,7 +4,7 @@
 
 - 总体状态：`in_progress`
 - 当前里程碑：O——真实创作验收问题收敛
-- 当前阶段：阶段 124——Markdown 提交前格式门禁
+- 当前阶段：阶段 125——结构化篇幅目标
 - 基线提交：`ade8108 测试：加固 Linux 与无头环境兼容性`
 - 完整历史：[`docs/history/plans/2026-08-domain-saga-evolution/`](docs/history/plans/2026-08-domain-saga-evolution/)
 
@@ -617,13 +617,13 @@ git diff --check
 
 ## 阶段 124：Markdown 提交前格式门禁
 
-状态：`in_progress`
+状态：`complete`
 
 只拦截确定性 Markdown 残留，发生在 PendingCommit 创建前；保留 `rules.Lint` 的其他 warning 语义。
 
 ## 阶段 125：结构化篇幅目标
 
-状态：`pending`
+状态：`in_progress`
 
 先盘点 UserRules/Chapter Contract 既有字段与字符计数口径，再确定最小模型；不得用脆弱正则替代已有 Normalizer。
 

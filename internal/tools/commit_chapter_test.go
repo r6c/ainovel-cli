@@ -33,6 +33,88 @@ func saveTestChapterRecord(t *testing.T, st *store.Store, chapter int, content s
 	}
 }
 
+func TestCommitChapterRejectsMarkdownResidueBeforePendingCommit(t *testing.T) {
+	s := store.NewStore(t.TempDir())
+	if err := s.Init(); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Progress.Init(1); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Progress.UpdatePhase(domain.PhaseWriting); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Drafts.SaveDraft(1, "# 第一章\n\n**这行不应以 Markdown 加粗进入最终小说正文。**\n"); err != nil {
+		t.Fatal(err)
+	}
+	args, _ := json.Marshal(map[string]any{
+		"chapter": 1, "title": "第一章", "summary": "发现格式残留", "characters": []string{"林墨"}, "key_events": []string{"林墨发现格式残留"},
+		"timeline_events": []any{}, "foreshadow_updates": []any{}, "relationship_changes": []any{}, "state_changes": []any{},
+		"knowledge_updates": []any{}, "cast_intros": []any{}, "hook_type": nil, "dominant_strand": nil, "feedback": nil,
+	})
+
+	_, err := newTestCommitChapterTool(s).Execute(context.Background(), args)
+	if err == nil || !errors.Is(err, errs.ErrToolPrecondition) || !strings.Contains(err.Error(), `Markdown 标记 "**"`) || !strings.Contains(err.Error(), "2 处") {
+		t.Fatalf("markdown residue should return an actionable precondition error, got %v", err)
+	}
+	if pending, loadErr := s.Signals.LoadPendingCommit(); loadErr != nil || pending != nil {
+		t.Fatalf("markdown residue must fail before pending commit: pending=%v err=%v", pending, loadErr)
+	}
+	if final, loadErr := s.Drafts.LoadChapterText(1); loadErr != nil || final != "" {
+		t.Fatalf("markdown residue must not save final chapter: final=%q err=%v", final, loadErr)
+	}
+}
+
+func TestCommitChapterRewriteRejectsMarkdownResidueBeforePendingCommit(t *testing.T) {
+	s := store.NewStore(t.TempDir())
+	if err := s.Init(); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Progress.Init(1); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Progress.UpdatePhase(domain.PhaseWriting); err != nil {
+		t.Fatal(err)
+	}
+	oldFinal := "# 第一章\n\n旧终稿。\n"
+	if err := s.Drafts.SaveFinalChapter(1, oldFinal); err != nil {
+		t.Fatal(err)
+	}
+	saveTestChapterRecord(t, s, 1, oldFinal)
+	if err := s.Progress.MarkChapterComplete(1, len([]rune(oldFinal)), "", ""); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Progress.SetPendingRewrites([]int{1}, "清理格式"); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Progress.SetFlow(domain.FlowRewriting); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Drafts.SaveDraft(1, "# 第一章\n\n## 不应进入正文的副标题\n\n重写正文。\n"); err != nil {
+		t.Fatal(err)
+	}
+	args, _ := json.Marshal(map[string]any{
+		"chapter": 1, "title": "第一章", "summary": "清理格式", "characters": []string{"林墨"}, "key_events": []string{"完成重写"},
+		"timeline_events": []any{}, "foreshadow_updates": []any{}, "relationship_changes": []any{}, "state_changes": []any{},
+		"knowledge_updates": []any{}, "cast_intros": []any{}, "hook_type": nil, "dominant_strand": nil, "feedback": nil,
+	})
+
+	_, err := newTestCommitChapterTool(s).Execute(context.Background(), args)
+	if err == nil || !errors.Is(err, errs.ErrToolPrecondition) || !strings.Contains(err.Error(), `Markdown 标记 "#"`) {
+		t.Fatalf("rewrite markdown residue should be rejected, got %v", err)
+	}
+	if pending, loadErr := s.Signals.LoadPendingCommit(); loadErr != nil || pending != nil {
+		t.Fatalf("rewrite format failure must precede pending commit: pending=%v err=%v", pending, loadErr)
+	}
+	if final, loadErr := s.Drafts.LoadChapterText(1); loadErr != nil || final != oldFinal {
+		t.Fatalf("rewrite format failure must preserve old final: final=%q err=%v", final, loadErr)
+	}
+	progress, loadErr := s.Progress.Load()
+	if loadErr != nil || !slices.Equal(progress.PendingRewrites, []int{1}) {
+		t.Fatalf("rewrite queue must remain for retry: progress=%+v err=%v", progress, loadErr)
+	}
+}
+
 func TestCommitChapterPersistsDuplicateParagraphViolationWithoutBlocking(t *testing.T) {
 	s := store.NewStore(t.TempDir())
 	if err := s.Init(); err != nil {
