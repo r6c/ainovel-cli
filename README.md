@@ -52,7 +52,7 @@
 - **Workers** — Architect / Writer / Editor 各自独立 context 的自主创作循环，通过 Store 中的工件协作
 - **Tools** — 单文件原子 IO + 幂等重放；章节提交使用带完整性密封的持久化 Saga + checkpoint，只返事实 JSON，不夹带指令
 
-维护者与代码 Agent 请先阅读 [`CONTEXT.md`](CONTEXT.md)；完整架构、Import 和上下文设计分别见 [`docs/architecture.md`](docs/architecture.md)、[`docs/import-pipeline.md`](docs/import-pipeline.md)、[`docs/context-management.md`](docs/context-management.md)。
+维护者与代码 Agent 请先阅读 [`CONTEXT.md`](CONTEXT.md)；完整架构、Import、上下文设计和发布验收分别见 [`docs/architecture.md`](docs/architecture.md)、[`docs/import-pipeline.md`](docs/import-pipeline.md)、[`docs/context-management.md`](docs/context-management.md)、[`docs/release-acceptance.md`](docs/release-acceptance.md)。
 
 ### 智能体职责
 

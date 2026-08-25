@@ -3,9 +3,9 @@
 ## 当前状态
 
 - 总体状态：`complete`
-- 当前里程碑：M——Linux 与无头环境兼容性验收
-- 当前阶段：阶段 106—111 全部完成
-- 基线提交：`a3d24a1 文档：从产品路线移除扫榜功能`
+- 当前里程碑：N——端到端创作验收与发布就绪检查
+- 当前阶段：阶段 112—118 全部完成
+- 基线提交：`ade8108 测试：加固 Linux 与无头环境兼容性`
 - 完整历史：[`docs/history/plans/2026-08-domain-saga-evolution/`](docs/history/plans/2026-08-domain-saga-evolution/)
 
 ## 已完成里程碑
@@ -26,7 +26,8 @@
 | J | 番茄平台 Rubric 试点 | `6b4050f` |
 | K | 现有 cocreate 阶段化访谈 | `91b0224` |
 | L1 | 本地拆文独立命令 | `4ed5e6b` |
-| M | Linux 与无头环境兼容性验收 | 本次提交 |
+| M | Linux 与无头环境兼容性验收 | `ade8108` |
+| N | 端到端创作验收与发布就绪检查 | 本次提交 |
 
 ## 稳定架构边界
 
@@ -497,4 +498,68 @@ git diff --check
 
 ```text
 测试：加固 Linux 与无头环境兼容性
+```
+
+# 里程碑 N：端到端创作验收与发布就绪检查
+
+## 边界与成功标准
+
+- 公共路径：Quick、Cocreate、Headless 恢复、Import、Deconstruct、TXT/EPUB 导出。
+- 自动化只使用现有 fake/mock 模型，不调用用户 Provider、不消耗真实额度。
+- 复用现有 Engine/Host/Store 测试接缝，不建立新的 E2E 框架。
+- 新增发布验收文档，区分自动化证据、人工真实模型步骤与阻塞等级。
+- 只有真实覆盖缺口才新增测试；已有强覆盖只引用现有测试命令。
+- 本批不因验收过程顺带增加产品功能或领域状态。
+
+## 阶段 112：验收矩阵与 Headless 首个冒烟
+
+状态：`complete`
+
+盘点五条路径现有覆盖；针对当前唯一明显空白 `internal/entry/headless`，先用公开 `Run` 写一个 fake-model 冒烟红灯。
+
+## 阶段 113：Quick/Engine 与导出证据
+
+状态：`complete`
+
+复用现有 Engine 完整书和 TXT/EPUB 隔离测试；只在入口接线存在真实缺口时补一条最小测试。
+
+## 阶段 114：Cocreate 启动验收
+
+状态：`complete`
+
+复用 Session/Host/TUI 阶段契约，验证完整确认后的 BuildPrompt 仍进入现有启动主链；不新增启动模式。
+
+## 阶段 115：Import 发布与恢复验收
+
+状态：`complete`
+
+运行现有全书门禁、原子发布、首错回退和继续写作接缝；只补缺失的公开路径证明。
+
+## 阶段 116：Deconstruct 增量与合规验收
+
+状态：`complete`
+
+运行现有 CLI/Runner 增量与合规测试，确认第二次运行零模型调用和画像无原文模仿指令。
+
+## 阶段 117：发布验收文档与人工清单
+
+状态：`complete`
+
+新增 `docs/release-acceptance.md`，记录自动化命令、人工真实模型步骤、工件位置与 P0/P1/P2 判定；人工项保持未执行，不自动消费额度。
+
+## 阶段 118：全量验证与中文提交
+
+状态：`complete`
+
+```text
+go test ./internal/entry/headless ./internal/entry/startup ./internal/host ./internal/host/imp ./internal/host/sim ./internal/host/exp -count=1 -timeout=5m
+go test ./... -timeout=5m
+go vet ./...
+git diff --check
+```
+
+预定提交信息：
+
+```text
+测试：建立端到端创作发布验收基线
 ```

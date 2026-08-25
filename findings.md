@@ -156,3 +156,13 @@ Knowledge 诊断已作为当前投影的只读消费完成，不是新事实源�
 保留的市场/对标能力只有用户主动提供本地文本后的抽象拆文，不自动访问任何平台。历史归档中的扫榜候选是当时讨论快照，不代表当前路线。
 
 暂不增加 `doubt/suspect/forget/reader belief` 等认知动作，除非出现明确产品需求。
+
+## 端到端验收覆盖盘点
+
+- Engine 文档已明确 `host/engine_test.go` 使用 fake 模型与真实工具覆盖完整书、失败/僵局裁定、返工、Hold 和退出竞态。
+- Cocreate 已在 startup/Host/TUI 三层覆盖阶段顺序、协议、Ctrl+S、失败与取消。
+- Import 已覆盖全书事实门禁、正式 Store 零污染、原子发布、恢复状态和 Knowledge 发布。
+- Deconstruct 已覆盖显式目录、扫描扩展名、增量复用、合规 Prompt 和画像导入。
+- TXT/EPUB 已覆盖不泄露 Knowledge。
+- `internal/entry/headless` 原先没有测试；现已补齐空 Prompt/空工作区的真实入口失败边界和脱敏诊断导出契约，没有为测试增加 Host 注入框架。
+- 代表性自动化路径全部通过，未发现 P0/P1；真实 Provider 文学质量验收需要用户配置和额度，当前保持未执行并由发布清单指导人工操作。
