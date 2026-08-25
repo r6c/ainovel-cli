@@ -97,12 +97,15 @@ const (
 	tagSuggestions = "suggestions"
 )
 
-func coCreateStream(ctx context.Context, models *bootstrap.ModelSet, sessions *store.SessionStore, sysPrompt string, history []CoCreateMessage, onProgress func(kind, text string)) (reply CoCreateReply, err error) {
+func coCreateStream(ctx context.Context, models *bootstrap.ModelSet, sessions *store.SessionStore, usage *UsageTracker, sysPrompt string, history []CoCreateMessage, onProgress func(kind, text string)) (reply CoCreateReply, err error) {
 	if len(history) == 0 {
 		return CoCreateReply{}, fmt.Errorf("cocreate history is empty")
 	}
 
 	model := models.ForRole("thinking")
+	if usage != nil {
+		model = newUsageTrackedModel(model, "thinking", usage.Record)
+	}
 
 	msgs := []agentcore.Message{agentcore.SystemMsg(sysPrompt)}
 	for _, item := range history {

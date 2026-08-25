@@ -29,6 +29,53 @@ type capableTrackedTestModel struct {
 
 func (m *capableTrackedTestModel) Capabilities() llm.Capabilities { return m.caps }
 
+type streamUsageTestModel struct {
+	*plainTrackedTestModel
+	message agentcore.Message
+}
+
+func (m *streamUsageTestModel) GenerateStream(context.Context, []agentcore.Message, []agentcore.ToolSpec, ...agentcore.CallOption) (<-chan agentcore.StreamEvent, error) {
+	ch := make(chan agentcore.StreamEvent, 2)
+	ch <- agentcore.StreamEvent{Type: agentcore.StreamEventTextDelta, Delta: "回复"}
+	ch <- agentcore.StreamEvent{Type: agentcore.StreamEventDone, Message: m.message, StopReason: m.message.StopReason}
+	close(ch)
+	return ch, nil
+}
+
+func TestUsageTrackedModelRecordsStreamingDoneUsageOnce(t *testing.T) {
+	final := agentcore.Message{
+		Role:       agentcore.RoleAssistant,
+		Content:    []agentcore.ContentBlock{agentcore.TextBlock("回复")},
+		StopReason: agentcore.StopReasonStop,
+		Usage:      &agentcore.Usage{Input: 120, Output: 30, TotalTokens: 150},
+	}
+	var recorded []agentcore.AgentMessage
+	wrapped := newUsageTrackedModel(&streamUsageTestModel{plainTrackedTestModel: &plainTrackedTestModel{}, message: final}, "thinking", func(agentName, _ string, msg agentcore.AgentMessage) {
+		if agentName != "thinking" {
+			t.Fatalf("agentName=%q", agentName)
+		}
+		recorded = append(recorded, msg)
+	})
+	stream, err := wrapped.GenerateStream(t.Context(), nil, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var events []agentcore.StreamEvent
+	for event := range stream {
+		events = append(events, event)
+	}
+	if len(events) != 2 || events[0].Type != agentcore.StreamEventTextDelta || events[1].Type != agentcore.StreamEventDone {
+		t.Fatalf("stream changed by usage wrapper: %+v", events)
+	}
+	if len(recorded) != 1 {
+		t.Fatalf("recorded=%d want=1", len(recorded))
+	}
+	message, ok := recorded[0].(agentcore.Message)
+	if !ok || message.Usage == nil || message.Usage.TotalTokens != 150 {
+		t.Fatalf("recorded message=%+v", recorded[0])
+	}
+}
+
 func TestUsageTrackedModelPreservesOptionalCapabilities(t *testing.T) {
 	want := llm.Capabilities{
 		Provider: "openai",

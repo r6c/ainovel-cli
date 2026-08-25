@@ -391,6 +391,8 @@ core → customization → title → confirmation → ready
 
 运行中阶段共创使用 `NewStageCoCreateSession`，继续按“有后续方向 Draft 即可应用”的原协议，不套冷启动访谈阶段。
 
+冷启动和运行中阶段共创的流式模型调用必须经过同一个 `UsageTracker`，归入 `thinking` 角色；否则书级成本、Token、缓存和预算会失明。每轮共创请求前复用 `BudgetSentinel.Refuse`，上一轮已越线时不得继续调用。瞬时流式失败由 Session 保持原阶段和 Draft，用户可重试；不得在失败时推进阶段或清空累计草稿。
+
 ## 15. 本地拆文方法画像
 
 独立命令：

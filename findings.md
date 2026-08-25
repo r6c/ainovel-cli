@@ -211,6 +211,14 @@ Knowledge 诊断已作为当前投影的只读消费完成，不是新事实源�
 
 目标平台属于用户意图，不是作品事实；使用 `user_rules.structured.platform` 持久化。只有显式 `fanqie` 才加载番茄 rubric，未指定时保持原行为。Rubric 只为现有七维提供软参考，不新增平台评分维度、算法分或自动返工路径。
 
+## 真实 Cocreate 验收结论
+
+真实 `sss / gpt-5.6-sol` 五阶段对话通过：6 个有效回合严格单步推进，关键谜底未授权时保持 customization，模型自报 ready 仍受完整 Draft/用户确认门禁约束；最终指令进入现有启动主链并在 writing 前无章节收场。
+
+验收发现并修复 P1：共创流式 thinking 调用未进入 UsageTracker，导致成本/Token/预算盲区。通用流式包装器现在在 Done 事件恰好记录一次最终 Usage，Cocreate/StageCoCreate 共用；预算越线后下一轮请求前拒绝。修复后单轮真实复验记录 `$0.005382`，无 MissingUsage。成功完整场次发生在修复前，其共创成本不可追溯，不能用后续持久 Usage 代替。
+
+P2：最终指令明确“全文约 1500 字”，Normalizer 按现有保守语义将其保存在 preferences，没有提升为 `chapter_target_chars`，因为结构化字段只接受明确“单章/每章目标”。单章作品中二者语义接近，但本次不扩大归一化规则；Architect 已按单章 1500 字生成一章大纲。
+
 ## 阶段化共创架构决策
 
 现有 cocreate 已覆盖冷启动和运行中阶段规划，缺口只是冷启动没有确定性访谈进度。阶段状态应由 `startup.CoCreateSession` 维护，不新增 interview 模式、Store 工件或 Worker。模型只回报当前完成阶段，代码限制每次最多前进一格；最终仍构建现有创作指令并走 `StartPrepared`。

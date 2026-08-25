@@ -4,7 +4,7 @@
 
 - 日期：2026-08-25
 - 基线：`ade8108 测试：加固 Linux 与无头环境兼容性`
-- 当前里程碑：R——AI 味判据证据校准（complete）
+- 当前里程碑：S——真实 Cocreate 五阶段验收（complete）
 - 当前阶段：无活动阶段
 - 公共路径：Quick、Cocreate、Headless、Import、Deconstruct、读者成品导出
 
@@ -138,5 +138,11 @@ Revision 代表性自动化、全包、race、vet 全部通过；新增完结书
 阶段 144：Writer smoke baseline/calibrated 各 3 次，六臂全 PASS，总费用 `$2.343592`；校准版平均成本 `$0.352269` vs `$0.428928`，平均工具 15.67 vs 19.33，但不据此判质量。匿名方向互换 Judge 九次为 calibrated 8 胜、baseline 1 胜；九次均判双方剧情功能完整。原始章节留在 gitignored workspace，版本库只保留脱敏指标。
 
 阶段 144 一次性 A/B 运行器首次编译因 `eval.Outcome` 未显式转 string 失败，未调用模型；修正后以普通后台子进程启动，但子进程仍属于宿主进程组，在 120 秒工具超时后被终止，未完成任何臂、无 runs 结果。后续改用 Python `start_new_session=True` 真正脱离，不重复普通后台方案。
+
+修复后一次真实单轮 Usage 检查程序首次编译因误猜持久 DTO 为 `AgentUsageTotals.Role/MissingAssistantUsage` 失败，尚未调用模型；将读取真实 `domain.UsageState` 字段后只修验收程序。
+
+阶段 146 自动化基线全绿。真实 Cocreate 第二次有效验收成功：一次 HTTP 502 由用户重试语义恢复；6 个有效回合严格按 core→customization→title→confirmation→ready，模型第 5 回合自报 ready 但确定性 Session 因 Draft 未完全确认继续拒绝，第 6 回合才放行。最终 Prompt 1231 字符，进入现有启动主链，Foundation 完整落盘后在 writing 立即 Abort；0 章节、无 PendingCommit。持久 Usage `$0.1018428`。审计发现 CoCreate 直接流式模型未经过 UsageTracker，该费用不含多轮共创，属于真实 P1 预算/观测缺口，需先修。
+
+阶段 146 自动化基线全绿。阶段 147 一次性真实 Cocreate 程序首次编译因猜错 `Store.Premise` 访问器失败，尚未调用模型或产生费用；改读真实 Store 结构后只修验收程序，不改生产代码。第一次真实对话 1→4 轮停在 core/customization：模型持续要求用户决定或授权选择求救包真相，固定脚本没有回答，证明模型未擅自补关键谜底；第 5 轮又遇上游 HTTP 502。已终止并清理隔离目录，保留脱敏阶段轨迹；该次 Usage 随目录清理无法复算，费用记 unavailable，不伪造。第二次已明确授权模型选择真相，但第 1 轮即遇同类 HTTP 502，未形成有效对话。第三次按现有 TUI“失败保留 Session、用户重试”语义，在同一轮最多重试 3 次并记录次数；不修改生产流式重试策略。
 
 阶段 127 启动时一次读取猜错 `internal/store/checkpoint.go`，实际文件为 `checkpoints.go`；未重复错误路径。首个 Headless 恢复测试夹具又因 Book 缺必填 Synopsis 在行为 seam 前失败；不作为产品红灯，补合法作品元数据后重跑。最小恢复实现后 PendingCommit 已清理，但测试用旧 Store 的 CheckpointStore 内存镜像观察不到另一个 Host 新增的 checkpoint；改为重开 Store 读取磁盘事实。随后猜测了不存在的 `internal/host/resume_test.go`；Host 无独立 Resume 测试文件，Headless 公共用例已通过真实 Host.Resume 覆盖，不再猜文件名。阶段 129 批量切换 Headless 到 Host 终态探测时，import/函数片段与预期不完全匹配，结构化编辑未应用；改为读取真实文件后分步替换。阶段 130 首个 Import 测试误把 `LoadRuleViolations` 当作双返回接口，编译失败未当作产品红灯；按真实单返回接口修正。增强篇幅目标夹具时又把 `UserRules.Save` 的指针参数传成值，仍未触达产品行为，已按真实接口修正。阶段 133 首次受限夹具迁移使用 `node`，但用户环境无该命令，迁移未执行；新增断言同时缺 `rules` import。改用已确认存在的 `python3` 并补 import，不重复 Node 方案。

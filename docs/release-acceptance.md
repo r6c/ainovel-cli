@@ -220,6 +220,16 @@ Writer A/B 复用 `writer_first_chapter`：旧判据与校准判据各运行 3 �
 
 版本化证据位于 [`../evals/anti-ai-tone/`](../evals/anti-ai-tone/)；真实章节与运行日志只保留在 gitignored workspace。外部 `lieflat-less-ai-tone` 未安装、未执行脚本、未作为第二条运行时管线。
 
+### 3.11 真实 Cocreate 五阶段验收
+
+使用 `sss / gpt-5.6-sol` 在隔离目录执行冷启动共创。第一次尝试在 customization 阶段因用户脚本未回答“选择或授权模型决定谜底”而持续保持阶段，证明模型没有擅自补关键真相；随后遇 HTTP 502。第二次首轮即遇同类 502。第三次按真实 TUI“失败保留 Session、用户重试”语义完成：一次请求失败后重试成功，6 个有效回合严格为 `core → customization → title → confirmation → ready`。
+
+第 5 个有效回合模型已报告 `ready=true`，但确定性 Session 因 Draft 尚未完全确认拒绝启动；用户再次明确确认后，第 6 回合才得到 `CanStart=true`。最终 Prompt 1231 字符，四个规范标题齐全、无“待确认”，保留题材、主角、核心冲突、单章规模、视角、基调和 `platform=fanqie`；书名《深海重传》与最终指令一致。
+
+最终 Prompt 通过现有 `PrepareUserRules → StartPrepared → Architect` 主链，Book/Premise/Outline/Characters/WorldRules/Foundation Audit 全部落盘；进入 writing 后立即 Abort，0 个正式章节、无 PendingCommit。
+
+验收同时发现 P1：Cocreate 直接使用流式 thinking 模型，未经过 UsageTracker，因此成功场次持久化 `$0.1018428` 只覆盖后续 UserRules/Foundation，完整共创成本不可追溯，记为 unavailable。现已修复通用流式 Usage 包装并让冷启动/阶段共创统一接入；每轮请求前也复用预算拒绝。修复后一次真实单轮复验记录 `thinking` 821/374 Token、`$0.005382`，MissingUsage=0。临时对话、Draft、日志和配置不入 Git。
+
 ## 4. 发布判定
 
 发布前必须满足：

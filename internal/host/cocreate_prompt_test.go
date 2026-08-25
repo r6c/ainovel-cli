@@ -3,7 +3,36 @@ package host
 import (
 	"strings"
 	"testing"
+
+	"github.com/voocel/ainovel-cli/internal/bootstrap"
 )
+
+func TestCoCreateEntrypointsRejectExhaustedBudgetBeforeModel(t *testing.T) {
+	newHost := func() *Host {
+		return &Host{budget: NewBudgetSentinel(
+			bootstrap.BudgetConfig{BookUSD: 1, WarnRatio: 0.8, HardStop: true},
+			func() float64 { return 1.25 },
+			func(string) {},
+			func(string, string) {},
+		)}
+	}
+	for name, call := range map[string]func(*Host) error{
+		"cold_start": func(h *Host) error {
+			_, err := h.CoCreateStream(t.Context(), []CoCreateMessage{{Role: "user", Content: "继续访谈"}}, nil)
+			return err
+		},
+		"stage": func(h *Host) error {
+			_, err := h.StageCoCreateStream(t.Context(), []CoCreateMessage{{Role: "user", Content: "继续规划"}}, nil)
+			return err
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			if err := call(newHost()); err == nil || !strings.Contains(err.Error(), "预算上限") {
+				t.Fatalf("err=%v want budget precondition", err)
+			}
+		})
+	}
+}
 
 func TestColdStartCoCreatePromptDefinesOrderedInterviewStages(t *testing.T) {
 	for _, phrase := range []string{

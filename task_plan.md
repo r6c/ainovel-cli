@@ -3,9 +3,9 @@
 ## 当前状态
 
 - 总体状态：`complete`
-- 当前里程碑：R——AI 味判据证据校准（complete）
+- 当前里程碑：S——真实 Cocreate 五阶段验收（complete）
 - 当前阶段：无活动阶段
-- 基线提交：`4fd8d15 测试：记录真实外部正文修订验收结果`
+- 基线提交：`8d14f9f 校准：收窄去 AI 味判据并补充反例`
 - 完整历史：[`docs/history/plans/2026-08-domain-saga-evolution/`](docs/history/plans/2026-08-domain-saga-evolution/)
 
 ## 已完成里程碑
@@ -35,7 +35,8 @@
 | O4 | sss 问题修复真实回归 | `bdba5d1` |
 | Q | 终态恢复与正文 provenance 收口 | `37df0ca` |
 | P1 | 真实外部正文 Revision 验收 | `4fd8d15` |
-| R | AI 味判据证据校准 | 本次提交 |
+| R | AI 味判据证据校准 | `8d14f9f` |
+| S | 真实 Cocreate 五阶段验收与流式用量修复 | 本次提交 |
 
 ## 稳定架构边界
 
@@ -834,3 +835,39 @@ git diff --check
 - 不把语义 Judge 变成 Commit 硬门禁
 - 不因单次模型偏好改规则
 - 不复制外部不可核验统计数字作为本项目阈值
+
+# 里程碑 S：真实 Cocreate 五阶段验收
+
+## 目标
+
+使用 `sss / gpt-5.6-sol` 在隔离目录执行冷启动共创，验证模型协议、确定性 Session、用户选择/确认和现有启动主链。只做验收；发现真实 P0/P1 才进入修复，不为测试新建共创框架。
+
+## 阶段 146：验收基线与隔离目录
+
+状态：`complete`
+
+复跑 Session/Host/TUI 代表性测试；创建不含凭证的隔离 OutputDir，加载现有全局 Provider 后只覆盖目录、预算和通知。
+
+## 阶段 147：真实五阶段对话
+
+状态：`complete`
+
+最多 8 轮，按当前阶段提供固定用户回答。记录 stage、ready、Draft 标题完整性和 suggestions 数量，不保存完整模型思考/回复到 Git。阶段只能保持或前进一格；模型跳级由 Session 拒绝。
+
+## 阶段 148：标题授权与最终指令
+
+状态：`complete`
+
+在 title 阶段由用户明确授权模型代选；confirmation 阶段明确确认。要求 `CanStart=true`、`BuildPrompt` 成功、四个独立二级标题齐全、无“待确认”，且创作指令保留题材、主角、冲突、规模、视角、基调和目标平台。
+
+## 阶段 149：现有启动主链
+
+状态：`complete`
+
+用最终 Prompt 调用 `PrepareUserRules → StartPrepared`，只运行到 Foundation 完成并进入 writing 后 Abort；验证 Book/Premise/Outline/UserRules 已落盘，无正式章节、无 PendingCommit，不复制第二套 Foundation 生成器。
+
+## 阶段 150：脱敏记录与提交
+
+状态：`complete`
+
+记录轮次、阶段轨迹、费用、工件和 P0/P1/P2；临时对话、正文、配置和日志不进 Git。运行相关测试、全量/vet/race/格式与链接检查后中文提交。
