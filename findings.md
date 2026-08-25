@@ -63,15 +63,15 @@ Markdown sidecar 只是人类可读视图，永远不是运行时事实源。
 
 ### PendingCommit
 
-普通提交和 Rewrite 共用持久化 Saga。密封 v1 包含：
+普通提交、Rewrite 与 Import 共用持久化 Saga。新工件使用密封 v2：
 
 - PayloadDigest：compact JSON payload 的 SHA-256
 - DraftDigest：正文快照 UTF-8 的 SHA-256
-- IntentDigest：Chapter、Rewrite、RewriteMode 的 SHA-256
+- IntentDigest：Chapter、Rewrite、RewriteMode、Origin 的 SHA-256
 
 首次冻结前执行纯载荷和当前状态语义校验；恢复验证密封与纯载荷后按 Stage 幂等重放，不根据已部分应用的当前投影重新裁决历史意图。
 
-旧 `started/state_applied` 工件在纯载荷通过后先升级密封；`progress_marked/signal_saved` 只收尾结果。完整性失败保留工件并返回 `ErrPendingCommitIntegrity`。
+历史 v1 工件兼容恢复，但不能携带未密封的 imported origin。旧 `started/state_applied` 工件在纯载荷通过后先升级 v2 密封；`progress_marked/signal_saved` 只收尾结果。完整性失败保留工件并返回 `ErrPendingCommitIntegrity`。
 
 ### Import
 
@@ -142,6 +142,13 @@ O2 将 `markdown_residue` 作为生成正文/Rewrite 的提交前硬门禁；但
 
 `rules.Lint` 仍是事实生成 module，但稳定注释和 CONTEXT 还写“绝不阻断 Commit”；实际上生成正文 adapter 已将 `markdown_residue` 用作接纳前置条件。应改成：Lint 不裁决；不同正文 provenance 的接纳 adapter 决定哪些事实阻断。
 
+### 复审问题解决状态
+
+- S1 终态恢复：已解决。`phase=complete` 不再单独决定静默完成；PendingCommit 先同步收尾，PendingRevision/Import/外部修改给出明确恢复指引。
+- S1 Import 正文政策：已解决。generated/imported/user provenance 已区分，Import 原文保留并只记录 Lint，Saga 与 checkpoint 仍复用同一实现。
+- S2 UserRules：已解决。候选三态支持明确清除，目标有上界且 Commit 防御持久快照。
+- S3 文档：已同步 Lint 事实生成与正文接纳政策所有权。
+
 ### 暂不处理
 
 - Import ChapterRecord 当前标为 `generated`，因为领域只有 generated/user 两种 origin。它不会被误计为用户修订风格，暂不为命名纯度新增第三状态。
@@ -161,7 +168,7 @@ O2 将 `markdown_residue` 作为生成正文/Rewrite 的提交前硬门禁；但
 
 ## Prose Lint 当前边界
 
-`rules.Lint` 是内置、始终执行的产品底线检查；`rules.Check` 是用户结构化规则检查。两者都只返回 `Violation` 事实，不阻断流程或创建新 verdict。
+`rules.Lint` 是内置、始终执行的产品底线检查；`rules.Check` 是用户结构化规则检查。两者都只生成 `Violation` 事实，不创建 verdict。正文接纳 adapter 按 provenance 裁决：generated 正文拒绝 `markdown_residue`，imported 原文保留内容并只记录事实。
 
 重复段落首版已完成：按非空正文行识别段落，仅检测 TrimSpace 后完全相同且至少 24 个 Unicode 字符的内容。短句、标题和相似段落留给 Editor 语义判断；不做跨章累计或模糊相似度。Target 最多保留前 48 字加省略号，Commit 与 Revision Projector 共用同一 Lint，Editor 将 warning 映射到现有 aesthetic 维度。
 

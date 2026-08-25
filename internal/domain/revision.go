@@ -13,6 +13,7 @@ type ChapterOrigin string
 
 const (
 	ChapterOriginGenerated ChapterOrigin = "generated"
+	ChapterOriginImported  ChapterOrigin = "imported"
 	ChapterOriginUser      ChapterOrigin = "user"
 )
 

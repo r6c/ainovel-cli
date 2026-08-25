@@ -33,7 +33,8 @@ var normalizeContract = llmcontract.Contract{
 	Schema: schema.Object(
 		schema.Property("structured", schema.Object(
 			schema.Property("platform", schema.Enum("明确指定的目标发布平台；未指定时为空字符串", "", "fanqie")).Required(),
-			schema.Property("chapter_target_chars", schema.Int("明确的单章正文目标字符数；未指定时为 0")).Required(),
+			schema.Property("chapter_target_action", schema.Enum("单章目标操作：keep=未声明，set=设置，clear=明确取消", "keep", "set", "clear")).Required(),
+			schema.Property("chapter_target_chars", schema.Int("set 时为明确的单章正文目标字符数；keep/clear 时为 0")).Required(),
 			schema.Property("genre", schema.String("题材;无则空字符串")).Required(),
 			schema.Property("forbidden_chars", schema.Array("禁止出现的字符", schema.String("字符"))).Required(),
 			schema.Property("forbidden_phrases", schema.Array("禁止出现的短语(字面精确匹配)", schema.String("短语"))).Required(),
@@ -123,12 +124,13 @@ type normalizerOutput struct {
 }
 
 type normalizerStructured struct {
-	Platform           string             `json:"platform"`
-	ChapterTargetChars int                `json:"chapter_target_chars"`
-	Genre              string             `json:"genre"`
-	ForbiddenChars     []string           `json:"forbidden_chars"`
-	ForbiddenPhrases   []string           `json:"forbidden_phrases"`
-	FatigueWords       []fatigueWordEntry `json:"fatigue_words"`
+	Platform            string             `json:"platform"`
+	ChapterTargetAction string             `json:"chapter_target_action"`
+	ChapterTargetChars  int                `json:"chapter_target_chars"`
+	Genre               string             `json:"genre"`
+	ForbiddenChars      []string           `json:"forbidden_chars"`
+	ForbiddenPhrases    []string           `json:"forbidden_phrases"`
+	FatigueWords        []fatigueWordEntry `json:"fatigue_words"`
 }
 
 type fatigueWordEntry struct {
@@ -143,8 +145,25 @@ func (o normalizerOutput) toCandidate(source string) (rules.Candidate, error) {
 	if platform != "" && platform != "fanqie" {
 		return rules.Candidate{}, fmt.Errorf("unsupported platform: %q", platform)
 	}
-	if o.Structured.ChapterTargetChars < 0 {
-		return rules.Candidate{}, fmt.Errorf("chapter_target_chars 不能为负数, got %d", o.Structured.ChapterTargetChars)
+	action := rules.ChapterTargetAction(strings.TrimSpace(o.Structured.ChapterTargetAction))
+	if action == "" {
+		if o.Structured.ChapterTargetChars > 0 {
+			action = rules.ChapterTargetSet
+		} else {
+			action = rules.ChapterTargetKeep
+		}
+	}
+	switch action {
+	case rules.ChapterTargetKeep, rules.ChapterTargetClear:
+		if o.Structured.ChapterTargetChars != 0 {
+			return rules.Candidate{}, fmt.Errorf("chapter_target_action=%s 时 chapter_target_chars 必须为 0", action)
+		}
+	case rules.ChapterTargetSet:
+		if o.Structured.ChapterTargetChars <= 0 || o.Structured.ChapterTargetChars > rules.MaxChapterTargetChars {
+			return rules.Candidate{}, fmt.Errorf("chapter_target_chars 必须在 1..%d, got %d", rules.MaxChapterTargetChars, o.Structured.ChapterTargetChars)
+		}
+	default:
+		return rules.Candidate{}, fmt.Errorf("chapter_target_action 非法: %q", action)
 	}
 	var fatigue map[string]int
 	for _, e := range o.Structured.FatigueWords {
@@ -161,7 +180,8 @@ func (o normalizerOutput) toCandidate(source string) (rules.Candidate, error) {
 		fatigue[word] = e.MaxPerChapter
 	}
 	return rules.Candidate{
-		Source: source,
+		Source:              source,
+		ChapterTargetAction: action,
 		Structured: rules.Structured{
 			Platform:           platform,
 			ChapterTargetChars: o.Structured.ChapterTargetChars,
@@ -192,7 +212,7 @@ const normalizerSystemPrompt = `你是 AI 小说写作系统的「规则归一�
 【保守提升——最重要】
 - 只有用户明确、无歧义时才写入 structured。
 - platform: 仅当原文明确写出“番茄小说/番茄平台/发布到番茄”时填 fanqie；“免费阅读平台”“下沉市场”“移动端平台”等含糊表达不得猜测，填空字符串。
-- chapter_target_chars: 仅当原文明确给出单章/每章正文的单一目标字数时填写正整数；未指定、只说“短一点”、只给全书总字数或给出区间时填 0，并把原要求保留在 preferences/uncertain。
+- chapter_target_action/chapter_target_chars: 未提及单章目标时 action=keep、chars=0；明确设置单章/每章单一目标时 action=set、chars=正整数；明确“取消/不再限制每章字数”时 action=clear、chars=0。只说“短一点”、只给全书总字数或给区间时 action=keep、chars=0，并把原要求保留在 preferences/uncertain。
 - forbidden_chars/forbidden_phrases 是 error 级:只有「不要出现X/禁用X/别写X」这类明确禁止才提升。
 - fatigue_words:只有同时给出「明确的词」和「明确的次数阈值」才提升;「少用X/别老用X」没给数字的放进 preferences,绝不自己发明阈值。
 - 除明确的单章目标值外，其他字数/篇幅意愿一律放 preferences，不自行换算或发明目标。

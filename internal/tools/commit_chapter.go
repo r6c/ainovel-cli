@@ -86,15 +86,21 @@ func digestPayload(payload json.RawMessage) (string, error) {
 
 func digestPendingIntent(pending domain.PendingCommit) string {
 	data := fmt.Sprintf("chapter=%d\x00rewrite=%t\x00rewrite_mode=%s", pending.Chapter, pending.Rewrite, pending.RewriteMode)
+	if pending.SealVersion >= 2 {
+		data += "\x00origin=" + string(pending.Origin)
+	}
 	return fmt.Sprintf("%x", sha256.Sum256([]byte(data)))
 }
 
 func sealPendingCommit(pending domain.PendingCommit) (domain.PendingCommit, error) {
+	if pending.Origin == "" {
+		pending.Origin = domain.ChapterOriginGenerated
+	}
 	payloadDigest, err := digestPayload(pending.Payload)
 	if err != nil {
 		return domain.PendingCommit{}, err
 	}
-	pending.SealVersion = 1
+	pending.SealVersion = 2
 	pending.PayloadDigest = payloadDigest
 	pending.DraftDigest = fmt.Sprintf("%x", sha256.Sum256([]byte(pending.DraftContent)))
 	pending.IntentDigest = digestPendingIntent(pending)
@@ -112,6 +118,9 @@ func validatePendingMetadata(pending domain.PendingCommit) error {
 	if pendingNeedsFrozenInputs(pending.Stage) && pending.DraftContent == "" {
 		return fmt.Errorf("pending commit 缺少 draft_content")
 	}
+	if pending.Origin != "" && pending.Origin != domain.ChapterOriginGenerated && pending.Origin != domain.ChapterOriginImported {
+		return fmt.Errorf("pending commit origin 非法: %q", pending.Origin)
+	}
 	if !pending.Rewrite && pending.RewriteMode != "" {
 		return fmt.Errorf("普通 pending commit 不能携带 rewrite_mode %q", pending.RewriteMode)
 	}
@@ -122,16 +131,19 @@ func validatePendingMetadata(pending domain.PendingCommit) error {
 }
 
 func isLegacyPendingSeal(pending domain.PendingCommit) bool {
-	return pending.SealVersion == 0 && pending.PayloadDigest == "" && pending.DraftDigest == "" && pending.IntentDigest == ""
+	return pending.SealVersion == 0 && pending.Origin == "" && pending.PayloadDigest == "" && pending.DraftDigest == "" && pending.IntentDigest == ""
 }
 
 func validatePendingSeal(pending domain.PendingCommit) error {
 	if isLegacyPendingSeal(pending) {
 		return nil
 	}
-	if pending.SealVersion != 1 || pending.PayloadDigest == "" || pending.DraftDigest == "" || pending.IntentDigest == "" {
+	if (pending.SealVersion != 1 && pending.SealVersion != 2) || pending.PayloadDigest == "" || pending.DraftDigest == "" || pending.IntentDigest == "" {
 		return fmt.Errorf("pending commit 密封格式非法：seal_version=%d payload_digest=%t draft_digest=%t intent_digest=%t",
 			pending.SealVersion, pending.PayloadDigest != "", pending.DraftDigest != "", pending.IntentDigest != "")
+	}
+	if pending.SealVersion == 1 && pending.Origin != "" && pending.Origin != domain.ChapterOriginGenerated {
+		return fmt.Errorf("pending commit v1 不能携带未密封的 origin %q", pending.Origin)
 	}
 	got, err := digestPayload(pending.Payload)
 	if err != nil {
@@ -150,7 +162,17 @@ func validatePendingSeal(pending domain.PendingCommit) error {
 	return nil
 }
 
-func (t *CommitChapterTool) Execute(_ context.Context, args json.RawMessage) (json.RawMessage, error) {
+func (t *CommitChapterTool) Execute(ctx context.Context, args json.RawMessage) (json.RawMessage, error) {
+	return t.execute(ctx, args, domain.ChapterOriginGenerated)
+}
+
+// ExecuteImported 让 Import adapter 复用同一 Commit Saga，同时保留用户原文。
+// origin 由代码入口固定，模型工具参数不能自行伪造。
+func (t *CommitChapterTool) ExecuteImported(ctx context.Context, args json.RawMessage) (json.RawMessage, error) {
+	return t.execute(ctx, args, domain.ChapterOriginImported)
+}
+
+func (t *CommitChapterTool) execute(_ context.Context, args json.RawMessage, requestedOrigin domain.ChapterOrigin) (json.RawMessage, error) {
 	var requested commitArgs
 	if err := json.Unmarshal(args, &requested); err != nil {
 		return nil, fmt.Errorf("invalid args: %w: %w", errs.ErrToolArgs, err)
@@ -180,6 +202,13 @@ func (t *CommitChapterTool) Execute(_ context.Context, args json.RawMessage) (js
 		}
 	}
 
+	origin := requestedOrigin
+	if existingPending != nil {
+		origin = existingPending.Origin
+		if origin == "" {
+			origin = domain.ChapterOriginGenerated
+		}
+	}
 	a := requested
 	if existingPending != nil && existingPending.Stage != domain.CommitStageProgressMarked && existingPending.Stage != domain.CommitStageSignalSaved {
 		if len(existingPending.Payload) == 0 {
@@ -316,7 +345,7 @@ func (t *CommitChapterTool) Execute(_ context.Context, args json.RawMessage) (js
 	if content == "" {
 		return nil, fmt.Errorf("no content found for chapter %d: %w", a.Chapter, errs.ErrToolPrecondition)
 	}
-	if existingPending == nil {
+	if existingPending == nil && origin == domain.ChapterOriginGenerated {
 		if err := validateFinalChapterFormat(content); err != nil {
 			return nil, err
 		}
@@ -336,7 +365,7 @@ func (t *CommitChapterTool) Execute(_ context.Context, args json.RawMessage) (js
 		}
 		now := time.Now().Format(time.RFC3339)
 		pending = domain.PendingCommit{
-			Chapter: a.Chapter, Stage: domain.CommitStageStarted, Payload: payload, DraftContent: content,
+			Chapter: a.Chapter, Stage: domain.CommitStageStarted, Origin: origin, Payload: payload, DraftContent: content,
 			Summary: a.Summary, HookType: a.HookType, DominantStrand: a.DominantStrand,
 			StartedAt: now, UpdatedAt: now,
 		}
@@ -360,7 +389,7 @@ func (t *CommitChapterTool) Execute(_ context.Context, args json.RawMessage) (js
 		if err != nil {
 			return nil, fmt.Errorf("load chapter style: %w: %w", errs.ErrStoreRead, err)
 		}
-		if _, err := t.store.ChapterRecords.Accept(a.Chapter, domain.ChapterOriginGenerated, content, a.ChapterFacts, style); err != nil {
+		if _, err := t.store.ChapterRecords.Accept(a.Chapter, origin, content, a.ChapterFacts, style); err != nil {
 			return nil, fmt.Errorf("save chapter record: %w: %w", errs.ErrStoreWrite, err)
 		}
 
@@ -652,13 +681,21 @@ func (t *CommitChapterTool) validateChapterTarget(text string) error {
 		return nil
 	}
 	target := snap.Structured.ChapterTargetChars
-	maxChars := target * 120 / 100
+	if target > rules.MaxChapterTargetChars {
+		return fmt.Errorf("章节篇幅目标非法：%d 超过产品上限 %d，请更新或取消该规则: %w",
+			target, rules.MaxChapterTargetChars, errs.ErrToolPrecondition)
+	}
+	maxChars := chapterTargetMax(target)
 	actual := domain.WordCount(text)
 	if actual <= maxChars {
 		return nil
 	}
 	return fmt.Errorf("正文篇幅超出用户目标：目标约 %d 字，上限 %d 字，当前 %d 字；请保留必要情节并压缩后重新提交: %w",
 		target, maxChars, actual, errs.ErrToolPrecondition)
+}
+
+func chapterTargetMax(target int) int {
+	return target + target/5
 }
 
 func validateFinalChapterFormat(text string) error {

@@ -3,8 +3,8 @@
 ## 当前状态
 
 - 总体状态：`planned`
-- 当前里程碑：Q——终态恢复与正文接纳 seam 收口
-- 当前阶段：阶段 127——终态恢复红灯
+- 当前里程碑：P1——真实外部正文 Revision 验收
+- 当前阶段：阶段 135——Revision 自动化验收基线（pending）
 - 基线提交：`bdba5d1 测试：记录真实模型问题修复回归结果`
 - 完整历史：[`docs/history/plans/2026-08-domain-saga-evolution/`](docs/history/plans/2026-08-domain-saga-evolution/)
 
@@ -650,7 +650,7 @@ git diff --check
 
 ## 阶段 127：终态恢复红灯
 
-状态：`pending`
+状态：`complete`
 
 公共 seam：`headless.Run`、`Host.Resume`、TUI bootstrap、`CommitChapterTool.Execute`。
 
@@ -658,7 +658,7 @@ git diff --check
 
 ## 阶段 128：确定性 PendingCommit 恢复优先级
 
-状态：`pending`
+状态：`complete`
 
 优先方案：Host Resume 在生成 resume label 前，直接通过现有 `CommitChapterTool.Execute` 幂等收尾冻结 PendingCommit，不调用 Writer 模型；完成后重新读取 Progress。若测试证明该位置破坏职责，再设计 `flow.State.PendingCommit` 路由，不在 Host/Flow 两处重复恢复规则。
 
@@ -666,7 +666,7 @@ git diff --check
 
 ## 阶段 129：真正可静默终止判定
 
-状态：`pending`
+状态：`complete`
 
 终态摘要只有同时满足以下条件才允许：
 
@@ -684,7 +684,7 @@ phase=complete
 
 ## 阶段 130：Import Markdown/篇幅政策红灯
 
-状态：`pending`
+状态：`complete`
 
 公共 seam：`imp.Run/publish` + 正式 `CommitChapterTool`。
 
@@ -692,7 +692,7 @@ phase=complete
 
 ## 阶段 131：正文 provenance 接纳 module
 
-状态：`pending`
+状态：`complete`
 
 深化现有章节接纳 seam，至少区分：
 
@@ -706,13 +706,13 @@ user       外部人工修订：保留内容，经 Revision 语义重建
 
 ## 阶段 132：Import 零污染与恢复矩阵
 
-状态：`pending`
+状态：`complete`
 
 验证多章 Markdown 源、发布中断、stale PendingCommit、重新运行和 TXT/EPUB 原文保真。所有失败在正式写入前或由 Saga 可恢复；`NextAction` 不得永久停在 Publish。
 
 ## 阶段 133：UserRules 撤销语义与数值上界
 
-状态：`pending`
+状态：`complete`
 
 先由测试固定三态：未声明 / 设置正值 / 明确清除。推荐 `*int` 语义（nil=未声明，0=清除，正值=设置），但只有 strict schema 能稳定表达 nullable 时采用；否则定义显式 action 字段。禁止用负数暗号。
 
@@ -720,7 +720,7 @@ user       外部人工修订：保留内容，经 Revision 语义重建
 
 ## 阶段 134：文档、全量验证与真实 Revision 计划门禁
 
-状态：`pending`
+状态：`complete`
 
 同步规则所有权：Lint 只生成事实；正文接纳 adapter 按 provenance 决定哪些事实阻断。更新 CONTEXT、Import 文档、UserRules 文档和发布验收。
 
@@ -743,3 +743,39 @@ git diff --check
 - 扫榜、浏览器或网络抓取
 - 数据库、Web 事实源或第四 Worker
 - 真实 Provider 调用
+
+# 里程碑 P1：真实外部正文 Revision 验收
+
+## 目标
+
+验证作者手工修改已接纳正文后，Revision 能检测哈希变化、使用真实模型重建 ChapterFacts/StyleDelta、全量重建派生投影，并在崩溃恢复后保持幂等。真实调用只在用户确认预算后执行。
+
+## 阶段 135：Revision 自动化验收基线
+
+状态：`pending`
+
+复跑并补齐：外部修改扫描、Prepared/RecordsApplied/ProjectionsApplied 三阶段恢复、候选全书事实验证、规则投影刷新、完结书 `/sync` 工作台路径。只补真实缺口，不复制现有 Revision 大矩阵。
+
+## 阶段 136：隔离真实作品与修改方案
+
+状态：`pending`
+
+从临时验收作品复制到新的隔离目录，不修改原真实验收目录。选择一处明确但有限的事实变化，保存修改前 ChapterRecord、投影、Progress、Usage 与正文摘要；不记录 Provider 密钥。
+
+## 阶段 137：用户确认预算
+
+状态：`pending`
+
+向用户确认本次 Revision 真实模型预算上限；未确认前停止。建议上限 `$0.25`，通知关闭，超限硬停。
+
+## 阶段 138：真实 Revision 与恢复验证
+
+状态：`pending`
+
+执行 `/sync` 等价 Host 接口，必要时在 PendingRevision 中间阶段做一次可控强杀；验证 revision+1、origin=user、ContentSHA 更新、旧事实移除、新事实重建、PendingRevision 清理、再次同步零调用。
+
+## 阶段 139：下游一致性与脱敏记录
+
+状态：`pending`
+
+验证 Context 使用新事实、TXT/EPUB 反映修改正文且不泄露内部状态；把费用、工件和 P0/P1/P2 脱敏写入发布验收，临时正文/日志/配置不进 Git。

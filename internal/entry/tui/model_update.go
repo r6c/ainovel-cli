@@ -435,7 +435,7 @@ func (m Model) handleRuntimeMsg(msg tea.Msg) (tea.Model, tea.Cmd, bool) {
 	case bootstrapMsg:
 		// 是否已有作品决定界面落点，恢复成功只决定引擎是否运行。数据升级、
 		// 预算或修订门禁失败时仍留在工作台展示原书，不能退回欢迎页。
-		if (msg.existing || msg.resumed) && m.mode == modeNew && !msg.completed {
+		if (msg.existing || msg.resumed) && m.mode == modeNew && (!msg.completed || msg.err != nil) {
 			enableMouse := m.enterRunning()
 			m.resizeTextarea()
 			m.textarea.Placeholder = defaultSteerPlaceholder()

@@ -542,7 +542,25 @@ func (h *Host) Resume() (string, error) {
 	if err := upgradeProject(h.store); err != nil {
 		return "", err
 	}
+	pending, err := h.store.Signals.LoadPendingCommit()
+	if err != nil {
+		return "", fmt.Errorf("读取待恢复章节提交: %w", err)
+	}
+	if pending != nil {
+		raw, err := json.Marshal(map[string]int{"chapter": pending.Chapter})
+		if err != nil {
+			return "", fmt.Errorf("构造章节提交恢复参数: %w", err)
+		}
+		if _, err := tools.NewCommitChapterTool(h.store, h.styleStats).Execute(h.runCtx, raw); err != nil {
+			return "", fmt.Errorf("恢复第 %d 章提交: %w", pending.Chapter, err)
+		}
+	}
 
+	if _, complete, err := completedSummary(h.store); err != nil {
+		return "", err
+	} else if complete {
+		return "", nil
+	}
 	label, err := resumeLabel(h.store)
 	if err != nil {
 		return "", err

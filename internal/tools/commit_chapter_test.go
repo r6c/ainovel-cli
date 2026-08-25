@@ -33,6 +33,45 @@ func saveTestChapterRecord(t *testing.T, st *store.Store, chapter int, content s
 	}
 }
 
+func TestChapterTargetMaxUsesBoundedOverflowSafeCalculation(t *testing.T) {
+	if got := chapterTargetMax(rules.MaxChapterTargetChars); got != 1_200_000 {
+		t.Fatalf("max chapter target upper bound=%d want=1200000", got)
+	}
+}
+
+func TestCommitChapterRejectsPersistedChapterTargetAboveProductLimit(t *testing.T) {
+	s := store.NewStore(t.TempDir())
+	if err := s.Init(); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Progress.Init(1); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Progress.UpdatePhase(domain.PhaseWriting); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.UserRules.Save(&rules.Snapshot{Version: rules.SnapshotVersion, Status: rules.StatusReady,
+		Structured: rules.Structured{ChapterTargetChars: rules.MaxChapterTargetChars + 1}}); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Drafts.SaveDraft(1, "短正文。"); err != nil {
+		t.Fatal(err)
+	}
+	args, _ := json.Marshal(map[string]any{
+		"chapter": 1, "title": "第一章", "summary": "篇幅配置检查", "characters": []string{}, "key_events": []string{"事件"},
+		"timeline_events": []any{}, "foreshadow_updates": []any{}, "relationship_changes": []any{}, "state_changes": []any{},
+		"knowledge_updates": []any{}, "cast_intros": []any{}, "hook_type": nil, "dominant_strand": nil, "feedback": nil,
+	})
+
+	_, err := newTestCommitChapterTool(s).Execute(context.Background(), args)
+	if err == nil || !errors.Is(err, errs.ErrToolPrecondition) || !strings.Contains(err.Error(), "篇幅目标非法") {
+		t.Fatalf("oversized persisted target must fail before arithmetic, got %v", err)
+	}
+	if pending, loadErr := s.Signals.LoadPendingCommit(); loadErr != nil || pending != nil {
+		t.Fatalf("invalid target must fail before pending commit: pending=%+v err=%v", pending, loadErr)
+	}
+}
+
 func TestCommitChapterRejectsChapterOverTargetBeforePendingCommit(t *testing.T) {
 	s := store.NewStore(t.TempDir())
 	if err := s.Init(); err != nil {
@@ -1923,8 +1962,11 @@ func TestSealPendingCommitAddsStablePayloadAndDraftDigests(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got.SealVersion != 1 {
-		t.Fatalf("seal version = %d, want 1", got.SealVersion)
+	if got.SealVersion != 2 {
+		t.Fatalf("seal version = %d, want 2", got.SealVersion)
+	}
+	if got.Origin != domain.ChapterOriginGenerated {
+		t.Fatalf("new seal must freeze generated provenance by default, got %q", got.Origin)
 	}
 	wantPayload, err := digestPayload(payload)
 	if err != nil {
@@ -1937,8 +1979,13 @@ func TestSealPendingCommitAddsStablePayloadAndDraftDigests(t *testing.T) {
 	if len(got.PayloadDigest) != 64 || len(got.DraftDigest) != 64 || len(got.IntentDigest) != 64 {
 		t.Fatalf("digests must be 64 lowercase hex characters: %+v", got)
 	}
-	if got.IntentDigest != digestPendingIntent(pending) {
+	if got.IntentDigest != digestPendingIntent(got) {
 		t.Fatalf("wrong intent digest: %q", got.IntentDigest)
+	}
+	imported := got
+	imported.Origin = domain.ChapterOriginImported
+	if digestPendingIntent(imported) == got.IntentDigest {
+		t.Fatal("v2 intent digest must protect chapter provenance")
 	}
 }
 
@@ -2046,6 +2093,152 @@ func TestCommitChapterRejectsTamperedSealedDraftBeforeRecoverySideEffects(t *tes
 	}
 	if pending, loadErr := s.Signals.LoadPendingCommit(); loadErr != nil || pending == nil {
 		t.Fatalf("tampered pending must be preserved: pending=%+v err=%v", pending, loadErr)
+	}
+}
+
+func TestCommitChapterRejectsOriginOnUnsealedLegacyPending(t *testing.T) {
+	s := store.NewStore(t.TempDir())
+	if err := s.Init(); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Progress.Init(1); err != nil {
+		t.Fatal(err)
+	}
+	payload := json.RawMessage(`{"chapter":1,"title":"第一章","summary":"摘要","characters":[],"key_events":["事件"],"timeline_events":[],"foreshadow_updates":[],"relationship_changes":[],"state_changes":[],"knowledge_updates":[],"cast_intros":[]}`)
+	if err := s.Signals.SavePendingCommit(domain.PendingCommit{
+		Chapter: 1, Stage: domain.CommitStageStarted, Origin: domain.ChapterOriginImported,
+		Payload: payload, DraftContent: "冻结正文",
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	_, err := newTestCommitChapterTool(s).Execute(context.Background(), json.RawMessage(`{"chapter":1}`))
+	if err == nil || !errors.Is(err, errs.ErrPendingCommitIntegrity) {
+		t.Fatalf("unsealed legacy pending cannot acquire imported provenance, got %v", err)
+	}
+	got, loadErr := s.Signals.LoadPendingCommit()
+	if loadErr != nil || got == nil || got.SealVersion != 0 {
+		t.Fatalf("invalid legacy pending must remain unsealed: pending=%+v err=%v", got, loadErr)
+	}
+}
+
+func TestCommitChapterRejectsOriginTamperOnLegacyV1Seal(t *testing.T) {
+	s := store.NewStore(t.TempDir())
+	if err := s.Init(); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Progress.Init(1); err != nil {
+		t.Fatal(err)
+	}
+	payload := json.RawMessage(`{"chapter":1,"title":"第一章","summary":"摘要","characters":[],"key_events":["事件"],"timeline_events":[],"foreshadow_updates":[],"relationship_changes":[],"state_changes":[],"knowledge_updates":[],"cast_intros":[]}`)
+	pending := domain.PendingCommit{Chapter: 1, Stage: domain.CommitStageStarted, Payload: payload, DraftContent: "冻结正文"}
+	payloadDigest, err := digestPayload(payload)
+	if err != nil {
+		t.Fatal(err)
+	}
+	pending.SealVersion = 1
+	pending.PayloadDigest = payloadDigest
+	pending.DraftDigest = fmt.Sprintf("%x", sha256.Sum256([]byte(pending.DraftContent)))
+	pending.IntentDigest = digestPendingIntent(pending)
+	pending.Origin = domain.ChapterOriginImported // v1 历史格式未密封 origin，必须拒绝而非升级权限。
+	if err := s.Signals.SavePendingCommit(pending); err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = newTestCommitChapterTool(s).Execute(context.Background(), json.RawMessage(`{"chapter":1}`))
+	if err == nil || !errors.Is(err, errs.ErrPendingCommitIntegrity) {
+		t.Fatalf("v1 origin tamper must fail integrity validation, got %v", err)
+	}
+	if got, loadErr := s.Signals.LoadPendingCommit(); loadErr != nil || got == nil {
+		t.Fatalf("tampered pending must remain: pending=%+v err=%v", got, loadErr)
+	}
+}
+
+func TestExecuteImportedCannotChangeFrozenGeneratedProvenance(t *testing.T) {
+	s := store.NewStore(t.TempDir())
+	if err := s.Init(); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Progress.Init(1); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Progress.UpdatePhase(domain.PhaseWriting); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Progress.StartChapter(1); err != nil {
+		t.Fatal(err)
+	}
+	content := "普通生成正文。"
+	payload := json.RawMessage(`{"chapter":1,"title":"第一章","summary":"摘要","characters":[],"key_events":["事件"],"timeline_events":[],"foreshadow_updates":[],"relationship_changes":[],"state_changes":[],"knowledge_updates":[],"cast_intros":[]}`)
+	pending, err := sealPendingCommit(domain.PendingCommit{
+		Chapter: 1, Stage: domain.CommitStageStarted, Origin: domain.ChapterOriginGenerated,
+		Payload: payload, DraftContent: content,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Signals.SavePendingCommit(pending); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := newTestCommitChapterTool(s).ExecuteImported(context.Background(), json.RawMessage(`{"chapter":1}`)); err != nil {
+		t.Fatalf("recover generated pending through imported adapter: %v", err)
+	}
+	record, err := s.ChapterRecords.Load(1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if record == nil || record.Origin != domain.ChapterOriginGenerated {
+		t.Fatalf("frozen generated provenance changed: %+v", record)
+	}
+}
+
+func TestCommitChapterRecoversImportedPendingWithFrozenProvenance(t *testing.T) {
+	s := store.NewStore(t.TempDir())
+	if err := s.Init(); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Progress.Init(1); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Progress.UpdatePhase(domain.PhaseWriting); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Progress.StartChapter(1); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.UserRules.Save(&rules.Snapshot{Version: rules.SnapshotVersion, Status: rules.StatusReady,
+		Structured: rules.Structured{ChapterTargetChars: 10}}); err != nil {
+		t.Fatal(err)
+	}
+	content := "# 第一章\n\n导入的**原始强调**必须保留。\n"
+	payload := json.RawMessage(`{"chapter":1,"title":"第一章","summary":"导入摘要","characters":[],"key_events":["导入事件"],"timeline_events":[],"foreshadow_updates":[],"relationship_changes":[],"state_changes":[],"knowledge_updates":[],"cast_intros":[]}`)
+	pending, err := sealPendingCommit(domain.PendingCommit{
+		Chapter: 1, Stage: domain.CommitStageStarted, Origin: domain.ChapterOriginImported,
+		Payload: payload, DraftContent: content,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if pending.SealVersion != 2 {
+		t.Fatalf("imported pending seal version=%d want=2", pending.SealVersion)
+	}
+	if err := s.Signals.SavePendingCommit(pending); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := newTestCommitChapterTool(s).Execute(context.Background(), json.RawMessage(`{"chapter":1}`)); err != nil {
+		t.Fatalf("recover imported pending through ordinary resume entry: %v", err)
+	}
+	record, err := s.ChapterRecords.Load(1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if record == nil || record.Origin != domain.ChapterOriginImported || record.Content != content {
+		t.Fatalf("imported provenance/content lost on recovery: %+v", record)
+	}
+	if got, err := s.Signals.LoadPendingCommit(); err != nil || got != nil {
+		t.Fatalf("imported pending not cleared: pending=%+v err=%v", got, err)
 	}
 }
 
@@ -2347,7 +2540,7 @@ func TestCommitChapterSealsLegacyPendingBeforeReplayingState(t *testing.T) {
 	if err != nil || pending == nil {
 		t.Fatalf("legacy pending must remain after failed replay: pending=%+v err=%v", pending, err)
 	}
-	if pending.SealVersion != 1 || len(pending.PayloadDigest) != 64 || len(pending.DraftDigest) != 64 {
+	if pending.SealVersion != 2 || pending.Origin != domain.ChapterOriginGenerated || len(pending.PayloadDigest) != 64 || len(pending.DraftDigest) != 64 {
 		t.Fatalf("legacy pending was not sealed before replay: %+v", pending)
 	}
 	wantPayload, err := digestPayload(payload)
@@ -2409,7 +2602,7 @@ func TestCommitChapterRejectsLegacyPayloadModifiedAfterAutomaticSeal(t *testing.
 		t.Fatal("first replay must fail after sealing at state application")
 	}
 	sealed, err := s.Signals.LoadPendingCommit()
-	if err != nil || sealed == nil || sealed.SealVersion != 1 {
+	if err != nil || sealed == nil || sealed.SealVersion != 2 || sealed.Origin != domain.ChapterOriginGenerated {
 		t.Fatalf("legacy pending was not sealed: pending=%+v err=%v", sealed, err)
 	}
 	sealed.Payload = json.RawMessage(`{"chapter":1,"title":"篡改标题","summary":"摘要","characters":["林墨"],"key_events":["事件"]}`)

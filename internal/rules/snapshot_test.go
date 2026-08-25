@@ -39,6 +39,29 @@ func TestBuildSnapshot_ChapterTargetUsesExplicitOverride(t *testing.T) {
 	}
 }
 
+func TestOverlaySnapshot_ChapterTargetSupportsExplicitClear(t *testing.T) {
+	base := Snapshot{Version: SnapshotVersion, Status: StatusReady, Structured: Structured{ChapterTargetChars: 1200}}
+	kept := OverlaySnapshot(base, Candidate{Source: "runtime", ChapterTargetAction: ChapterTargetKeep})
+	if kept.Structured.ChapterTargetChars != 1200 {
+		t.Fatalf("keep must preserve existing chapter target, got %d", kept.Structured.ChapterTargetChars)
+	}
+	cleared := OverlaySnapshot(base, Candidate{Source: "runtime", ChapterTargetAction: ChapterTargetClear})
+	if cleared.Structured.ChapterTargetChars != 0 {
+		t.Fatalf("clear must remove existing chapter target, got %d", cleared.Structured.ChapterTargetChars)
+	}
+}
+
+func TestOverlaySnapshotInvalidSetDoesNotClearExistingChapterTarget(t *testing.T) {
+	base := Snapshot{Version: SnapshotVersion, Status: StatusReady, Structured: Structured{ChapterTargetChars: 1200}}
+	got := OverlaySnapshot(base, Candidate{
+		Source: "runtime", ChapterTargetAction: ChapterTargetSet,
+		Structured: Structured{ChapterTargetChars: MaxChapterTargetChars + 1},
+	})
+	if got.Structured.ChapterTargetChars != 1200 {
+		t.Fatalf("invalid set must not clear existing target, got %d", got.Structured.ChapterTargetChars)
+	}
+}
+
 func TestBuildSnapshot_PlatformUsesExplicitOverride(t *testing.T) {
 	snap := BuildSnapshot([]Candidate{
 		{Source: "startup_prompt", Structured: Structured{Platform: "fanqie"}},

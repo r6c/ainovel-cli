@@ -19,6 +19,11 @@ func (s *spyCommitter) Execute(context.Context, json.RawMessage) (json.RawMessag
 	return json.RawMessage(`{}`), nil
 }
 
+func (s *spyCommitter) ExecuteImported(context.Context, json.RawMessage) (json.RawMessage, error) {
+	s.calls++
+	return json.RawMessage(`{}`), nil
+}
+
 func TestPublishChaptersPersistsKnowledgeState(t *testing.T) {
 	st := store.NewStore(t.TempDir())
 	if err := st.Init(); err != nil {

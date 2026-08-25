@@ -35,7 +35,7 @@ func Run(cfg bootstrap.Config, bundle assets.Bundle, opts Options) error {
 	}
 	prompt := strings.TrimSpace(opts.Prompt)
 	if prompt == "" {
-		if summary, complete, err := completedSummary(cfg.OutputDir); err != nil {
+		if summary, complete, err := host.ProbeCompleted(cfg.OutputDir); err != nil {
 			return err
 		} else if complete {
 			fmt.Fprintln(stderr, summary)
@@ -82,7 +82,7 @@ func Run(cfg bootstrap.Config, bundle assets.Bundle, opts Options) error {
 			return err
 		}
 		if label == "" {
-			if summary, complete, err := completedSummary(eng.Dir()); err != nil {
+			if summary, complete, err := eng.CompletedSummary(); err != nil {
 				return err
 			} else if complete {
 				fmt.Fprintln(stderr, summary)
@@ -95,34 +95,6 @@ func Run(cfg bootstrap.Config, bundle assets.Bundle, opts Options) error {
 	}
 
 	return consume(eng, stdout, stderr, false)
-}
-
-func completedSummary(dir string) (string, bool, error) {
-	st := store.NewStore(dir)
-	version, err := st.LoadProjectFormatVersion()
-	if err != nil {
-		return "", false, err
-	}
-	if version != store.CurrentProjectFormatVersion {
-		return "", false, nil
-	}
-	progress, err := st.Progress.Load()
-	if err != nil {
-		return "", false, err
-	}
-	if progress == nil || progress.Phase != domain.PhaseComplete {
-		return "", false, nil
-	}
-	book, err := st.Book.Load()
-	if err != nil {
-		return "", false, err
-	}
-	title := "未命名作品"
-	if book != nil {
-		title = book.Title
-	}
-	return fmt.Sprintf("headless 完成: %s（《%s》，共 %d 章 %d 字）",
-		dir, title, len(progress.CompletedChapters), progress.TotalWordCount), true, nil
 }
 
 func consume(eng *host.Host, stdout, stderr io.Writer, roundHasContent bool) error {

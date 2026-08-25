@@ -62,6 +62,27 @@ func TestService_GetOrBuildInitializesMissingSnapshot(t *testing.T) {
 	}
 }
 
+func TestServiceAddRuntimeRuleCanClearChapterTarget(t *testing.T) {
+	st := store.NewStore(t.TempDir())
+	if err := st.UserRules.Save(&rules.Snapshot{Version: rules.SnapshotVersion, Status: rules.StatusReady,
+		Structured: rules.Structured{ChapterTargetChars: 1200}}); err != nil {
+		t.Fatal(err)
+	}
+	model := &scriptedModel{replies: []string{`{"structured":{"platform":"","chapter_target_action":"clear","chapter_target_chars":0,"genre":"","forbidden_chars":[],"forbidden_phrases":[],"fatigue_words":[]},"preferences":"","uncertain":[]}`}}
+	svc := NewService(st, model, rules.LoadOptions{})
+	merged, cand, err := svc.AddRuntimeRule(t.Context(), "取消每章字数限制")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cand.ChapterTargetAction != rules.ChapterTargetClear || merged.Structured.ChapterTargetChars != 0 {
+		t.Fatalf("runtime clear did not remove target: cand=%+v merged=%+v", cand, merged.Structured)
+	}
+	reloaded, err := st.UserRules.Load()
+	if err != nil || reloaded == nil || reloaded.Structured.ChapterTargetChars != 0 {
+		t.Fatalf("cleared target not persisted: snap=%+v err=%v", reloaded, err)
+	}
+}
+
 func TestService_AddRuntimeRule_PersistsAndReturnsCandidate(t *testing.T) {
 	svc, st := newDegradedService(t)
 

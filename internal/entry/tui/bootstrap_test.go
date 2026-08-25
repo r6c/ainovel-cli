@@ -2,6 +2,7 @@ package tui
 
 import (
 	"errors"
+	"strings"
 	"testing"
 
 	"github.com/charmbracelet/bubbles/textarea"
@@ -25,6 +26,23 @@ func TestBootstrapExistingBookFailureStaysInWorkbench(t *testing.T) {
 // TestBootstrapCompletedBookLandsOnDoneWorkbench 守护完结书的启动落点：resumeLabel 对
 // complete 返回空标签，旧行为落欢迎页——欢迎页对已有书只字不提，用户会以为书丢了，
 // 且 /reopen、/export、返工输入的自然位置都在完成态工作台。
+func TestBootstrapCompletedButDirtyBookStaysInRecoveryWorkbench(t *testing.T) {
+	m := Model{mode: modeNew, textarea: textarea.New()}
+	next, cmd, handled := m.handleRuntimeMsg(bootstrapMsg{
+		existing: true, completed: true, err: errors.New("检测到章节正文已被外部修改；请先执行 /sync"),
+	})
+	if !handled || cmd == nil {
+		t.Fatal("dirty completed bootstrap should be handled")
+	}
+	got := next.(Model)
+	if got.mode != modeRunning {
+		t.Fatalf("dirty completed book must stay in recovery workbench, got mode=%v", got.mode)
+	}
+	if got.err == nil || !strings.Contains(got.err.Error(), "/sync") {
+		t.Fatalf("dirty completed book must surface sync guidance, got %v", got.err)
+	}
+}
+
 func TestBootstrapCompletedBookLandsOnDoneWorkbench(t *testing.T) {
 	m := Model{mode: modeNew, textarea: textarea.New()}
 	next, cmd, handled := m.handleRuntimeMsg(bootstrapMsg{completed: true})

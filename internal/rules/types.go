@@ -36,6 +36,8 @@ func (k SourceKind) String() string {
 // Structured 装载可机械检查的规则与可稳定消费的参数（归一化各来源后的候选/合并结果）。
 // chapter_target_chars 只承载用户明确给出的单章目标；Commit 仅拒绝超过 120% 的正文，
 // 不设置机械下限，避免诱导模型为跨线注水。范围、全书规模和含糊篇幅仍走 preferences。
+const MaxChapterTargetChars = 1_000_000
+
 type Structured struct {
 	Platform           string         `json:"platform,omitempty"`             // 目标发布平台；当前仅支持 fanqie，空表示未指定
 	ChapterTargetChars int            `json:"chapter_target_chars,omitempty"` // 用户明确给出的单章正文目标字符数；0 表示未指定
@@ -71,9 +73,9 @@ const (
 
 // Violation 是 checker 的输出：本章违反了某条机械规则的事实陈述。
 //
-// 注意：commit_chapter 把 violations 透传到返回 JSON，不阻断 commit；
-// editor 在审阅时把这些事实映射到现有七维（aesthetic/pacing/character/consistency），
-// 由 LLM 自主决定是否升级 verdict 触发 polish/rewrite。
+// 注意：Violation 本身只陈述事实。模型生成正文的接纳 adapter 会在冻结 PendingCommit 前
+// 拒绝 markdown_residue；Import 原文保留内容并持久化同一事实。其余违规透传给 editor，
+// 映射到现有七维后由 LLM 决定是否升级 verdict 触发 polish/rewrite。
 type Violation struct {
 	Rule     string   `json:"rule"`             // forbidden_chars / forbidden_phrases / fatigue_words / duplicate_paragraph
 	Target   string   `json:"target,omitempty"` // 具体违规对象（哪个词/字符）

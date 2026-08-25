@@ -44,12 +44,21 @@ const SnapshotVersion = 4
 //
 // 来源按优先级低→高排列后交给 BuildSnapshot 确定性合并。LLM 只负责把单一来源的
 // 自然语言变成候选 Structured/Preferences；优先级与字段覆盖由 BuildSnapshot（Go）裁定。
+type ChapterTargetAction string
+
+const (
+	ChapterTargetKeep  ChapterTargetAction = "keep"
+	ChapterTargetSet   ChapterTargetAction = "set"
+	ChapterTargetClear ChapterTargetAction = "clear"
+)
+
 type Candidate struct {
-	Source      string     // 可读来源标签，进入 Snapshot.Sources（如 system_defaults / startup_prompt / global:my.md）
-	Structured  Structured // 该来源候选结构化字段
-	Preferences string     // 该来源的自然语言偏好正文
-	Uncertain   []string   // 该来源故意未提升到 structured 的项 + 原因（诊断）
-	Degraded    bool       // 该来源归一化失败、已降级为 raw preferences
+	Source              string              // 可读来源标签，进入 Snapshot.Sources（如 system_defaults / startup_prompt / global:my.md）
+	ChapterTargetAction ChapterTargetAction // 仅控制 chapter_target_chars 的未声明/设置/清除
+	Structured          Structured          // 该来源候选结构化字段
+	Preferences         string              // 该来源的自然语言偏好正文
+	Uncertain           []string            // 该来源故意未提升到 structured 的项 + 原因（诊断）
+	Degraded            bool                // 该来源归一化失败、已降级为 raw preferences
 }
 
 // Payload 返回注入 working_memory.user_rules 的形态：只暴露 structured + preferences。
@@ -80,8 +89,13 @@ func BuildSnapshot(cands []Candidate) Snapshot {
 		if s.Platform != "" {
 			snap.Structured.Platform = s.Platform
 		}
-		if s.ChapterTargetChars > 0 {
-			snap.Structured.ChapterTargetChars = s.ChapterTargetChars
+		switch chapterTargetAction(c) {
+		case ChapterTargetSet:
+			if s.ChapterTargetChars > 0 {
+				snap.Structured.ChapterTargetChars = s.ChapterTargetChars
+			}
+		case ChapterTargetClear:
+			snap.Structured.ChapterTargetChars = 0
 		}
 		if s.Genre != "" {
 			snap.Structured.Genre = s.Genre
@@ -126,8 +140,13 @@ func OverlaySnapshot(base Snapshot, cand Candidate) Snapshot {
 	if s.Platform != "" {
 		out.Structured.Platform = s.Platform
 	}
-	if s.ChapterTargetChars > 0 {
-		out.Structured.ChapterTargetChars = s.ChapterTargetChars
+	switch chapterTargetAction(cand) {
+	case ChapterTargetSet:
+		if s.ChapterTargetChars > 0 {
+			out.Structured.ChapterTargetChars = s.ChapterTargetChars
+		}
+	case ChapterTargetClear:
+		out.Structured.ChapterTargetChars = 0
 	}
 	if s.Genre != "" {
 		out.Structured.Genre = s.Genre
@@ -166,6 +185,16 @@ func OverlaySnapshot(base Snapshot, cand Candidate) Snapshot {
 
 // mergeFatigueWords 按词叠加疲劳词阈值，src 覆盖 dst 中的同词阈值（就近优先）。
 // 让用户只需新增少量疲劳词，而不必重列内置基线。
+func chapterTargetAction(c Candidate) ChapterTargetAction {
+	if c.ChapterTargetAction != "" {
+		return c.ChapterTargetAction
+	}
+	if c.Structured.ChapterTargetChars > 0 {
+		return ChapterTargetSet
+	}
+	return ChapterTargetKeep
+}
+
 func mergeFatigueWords(dst, src map[string]int) map[string]int {
 	if len(src) == 0 {
 		return dst
@@ -213,7 +242,7 @@ func sanitizeStructured(s Structured) Structured {
 	if platform := strings.ToLower(strings.TrimSpace(s.Platform)); platform == "fanqie" {
 		out.Platform = platform
 	}
-	if s.ChapterTargetChars > 0 {
+	if s.ChapterTargetChars > 0 && s.ChapterTargetChars <= MaxChapterTargetChars {
 		out.ChapterTargetChars = s.ChapterTargetChars
 	}
 	if g := strings.TrimSpace(s.Genre); g != "" {

@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/voocel/ainovel-cli/internal/domain"
+	"github.com/voocel/ainovel-cli/internal/rules"
 	"github.com/voocel/ainovel-cli/internal/store"
 	"github.com/voocel/ainovel-cli/internal/tools"
 )
@@ -141,7 +142,8 @@ func TestRunEndToEnd(t *testing.T) {
 		t.Fatalf("store init: %v", err)
 	}
 	src := filepath.Join(dir, "book.txt")
-	if err := os.WriteFile(src, []byte("第一章\n正文一\n第二章\n正文二\n"), 0o644); err != nil {
+	source := "第一章\n正文一含**强调**\n第二章\n## 场内标识\n正文二\n"
+	if err := os.WriteFile(src, []byte(source), 0o644); err != nil {
 		t.Fatal(err)
 	}
 
@@ -190,9 +192,74 @@ func TestRunEndToEnd(t *testing.T) {
 	if active, done, err := ResumeStatus(st); err != nil || !active || !done {
 		t.Fatalf("ResumeStatus 应为 active&done，得 active=%v done=%v", active, done)
 	}
+	for chapter := 1; chapter <= 2; chapter++ {
+		record, err := st.ChapterRecords.Load(chapter)
+		if err != nil || record == nil || record.Origin != domain.ChapterOriginImported {
+			t.Fatalf("第 %d 章应保留 imported provenance: record=%+v err=%v", chapter, record, err)
+		}
+	}
+	first, err := st.Drafts.LoadChapterText(1)
+	if err != nil || !strings.Contains(first, "**强调**") {
+		t.Fatalf("第一章 Markdown 原文未保留: %q err=%v", first, err)
+	}
+	second, err := st.Drafts.LoadChapterText(2)
+	if err != nil || !strings.Contains(second, "## 场内标识") {
+		t.Fatalf("第二章内部标题未保留: %q err=%v", second, err)
+	}
 	// --continue：不设导入完成 Hold（交由 host 自动接力）。
 	if meta, _ := st.RunMeta.Load(); meta != nil && meta.AdvanceHold != nil {
 		t.Fatalf("--continue 不应留下导入完成 Hold：%+v", meta.AdvanceHold)
+	}
+}
+
+func TestRunPreservesImportedMarkdownWithoutGeneratedDraftGate(t *testing.T) {
+	dir := t.TempDir()
+	st := store.NewStore(dir)
+	if err := st.Init(); err != nil {
+		t.Fatal(err)
+	}
+	if err := st.UserRules.Save(&rules.Snapshot{
+		Version: rules.SnapshotVersion, Status: rules.StatusReady,
+		Structured: rules.Structured{ChapterTargetChars: 10},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	source := "第一章\n正文中的**强调**必须保留。\n## 场内标识\n结尾。\n"
+	src := filepath.Join(dir, "book.md")
+	if err := os.WriteFile(src, []byte(source), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	seg := boundariesJSON(boundaryFixture("L1", "", kindChapter, "第一章"))
+	ana := `{"chapters":[` + factsJSON(1, "第一章") + `]}`
+	syn := synthesisFixtureJSON(1, storyClosed)
+	m := &mockModel{responses: []string{seg, ana, syn}}
+
+	ch, err := Run(context.Background(), testDeps(st, m), Options{SourcePath: src, AutoConfirm: true})
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	for ev := range ch {
+		if ev.Stage == StageError {
+			t.Fatalf("imported markdown must be preserved instead of rejected as generated draft: %v", ev.Err)
+		}
+	}
+	got, err := st.Drafts.LoadChapterText(1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got != source {
+		t.Fatalf("imported chapter content changed:\n got=%q\nwant=%q", got, source)
+	}
+	record, err := st.ChapterRecords.Load(1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if record == nil || record.Origin != domain.ChapterOriginImported {
+		t.Fatalf("imported chapter must preserve provenance, got %+v", record)
+	}
+	violations := st.World.LoadRuleViolations(1)
+	if len(violations) == 0 || violations[0].Rule != "markdown_residue" {
+		t.Fatalf("imported markdown should remain observable as lint facts: %+v", violations)
 	}
 }
 

@@ -184,6 +184,16 @@ Linux 缺 notify-send 时日志降级
 
 预期：第二次增量跳过；画像不包含连续原文、签名短语、专名或具体作者模仿指令；写作不因画像而僵化。
 
+### 3.7 终态恢复与 Import provenance 自动化回归
+
+- `phase=complete + progress_marked/signal_saved PendingCommit` 会先补 checkpoint、清工件，再显示完成。
+- 密封损坏保留 PendingCommit 并返回完整性错误；PendingRevision、活动 Import 和外部正文修改分别给出 `/sync`、`/import` 指引，不伪报完成。
+- Import 原文中的 `**`、内部 `##` 与超出书级 generated 篇幅目标的内容均逐字保留；ChapterRecord 标记为 `origin=imported`，Lint 事实仍可观测。
+- imported PendingCommit 的 provenance 纳入 v2 IntentDigest，崩溃恢复不会退回 generated 正文门禁。
+- UserRules 运行中更新支持明确清除篇幅目标，并拒绝超过 1,000,000 字符的目标。
+
+以上为自动化回归，未调用真实 Provider。
+
 ## 4. 发布判定
 
 发布前必须满足：

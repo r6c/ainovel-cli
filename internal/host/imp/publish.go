@@ -14,6 +14,7 @@ import (
 // 复用其 PendingCommit saga、checkpoint 与完成章节幂等检查，不复制第二套提交逻辑（RFC §12.3）。
 type ChapterCommitter interface {
 	Execute(ctx context.Context, args json.RawMessage) (json.RawMessage, error)
+	ExecuteImported(ctx context.Context, args json.RawMessage) (json.RawMessage, error)
 }
 
 // publishFoundation 按正式依赖顺序发布 Foundation，与 Architect 长篇落盘顺序一致（RFC §12.2）。
@@ -177,7 +178,7 @@ func publishChapter(ctx context.Context, st *store.Store, commit ChapterCommitte
 			if err != nil {
 				return fmt.Errorf("marshal commit ch%d：%w", chapter, err)
 			}
-			if _, err := commit.Execute(ctx, raw); err != nil {
+			if _, err := commit.ExecuteImported(ctx, raw); err != nil {
 				return fmt.Errorf("commit ch%d：%w", chapter, err)
 			}
 		}
@@ -193,7 +194,7 @@ func publishChapter(ctx context.Context, st *store.Store, commit ChapterCommitte
 	if err != nil {
 		return fmt.Errorf("marshal commit ch%d：%w", chapter, err)
 	}
-	if _, err := commit.Execute(ctx, raw); err != nil {
+	if _, err := commit.ExecuteImported(ctx, raw); err != nil {
 		return fmt.Errorf("commit ch%d：%w", chapter, err)
 	}
 	return nil

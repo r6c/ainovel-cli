@@ -18,6 +18,7 @@ type PendingCommit struct {
 	Stage          CommitStage     `json:"stage"`
 	Rewrite        bool            `json:"rewrite,omitempty"`
 	RewriteMode    string          `json:"rewrite_mode,omitempty"`
+	Origin         ChapterOrigin   `json:"origin,omitempty"`
 	Payload        json.RawMessage `json:"payload,omitempty"`
 	DraftContent   string          `json:"draft_content,omitempty"`
 	SealVersion    int             `json:"seal_version,omitempty"`

@@ -84,7 +84,7 @@ output/novel/meta/user_rules.json
 
 - `version`：快照 schema 版本，便于未来迁移。
 - `status`：`ready` / `degraded`，标记归一化是否完整成功；只用于回显与诊断，不进入创作判断。
-- `structured`：代码能机械检查或稳定消费的参数。`platform` 是条件选择参考资料的稳定参数；`chapter_target_chars` 是明确单章目标，Commit 仅拒绝超过目标 120% 的正文，不设机械下限。
+- `structured`：代码能机械检查或稳定消费的参数。`platform` 是条件选择参考资料的稳定参数；`chapter_target_chars` 是最终生效的明确单章目标，generated 正文 Commit 仅拒绝超过目标 120% 的正文，不设机械下限；Import 用户原文不受该生成政策约束。归一化候选另带 `chapter_target_action=keep|set|clear`，用于区分未声明、设置和明确取消，Snapshot 只保存合并后的最终整数。
 - `preferences`：不能机械检查、但对创作长期有效的自然语言偏好。
 - `sources`：来源审计，不进入创作判断。
 - `uncertain`：归一化诊断，只用于回显和排查，不进入创作判断。
@@ -175,7 +175,7 @@ LLM 侧职责：
 - `forbidden_chars` / `forbidden_phrases` 是 error 级字段，必须尤其保守；只有“不要出现 X”“禁用 X”“别写 X”这类明确禁止才提升。
 - `fatigue_words` 只有用户给出明确词和阈值时才提升；“少用比喻”“别太书面”“减少口头禅”这类无阈值要求进入 `preferences`。
 - 只有明确的单章/每章正文单一目标值（如“每章约 1200 字”）可提升为 `chapter_target_chars`；区间、全书总字数、“短一点”等仍进入 `preferences`/`uncertain`，不得换算或猜测。
-- `chapter_target_chars` 使用现有章节 Unicode 字符计数口径；Commit 只拒绝超过目标 120% 的正文，不设置机械下限，避免为达标注水。
+- `chapter_target_chars` 使用现有章节 Unicode 字符计数口径；合法值为 1..1,000,000。generated 正文 Commit 使用有界公式计算 120% 上限，只拒绝超长，不设置机械下限，避免为达标注水。运行中明确“取消每章字数限制”输出 `chapter_target_action=clear`，可清除旧快照值。
 - 不可机械化、无明确阈值、依赖语境判断的要求都进入 `preferences`。
 
 原则：

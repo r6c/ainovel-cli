@@ -4,8 +4,8 @@
 
 - 日期：2026-08-25
 - 基线：`ade8108 测试：加固 Linux 与无头环境兼容性`
-- 当前里程碑：Q——终态恢复与正文接纳 seam 收口
-- 当前阶段：阶段 127——终态恢复红灯（planned）
+- 当前里程碑：P1——真实外部正文 Revision 验收
+- 当前阶段：阶段 135——Revision 自动化验收基线（pending）
 - 公共路径：Quick、Cocreate、Headless、Import、Deconstruct、读者成品导出
 
 ## Karpathy 约束下的取舍
@@ -100,3 +100,15 @@ UserRules 快照升级 v4，新增 `structured.chapter_target_chars`。Normalize
 已生成并打开临时报告：`/tmp/architecture-review-20260825-ainovel.html`。不存在 `docs/adr/`，按无 ADR 处理。两次搜索正则因括号未闭合失败，均停止重复并改用字面搜索；未修改生产代码。
 
 下一里程碑 Q 已规划为阶段 127—134：先终态恢复，再正文 provenance/Import 零污染，再 UserRules 撤销与上界，最后文档与验证。真实 Revision 验收延后，未调用 Provider。
+
+## 里程碑 Q 完成
+
+终态恢复 module 现在统一检查目录租约、PendingCommit、PendingRevision、活动 Import 和外部正文修改；Host Resume 在任何 phase 下先同步重放现有 Commit Saga。TUI 恢复错误优先于 complete 展示。
+
+Import 通过 `ExecuteImported` 复用同一 Saga，原文 Markdown/篇幅不走 generated 门禁；ChapterRecord 使用 imported provenance，v2 IntentDigest 密封 origin。legacy/v1 origin 权限提升均被完整性测试拒绝。
+
+UserRules 候选新增 keep/set/clear 三态，运行中可明确清除篇幅目标；目标上限 1,000,000，Commit 对持久快照再校验并用有界 120% 公式。
+
+全量测试、vet、关键 race、文档链接和 diff check 全部通过。未调用真实 Provider。下一步为 P1 Revision 自动化基线，真实预算需另行确认。
+
+阶段 127 启动时一次读取猜错 `internal/store/checkpoint.go`，实际文件为 `checkpoints.go`；未重复错误路径。首个 Headless 恢复测试夹具又因 Book 缺必填 Synopsis 在行为 seam 前失败；不作为产品红灯，补合法作品元数据后重跑。最小恢复实现后 PendingCommit 已清理，但测试用旧 Store 的 CheckpointStore 内存镜像观察不到另一个 Host 新增的 checkpoint；改为重开 Store 读取磁盘事实。随后猜测了不存在的 `internal/host/resume_test.go`；Host 无独立 Resume 测试文件，Headless 公共用例已通过真实 Host.Resume 覆盖，不再猜文件名。阶段 129 批量切换 Headless 到 Host 终态探测时，import/函数片段与预期不完全匹配，结构化编辑未应用；改为读取真实文件后分步替换。阶段 130 首个 Import 测试误把 `LoadRuleViolations` 当作双返回接口，编译失败未当作产品红灯；按真实单返回接口修正。增强篇幅目标夹具时又把 `UserRules.Save` 的指针参数传成值，仍未触达产品行为，已按真实接口修正。阶段 133 首次受限夹具迁移使用 `node`，但用户环境无该命令，迁移未执行；新增断言同时缺 `rules` import。改用已确认存在的 `python3` 并补 import，不重复 Node 方案。

@@ -199,15 +199,15 @@ internal/store/signals.go
 
 恢复不能根据已部分应用后的当前投影重新裁决冻结意图。
 
-### 5.2 密封 v1
+### 5.2 密封 v2
 
-`PendingCommit` 保存三个 SHA-256：
+新建 `PendingCommit` 保存三个 SHA-256：
 
 - `PayloadDigest`：compact JSON payload。
 - `DraftDigest`：冻结正文 UTF-8。
-- `IntentDigest`：Chapter、Rewrite、RewriteMode。
+- `IntentDigest`：Chapter、Rewrite、RewriteMode、Origin。
 
-`Stage`、`Output`、`Result` 和时间戳是 Saga 可变字段，不纳入摘要。
+`Stage`、`Output`、`Result` 和时间戳是 Saga 可变字段，不纳入摘要。历史 v1 工件继续兼容，但不能携带未密封的 imported origin。
 
 完整性失败：
 
@@ -215,7 +215,11 @@ internal/store/signals.go
 - 保留 `meta/pending_commit.json`。
 - 不自动重签、不删除、不接受被改写内容。
 
-旧 `started/state_applied` 工件只在纯载荷通过后升级密封；`progress_marked/signal_saved` 只做后段收尾。
+旧 `started/state_applied` 工件只在纯载荷通过后升级 v2 密封；`progress_marked/signal_saved` 只做后段收尾。
+
+### 5.3 真正可静默终止
+
+`phase=complete` 不是充分条件。Headless/TUI 只有在目录租约可取得、无 PendingCommit、无 PendingRevision、无未完成 Import 且无外部正文修改时，才显示干净完成态。`Host.Resume` 会先用现有 Commit Saga 同步收尾 PendingCommit，再重新判定终态；外部修订与 Import 只给 `/sync`、`/import` 指引，不自动调用模型。
 
 ## 6. Revision 与 Projector
 
@@ -323,7 +327,7 @@ Context/Diagnostics 消费
 
 ## 10. 确定性 Prose Lint
 
-`internal/rules.Lint` 是始终执行的产品底线检查；它只返回 `Violation` 事实，不阻断 Commit，也不新增 verdict 或 Route。
+`internal/rules.Lint` 是始终执行的产品底线检查；它只生成 `Violation` 事实，不自行裁决。正文接纳 adapter 按 provenance 应用政策：模型生成正文在 PendingCommit 前拒绝 `markdown_residue`，Import 原文逐字保留并只记录同一事实；两者都不新增 verdict 或 Route。
 
 当前内置规则包括：
 
@@ -361,7 +365,7 @@ Rubric 区分官方可核事实与 ainovel-cli 产品软评价，映射现有七
 structured.chapter_target_chars
 ```
 
-仅当用户明确给出单章/每章正文的单一目标值时，由 UserRules Normalizer 提升；区间、全书总字数和“短一点”等含糊要求继续留在 `preferences/uncertain`，不得用正则猜测或换算。
+仅当用户明确给出单章/每章正文的单一目标值时，由 UserRules Normalizer 以 `chapter_target_action=set` 提升；未声明为 `keep`，明确取消限制为 `clear`。区间、全书总字数和“短一点”等含糊要求继续留在 `preferences/uncertain`，不得用正则猜测或换算。目标上限为 1,000,000 字符。
 
 Architect、Writer 和 Editor 通过现有 `working_memory.user_rules` 消费同一字段。Commit 使用 `domain.WordCount` 的现有 Unicode 字符口径，只在正文超过目标 120% 时于 PendingCommit 创建前拒绝；不设置机械下限，偏短章节仍由 Editor 在 pacing 维度判断，避免为达标注水。普通提交与 Rewrite 必须使用同一上限规则。
 

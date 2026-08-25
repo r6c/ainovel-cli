@@ -604,7 +604,7 @@ planning tier
 → commit_chapter(逐章事实)
 ```
 
-`commit_chapter` 已有 PendingCommit saga、checkpoint 和完成章节幂等检查。导入不复制第二套提交逻辑。
+`commit_chapter` 已有 PendingCommit saga、checkpoint 和完成章节幂等检查。Import 通过代码专用的 `ExecuteImported` 复用同一 Saga；`origin=imported` 纳入 v2 冻结意图密封，模型工具参数不能伪造。导入原文逐字保留，`markdown_residue` 和书级篇幅目标不作为 generated 正文门禁，只持久化 Lint 事实。导入不复制第二套提交逻辑。
 
 崩溃窗口：
 

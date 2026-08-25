@@ -11,6 +11,7 @@ import (
 	"github.com/voocel/agentcore"
 	"github.com/voocel/agentcore/llm"
 	"github.com/voocel/ainovel-cli/internal/llmcontract"
+	"github.com/voocel/ainovel-cli/internal/rules"
 )
 
 func TestExtractJSON_StripsCodeFences(t *testing.T) {
@@ -39,6 +40,7 @@ func TestParseNormalizerJSON_FullOutput(t *testing.T) {
 	raw := "```json\n" + `{
   "structured": {
     "platform": "",
+    "chapter_target_action": "keep",
     "chapter_target_chars": 0,
     "genre": "都市",
     "forbidden_chars": [],
@@ -113,13 +115,33 @@ func TestNormalizeContractIsStrictReady(t *testing.T) {
 }
 
 func TestNormalizePreservesExplicitChapterTargetChars(t *testing.T) {
-	model := &scriptedModel{replies: []string{`{"structured":{"platform":"","chapter_target_chars":1200,"genre":"科幻","forbidden_chars":[],"forbidden_phrases":[],"fatigue_words":[]},"preferences":"单章完结","uncertain":[]}`}}
+	model := &scriptedModel{replies: []string{`{"structured":{"platform":"","chapter_target_action":"set","chapter_target_chars":1200,"genre":"科幻","forbidden_chars":[],"forbidden_phrases":[],"fatigue_words":[]},"preferences":"单章完结","uncertain":[]}`}}
 	cand, err := NewNormalizer(model).Normalize(t.Context(), "startup_prompt", "单章完结，正文目标约1200字")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if cand.Structured.ChapterTargetChars != 1200 {
-		t.Fatalf("explicit chapter target lost: %+v", cand.Structured)
+	if cand.Structured.ChapterTargetChars != 1200 || cand.ChapterTargetAction != rules.ChapterTargetSet {
+		t.Fatalf("explicit chapter target lost: %+v", cand)
+	}
+}
+
+func TestNormalizeExplicitlyClearsChapterTarget(t *testing.T) {
+	model := &scriptedModel{replies: []string{`{"structured":{"platform":"","chapter_target_action":"clear","chapter_target_chars":0,"genre":"","forbidden_chars":[],"forbidden_phrases":[],"fatigue_words":[]},"preferences":"","uncertain":[]}`}}
+	cand, err := NewNormalizer(model).Normalize(t.Context(), "runtime_update", "取消每章字数限制")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cand.ChapterTargetAction != rules.ChapterTargetClear || cand.Structured.ChapterTargetChars != 0 {
+		t.Fatalf("explicit clear lost: %+v", cand)
+	}
+}
+
+func TestNormalizerRejectsChapterTargetAboveProductLimit(t *testing.T) {
+	bad := normalizerOutput{Structured: normalizerStructured{
+		ChapterTargetAction: "set", ChapterTargetChars: rules.MaxChapterTargetChars + 1,
+	}}
+	if _, err := bad.toCandidate("x"); err == nil || !strings.Contains(err.Error(), "1..1000000") {
+		t.Fatalf("oversized target must be rejected with bounded range, got %v", err)
 	}
 }
 
@@ -129,7 +151,7 @@ func TestNormalizerKeepsAmbiguousLengthOutOfChapterTarget(t *testing.T) {
 		t.Fatal("negative chapter target must be rejected")
 	}
 
-	model := &scriptedModel{replies: []string{`{"structured":{"platform":"","chapter_target_chars":0,"genre":"","forbidden_chars":[],"forbidden_phrases":[],"fatigue_words":[]},"preferences":"每章1200到1600字，全书约一万字","uncertain":["篇幅为区间或全书目标，不提升为单章单一目标"]}`}}
+	model := &scriptedModel{replies: []string{`{"structured":{"platform":"","chapter_target_action":"keep","chapter_target_chars":0,"genre":"","forbidden_chars":[],"forbidden_phrases":[],"fatigue_words":[]},"preferences":"每章1200到1600字，全书约一万字","uncertain":["篇幅为区间或全书目标，不提升为单章单一目标"]}`}}
 	cand, err := NewNormalizer(model).Normalize(t.Context(), "startup_prompt", "每章1200到1600字，全书约一万字")
 	if err != nil {
 		t.Fatal(err)
@@ -140,7 +162,7 @@ func TestNormalizerKeepsAmbiguousLengthOutOfChapterTarget(t *testing.T) {
 }
 
 func TestNormalizePreservesExplicitFanqiePlatform(t *testing.T) {
-	model := &scriptedModel{replies: []string{`{"structured":{"platform":"fanqie","chapter_target_chars":0,"genre":"都市","forbidden_chars":[],"forbidden_phrases":[],"fatigue_words":[]},"preferences":"","uncertain":[]}`}}
+	model := &scriptedModel{replies: []string{`{"structured":{"platform":"fanqie","chapter_target_action":"keep","chapter_target_chars":0,"genre":"都市","forbidden_chars":[],"forbidden_phrases":[],"fatigue_words":[]},"preferences":"","uncertain":[]}`}}
 	cand, err := NewNormalizer(model).Normalize(t.Context(), "startup_prompt", "这本书明确发布到番茄小说")
 	if err != nil {
 		t.Fatal(err)
@@ -156,7 +178,7 @@ func TestNormalizerRejectsUnsupportedPlatformAndKeepsAmbiguousUnspecified(t *tes
 		t.Fatal("unsupported platform must be rejected at DTO boundary")
 	}
 
-	model := &scriptedModel{replies: []string{`{"structured":{"platform":"","chapter_target_chars":0,"genre":"","forbidden_chars":[],"forbidden_phrases":[],"fatigue_words":[]},"preferences":"偏移动端阅读","uncertain":["未明确具体平台"]}`}}
+	model := &scriptedModel{replies: []string{`{"structured":{"platform":"","chapter_target_action":"keep","chapter_target_chars":0,"genre":"","forbidden_chars":[],"forbidden_phrases":[],"fatigue_words":[]},"preferences":"偏移动端阅读","uncertain":["未明确具体平台"]}`}}
 	cand, err := NewNormalizer(model).Normalize(t.Context(), "startup_prompt", "希望适合免费阅读平台，但未指定具体平台")
 	if err != nil {
 		t.Fatal(err)
@@ -221,7 +243,7 @@ func (m *scriptedModel) SupportsTools() bool { return false }
 func TestNormalize_FeedbackRetryRecovers(t *testing.T) {
 	model := &scriptedModel{replies: []string{
 		"这不是 JSON",
-		`{"structured":{"platform":"","chapter_target_chars":0,"genre":"","forbidden_chars":[],"forbidden_phrases":["某种程度上"],"fatigue_words":[]},"preferences":"","uncertain":[]}`,
+		`{"structured":{"platform":"","chapter_target_action":"keep","chapter_target_chars":0,"genre":"","forbidden_chars":[],"forbidden_phrases":["某种程度上"],"fatigue_words":[]},"preferences":"","uncertain":[]}`,
 	}}
 	n := NewNormalizer(model)
 
@@ -257,7 +279,7 @@ func TestNormalize_FeedbackRetryRecovers(t *testing.T) {
 
 // 归一化不覆盖模型的 thinking 默认；普通 chat 模型会拒绝显式 off。
 func TestNormalize_LeavesThinkingUnspecifiedAndReservesTokens(t *testing.T) {
-	model := &scriptedModel{replies: []string{`{"structured":{"platform":"","chapter_target_chars":0,"genre":"","forbidden_chars":[],"forbidden_phrases":[],"fatigue_words":[]},"preferences":"x","uncertain":[]}`}}
+	model := &scriptedModel{replies: []string{`{"structured":{"platform":"","chapter_target_action":"keep","chapter_target_chars":0,"genre":"","forbidden_chars":[],"forbidden_phrases":[],"fatigue_words":[]},"preferences":"x","uncertain":[]}`}}
 	n := NewNormalizer(model)
 
 	if _, err := n.Normalize(t.Context(), "startup_prompt", "随便一条规则"); err != nil {
@@ -327,7 +349,7 @@ func (m *flakyModel) Generate(ctx context.Context, msgs []agentcore.Message, too
 
 func TestNormalize_RetryableErrorRecovers(t *testing.T) {
 	model := &flakyModel{
-		scriptedModel: scriptedModel{replies: []string{`{"structured":{"platform":"","chapter_target_chars":0,"genre":"","forbidden_chars":[],"forbidden_phrases":[],"fatigue_words":[]},"preferences":"x","uncertain":[]}`}},
+		scriptedModel: scriptedModel{replies: []string{`{"structured":{"platform":"","chapter_target_action":"keep","chapter_target_chars":0,"genre":"","forbidden_chars":[],"forbidden_phrases":[],"fatigue_words":[]},"preferences":"x","uncertain":[]}`}},
 		failures:      2,
 	}
 	n := NewNormalizer(model)
@@ -353,7 +375,7 @@ func (m *nativeRulesModel) Capabilities() llm.Capabilities {
 func TestNormalize_NativeSendsSchemaAndRejectsFences(t *testing.T) {
 	// 原生模式：schema 进请求；裸 JSON 成功。
 	model := &nativeRulesModel{&scriptedModel{replies: []string{
-		`{"structured":{"platform":"","chapter_target_chars":0,"genre":"","forbidden_chars":[],"forbidden_phrases":[],"fatigue_words":[]},"preferences":"x","uncertain":[]}`,
+		`{"structured":{"platform":"","chapter_target_action":"keep","chapter_target_chars":0,"genre":"","forbidden_chars":[],"forbidden_phrases":[],"fatigue_words":[]},"preferences":"x","uncertain":[]}`,
 	}}}
 	n := NewNormalizer(model)
 	cand, err := n.Normalize(t.Context(), "startup_prompt", "规则")
