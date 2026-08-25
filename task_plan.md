@@ -5,7 +5,7 @@
 - 总体状态：`complete`
 - 当前里程碑：L1——本地拆文独立命令
 - 当前阶段：阶段 99—105 全部完成
-- 基线提交：`91b0224 功能：为共创模式增加阶段化访谈`
+- 基线提交：`4ed5e6b 功能：增加本地语料拆文命令`
 - 完整历史：[`docs/history/plans/2026-08-domain-saga-evolution/`](docs/history/plans/2026-08-domain-saga-evolution/)
 
 ## 已完成里程碑
@@ -360,11 +360,11 @@ git diff --check
 ## 边界与假设
 
 - 命令：`ainovel-cli deconstruct <本地语料目录>`。
-- 只读取用户本地 `.txt/.md/.markdown`；不抓站、不收 URL、不做扫榜。
+- 只读取用户本地 `.txt/.md/.markdown`；不抓站、不收 URL、不提供扫榜功能。
 - 复用现有 `host/sim`、`SimulationProfile`、结构化契约和 Agent Context；不新增 Benchmark DTO/Pipeline。
 - 输出写入当前配置 `OutputDir/meta/simulation_profile.json`，与现有 `/simulate` 和 `/importsim` 兼容。
 - 分析只保留抽象写法、结构、钩子、节奏与读者收益；不输出原文段落或模仿具体作者。
-- 扫榜作为 L2 独立规划，须另行处理实时来源、许可和平台适配。
+- 为保证 Linux/无头环境可用性，不规划需要 Chrome、登录态、网页抓取或平台页面适配的扫榜能力。
 
 ## 阶段 99：命令契约
 
@@ -419,13 +419,13 @@ git diff --check
 功能：增加本地语料拆文命令
 ```
 
-## L1 之后
+## 后续边界
 
-- L2 扫榜：尚未规划，不得顺带实现。
+- 扫榜功能已从路线图移除；不新增 Chrome/CDP、浏览器登录态、平台爬虫或排行榜抓取。
 
 ## 本批明确不做
 
-- 排行榜抓取、浏览器自动化、URL 下载或反爬
+- 排行榜抓取、浏览器自动化、URL 下载、反爬或扫榜路线图
 - 第二套 Benchmark/Simulation 领域模型
 - 新 Engine Route、Worker、Store schema 或数据库
 - 自动注入原文、复制签名短语或模仿具体作者

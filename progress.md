@@ -3,14 +3,14 @@
 ## 当前会话
 
 - 日期：2026-08-25
-- 基线：`91b0224 功能：为共创模式增加阶段化访谈`
+- 基线：`4ed5e6b 功能：增加本地语料拆文命令`
 - 当前里程碑：L1——本地拆文独立命令
 - 当前阶段：阶段 99—105 全部完成
 - 公共接缝：独立命令入口、`Host` 显式语料目录、既有 `sim.Event`/`SimulationProfile`
 
 ## Karpathy 约束下的取舍
 
-用户说“继续”可对应“扫榜 + 拆文”两个大模块，但二者边界完全不同。最小实现选择本地拆文：
+本地拆文已作为唯一保留的对标分析能力：
 
 ```text
 ainovel-cli deconstruct <本地语料目录>
@@ -18,7 +18,7 @@ ainovel-cli deconstruct <本地语料目录>
 → OutputDir/meta/simulation_profile.json
 ```
 
-理由：仓库现有 SimulationProfile 已覆盖单篇报告、聚合画像、增量指纹和 Agent Context 消费；再建 BenchmarkPipeline 是重复抽象。扫榜需要实时网络、来源许可、站点适配和反爬，不应在本批静默加入。
+理由：仓库现有 SimulationProfile 已覆盖单篇报告、聚合画像、增量指纹和 Agent Context 消费；再建 BenchmarkPipeline 是重复抽象。扫榜现已从路线图移除，避免为 Linux/无头运行引入 Chrome、登录态、站点适配和反爬维护。
 
 ## 成功标准
 
@@ -62,6 +62,6 @@ README/CONTEXT 增加独立命令、兼容入口、产物路径和本地/合规�
 - 对 `cmd/ainovel-cli` 单文件路径调用目录搜索返回 ENOTDIR；改为直接读取 main.go。
 - 猜测 `internal/host/sim/source.go` 返回 ENOENT；真实扫描实现是 `scanner.go`，不重复猜路径。
 
-## 下一步
+## 路线调整
 
-阶段 99 参数契约已绿；main 分发红灯证明缺少入口。现仅增加 deconstruct 顶层分发 helper，eval 和普通 flags 保持原路径。
+用户确认移除扫榜候选。生产代码本来没有扫榜、排行榜或浏览器自动化实现；本次只更新稳定路线与规划文本。历史归档保留原样，作为当时决策快照。
