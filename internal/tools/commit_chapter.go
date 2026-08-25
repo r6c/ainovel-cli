@@ -266,6 +266,9 @@ func (t *CommitChapterTool) execute(_ context.Context, args json.RawMessage, req
 	}
 	if existingPending == nil && completed {
 		if slices.Contains(progress.PendingRewrites, a.Chapter) {
+			if err := t.validateAutomaticRewriteOrigin(a.Chapter); err != nil {
+				return nil, err
+			}
 			content, err := t.validateRewriteDraft(a.Chapter, a.Title, progress)
 			if err != nil {
 				return nil, err
@@ -616,6 +619,18 @@ func (t *CommitChapterTool) finishPendingCommit(pending domain.PendingCommit, pr
 		return json.Marshal(pending.Result)
 	}
 	return t.buildSkipResult(pending.Chapter, progress)
+}
+
+func (t *CommitChapterTool) validateAutomaticRewriteOrigin(chapter int) error {
+	record, err := t.store.ChapterRecords.Load(chapter)
+	if err != nil {
+		return fmt.Errorf("load chapter %d provenance: %w: %w", chapter, errs.ErrStoreRead, err)
+	}
+	if record == nil || record.Origin == domain.ChapterOriginGenerated {
+		return nil
+	}
+	return fmt.Errorf("第 %d 章来源为 %s，Writer 不得自动覆盖作者原文；请由用户编辑正文后执行 /sync: %w",
+		chapter, record.Origin, errs.ErrToolPrecondition)
 }
 
 func (t *CommitChapterTool) validateRewriteDraft(chapter int, title string, progress *domain.Progress) (string, error) {

@@ -210,7 +210,7 @@ Artifact 在 `store/outline.go` `drafts.go` `summaries.go` `characters.go` `worl
 | `save_volume_summary` | summaries/vol-vNN.json | volume_summary |
 | `save_foundation` | foundation/*.json（expand_arc/append_volume/update_compass 成功即消费反馈池） | premise / outline / layered_outline / characters / world_rules / expand_arc / append_volume / update_compass / complete_book |
 
-`commit_chapter` 承担弧/卷/全书完成检测，返回结构化事实；`save_review` 不做文学阈值裁定，只校验审阅事实并把 Editor 给出的 verdict 原子映射为 Flow 与返工队列。
+`commit_chapter` 承担弧/卷/全书完成检测，返回结构化事实；`save_review` 不做文学阈值裁定，只校验审阅事实并把 Editor 给出的 verdict 原子映射为 Flow 与返工队列。Review 工件可记录 `generated / imported / user` 任意来源章节的问题，但自动返工队列只接纳 `generated`（或旧兼容缺记录）章节；`imported/user` 原文只能由作者编辑后经 Revision `/sync` 接纳。`commit_chapter` 在冻结返工 PendingCommit 前再次检查来源，防止旧脏队列绕过权限；Start/Resume 的既有升级修复接缝会清理历史残留的受保护来源返工项，避免恢复死循环。
 
 `edit_chapter` 是 `agentcore.EditTool` 的薄封装，仅允许编辑已完成且位于 `PendingRewrites` 的章节；新章初稿需通过 `draft_chapter(mode="write")` 整章覆盖。
 

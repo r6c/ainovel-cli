@@ -486,6 +486,84 @@ func TestSaveReviewRejectsIssueOutsideArcSpan(t *testing.T) {
 	}
 }
 
+func TestArcReviewDoesNotAutomaticallyRewriteImportedOrUserChapters(t *testing.T) {
+	s := setupArcReviewStore(t)
+	for chapter, origin := range map[int]domain.ChapterOrigin{
+		3: domain.ChapterOriginGenerated,
+		4: domain.ChapterOriginImported,
+	} {
+		if _, err := s.ChapterRecords.Accept(chapter, origin, "接纳正文", domain.ChapterFacts{}, domain.StyleDelta{}); err != nil {
+			t.Fatalf("accept chapter %d: %v", chapter, err)
+		}
+	}
+	args := arcReviewArgs(t, 3)
+	var payload map[string]any
+	if err := json.Unmarshal(args, &payload); err != nil {
+		t.Fatal(err)
+	}
+	issues := payload["issues"].([]any)
+	issues[0].(map[string]any)["chapters"] = []int{3, 4}
+	args, err := json.Marshal(payload)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := NewSaveReviewTool(s).Execute(context.Background(), args); err != nil {
+		t.Fatalf("Execute: %v", err)
+	}
+	review, err := s.World.LoadReview(4)
+	if err != nil || review == nil {
+		t.Fatalf("LoadReview: %v", err)
+	}
+	if !slices.Equal(review.AffectedChapters, []int{3, 4}) {
+		t.Fatalf("review evidence chapters=%v want [3 4]", review.AffectedChapters)
+	}
+	progress, err := s.Progress.Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !slices.Equal(progress.PendingRewrites, []int{3}) {
+		t.Fatalf("automatic rewrite queue=%v want only generated chapter [3]", progress.PendingRewrites)
+	}
+}
+
+func TestArcReviewPreservesImportedAndUserIssuesWithoutEmptyRewriteFlow(t *testing.T) {
+	s := setupArcReviewStore(t)
+	for chapter, origin := range map[int]domain.ChapterOrigin{
+		3: domain.ChapterOriginImported,
+		4: domain.ChapterOriginUser,
+	} {
+		if _, err := s.ChapterRecords.Accept(chapter, origin, "作者正文", domain.ChapterFacts{}, domain.StyleDelta{}); err != nil {
+			t.Fatalf("accept chapter %d: %v", chapter, err)
+		}
+	}
+	args := arcReviewArgs(t, 3)
+	var payload map[string]any
+	if err := json.Unmarshal(args, &payload); err != nil {
+		t.Fatal(err)
+	}
+	payload["issues"].([]any)[0].(map[string]any)["chapters"] = []int{3, 4}
+	args, err := json.Marshal(payload)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := NewSaveReviewTool(s).Execute(context.Background(), args); err != nil {
+		t.Fatalf("Execute: %v", err)
+	}
+	review, err := s.World.LoadReview(4)
+	if err != nil || review == nil || !slices.Equal(review.AffectedChapters, []int{3, 4}) {
+		t.Fatalf("review evidence lost: review=%+v err=%v", review, err)
+	}
+	progress, err := s.Progress.Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(progress.PendingRewrites) != 0 || progress.Flow != domain.FlowWriting {
+		t.Fatalf("non-generated chapters must not create empty rewrite flow: flow=%s queue=%v", progress.Flow, progress.PendingRewrites)
+	}
+}
+
 func TestSaveReviewDerivesAffectedChaptersFromIssues(t *testing.T) {
 	s := setupArcReviewStore(t)
 	if _, err := NewSaveReviewTool(s).Execute(context.Background(), arcReviewArgs(t, 3)); err != nil {

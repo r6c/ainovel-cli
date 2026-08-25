@@ -230,6 +230,16 @@ Writer A/B 复用 `writer_first_chapter`：旧判据与校准判据各运行 3 �
 
 验收同时发现 P1：Cocreate 直接使用流式 thinking 模型，未经过 UsageTracker，因此成功场次持久化 `$0.1018428` 只覆盖后续 UserRules/Foundation，完整共创成本不可追溯，记为 unavailable。现已修复通用流式 Usage 包装并让冷启动/阶段共创统一接入；每轮请求前也复用预算拒绝。修复后一次真实单轮复验记录 `thinking` 821/374 Token、`$0.005382`，MissingUsage=0。临时对话、Draft、日志和配置不入 Git。
 
+### 3.12 真实 Import 后续写验收
+
+使用 `sss / gpt-5.6-sol` 导入自建两章未完科幻悬疑文本。首次运行停在 2/2 切分确认，确认前正式 Book 和完成章节为空；显式确认后完成分析、综合、全书事实验证与发布，两条 ChapterRecord 均为 `origin=imported`、无 PendingCommit，并建立“等待验收后续写”的 boundary Hold。
+
+续写时先由 `Resume` 消费 Hold，再切换逐章验收并精确许可第 3 章。Architect 将两章导入骨架扩为后续分层大纲，Writer 只新增 generated 第 3 章并停下；三条记录全量重放通过，TXT/EPUB 均含三章且未泄露 Knowledge、Foreshadow ID、PendingCommit 或 provenance 元数据。
+
+首次真实续写暴露 P1：弧评审把 imported 第 2 章自动放入返工队列，Writer 覆盖为 generated revision=2，导致原始正文 provenance 和 Knowledge updates 在 Projector 重建中丢失。现已在三层收口：`SaveReviewTool` 保留完整问题证据，但自动返工队列只允许 generated/旧兼容缺记录章节；`CommitChapterTool` 在冻结返工 PendingCommit 前再次拒绝 imported/user；Start/Resume 的升级修复接缝会清理历史残留的受保护来源返工项，避免旧脏队列让 Router 反复派 Writer。
+
+修复后全新真实回归：第 1/2 章记录原始字节、`origin=imported`、`revision=1` 和事实更新全部不变；第 3 章为 generated revision=1，复用导入伏笔 ID `F1/F2` 推进。成功回归目录的导入费用为 `$0.0775508`，导入加续写最终累计 `$0.5173944`；连同首次暴露缺口的验收目录，两轮实际总费用约 `$1.0854628`。第二轮语义提取只为求救信标输出 establish，漏掉正文明确的 learn/reveal，暂记 P2 模型提取波动；Writer 仍依据摘要、状态、伏笔和扩展大纲连贯续写，未让顾临越权知情。
+
 ## 4. 发布判定
 
 发布前必须满足：

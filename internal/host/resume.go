@@ -40,7 +40,34 @@ func upgradeProject(st *storepkg.Store) error {
 		slog.Info("项目数据升级完成", "module", "migration", "from", version, "to", next)
 		version = next
 	}
+	if err := repairProtectedRewriteQueue(st); err != nil {
+		return fmt.Errorf("修复受保护正文的返工队列: %w", err)
+	}
 	return nil
+}
+
+func repairProtectedRewriteQueue(st *storepkg.Store) error {
+	progress, err := st.Progress.Load()
+	if err != nil || progress == nil || len(progress.PendingRewrites) == 0 {
+		return err
+	}
+	filtered := make([]int, 0, len(progress.PendingRewrites))
+	for _, chapter := range progress.PendingRewrites {
+		record, err := st.ChapterRecords.Load(chapter)
+		if err != nil {
+			return fmt.Errorf("读取第 %d 章来源: %w", chapter, err)
+		}
+		if record == nil || record.Origin == domain.ChapterOriginGenerated {
+			filtered = append(filtered, chapter)
+		}
+	}
+	if len(filtered) == len(progress.PendingRewrites) {
+		return nil
+	}
+	if len(filtered) == 0 {
+		return st.Progress.ClearPendingRewrites()
+	}
+	return st.Progress.SetPendingRewrites(filtered, progress.RewriteReason)
 }
 
 func migrateLegacyBook(st *storepkg.Store) error {

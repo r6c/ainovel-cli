@@ -81,6 +81,14 @@ func (t *SaveReviewTool) Execute(_ context.Context, args json.RawMessage) (json.
 	}
 
 	affected := r.AffectedChapters
+	executableAffected, err := t.executableReviewChapters(affected)
+	if err != nil {
+		return nil, err
+	}
+	controlFlow := flow
+	if len(executableAffected) == 0 && len(affected) > 0 {
+		controlFlow = domain.FlowWriting
+	}
 
 	progress, err := t.store.Progress.Load()
 	if err != nil {
@@ -92,7 +100,7 @@ func (t *SaveReviewTool) Execute(_ context.Context, args json.RawMessage) (json.
 
 	// 先原子应用控制状态，再保存审阅工件。若第二步失败，返工意图仍然存在；
 	// Writer 排空队列后，路由会因审阅工件缺失而重新派发 Editor，不会跳过审阅。
-	latest, err := t.store.Progress.ApplyReviewOutcome(flow, affected, r.Summary)
+	latest, err := t.store.Progress.ApplyReviewOutcome(controlFlow, executableAffected, r.Summary)
 	if err != nil {
 		return nil, fmt.Errorf("apply review outcome: %w", err)
 	}
@@ -222,6 +230,21 @@ func (t *SaveReviewTool) normalizeReviewEntry(r *domain.ReviewEntry) (*store.Arc
 	}
 	r.AffectedChapters = derived
 	return boundary, nil
+}
+
+func (t *SaveReviewTool) executableReviewChapters(chapters []int) ([]int, error) {
+	result := make([]int, 0, len(chapters))
+	for _, chapter := range chapters {
+		record, err := t.store.ChapterRecords.Load(chapter)
+		if err != nil {
+			return nil, fmt.Errorf("load chapter %d provenance: %w", chapter, err)
+		}
+		// 旧项目或迁移夹具可能尚无 ChapterRecord，保持原有可返工行为。
+		if record == nil || record.Origin == domain.ChapterOriginGenerated {
+			result = append(result, chapter)
+		}
+	}
+	return result, nil
 }
 
 func uniqueSortedChapters(chapters []int) []int {

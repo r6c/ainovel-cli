@@ -4,8 +4,16 @@
 
 - 日期：2026-08-25
 - 基线：`ade8108 测试：加固 Linux 与无头环境兼容性`
-- 当前里程碑：S——真实 Cocreate 五阶段验收（complete）
+- 当前里程碑：T——真实 Import 后续写验收（complete）
 - 当前阶段：无活动阶段
+
+真实第 3 章续写完成：导入 Hold 经 Resume 消费，切换 review 后只授权第 3 章；Architect 把 2 章分层大纲扩为 10 章，Writer/Editor 完成第 3 章并停在 3/10。ChapterRecord 3 为 generated、无 PendingCommit、全量重放通过，总费用 `$0.5680684`。
+
+收口审计发现 P1：续写前弧末评审自动把导入第 2 章放入返工队列并覆盖为 `revision=2, origin=generated`，导致导入 Knowledge updates 消失；后续 Projector 只剩第 3 章新 Knowledge。导入分析工件本身正确含 Timeline/Relationship/StateChange 及 `K-red-signal` 的 establish+learn+reveal，问题是自动返工覆盖了 imported 事实源。下一切片在 SaveReview 控制态 seam 上保留评审证据，但禁止 imported/user 章节进入自动返工队列。
+
+正式投影检查：两章正文 SHA 与 ChapterRecord 一致，origin 均为 imported；Knowledge 建立 `K-red-signal`（第2章读者与苏弦已知，顾临未知）及隐藏的 `K-third-relay-record`；5 条活跃伏笔覆盖红灯、铜钥匙、广播“第三枚”、删日志和第三中继器。Progress 位于 writing，NextChapter=3，分层大纲当前仅 2 章，Compass 指向北侧冷阱。真实 P2：Timeline/Relationship/StateChange 投影均为空，尽管源文有明确决定、隐瞒与信任裂痕；本轮不凭空补事实，续写验收观察 Context/Writer 是否仍能依靠摘要、Knowledge、Foreshadow 和 Compass 连贯接力。
+
+阶段 151 自动化基线通过。真实 Import 使用自建两章未完科幻悬疑源文，首次停在 2/2 切分确认，确认前正式 Book/完成章节均为空；显式确认后分析、综合、验证、发布全部完成，费用 `$0.04324`，两条 ChapterRecord 均为 imported，无 PendingCommit，导入 Hold 已建立。首轮投影检查脚本因把第二条 Knowledge 的 `believed_by:null` 当数组遍历而 TypeError；这是验收脚本空值处理错误，不是数据损坏，改为空值安全读取。
 - 公共路径：Quick、Cocreate、Headless、Import、Deconstruct、读者成品导出
 
 ## Karpathy 约束下的取舍

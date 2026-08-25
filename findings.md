@@ -211,6 +211,16 @@ Knowledge 诊断已作为当前投影的只读消费完成，不是新事实源�
 
 目标平台属于用户意图，不是作品事实；使用 `user_rules.structured.platform` 持久化。只有显式 `fanqie` 才加载番茄 rubric，未指定时保持原行为。Rubric 只为现有七维提供软参考，不新增平台评分维度、算法分或自动返工路径。
 
+## 真实 Import 后续写验收结论
+
+真实 `sss / gpt-5.6-sol` 两章导入与第 3 章续写通过：显式确认前正式 Store 为空；发布后 1/2 章为 imported，Hold 被现有 Resume 消费；review 模式精确授权第 3 章，Architect 扩弧后 Writer 只新增 generated 第 3 章并停下。
+
+验收发现并修复 P1：导入完成后的弧评审曾把 imported 第 2 章自动入返工队列，由 Writer 覆盖为 generated revision=2，导致原文和 Knowledge updates 在后续 Projector 重建中丢失。`SaveReviewTool` 现在保留完整 issues/affected_chapters 证据，但自动返工只允许 generated 或旧兼容缺记录章节；`CommitChapterTool` 在冻结返工意图前再次拒绝 imported/user；Start/Resume 的升级修复接缝会清理旧脏队列中的受保护来源。imported/user 只能由作者编辑后 `/sync`。若过滤后无可执行返工，控制 Flow 回 writing，避免空队列死循环。
+
+修复后真实回归证明 1/2 章记录字节、origin=imported、revision=1 和事实更新完全不变；第 3 章复用导入伏笔 ID 推进，三章全量重放通过。
+
+P2：逐章语义提取存在模型波动。本次第二轮虽然正确提取 Timeline/Relationship/StateChange 和伏笔，但对正文明确“苏弦与读者知道求救信标真相”只输出 establish，漏掉 learn/reveal；因此该 Truth 未进入第 3 章净化 Knowledge 边界。摘要、状态和伏笔仍支持连贯续写，顾临未越权知情。该问题属于语义提取质量，不可用确定性代码猜测补齐；后续可用 Import worked examples/Prompt A-B 校准。
+
 ## 真实 Cocreate 验收结论
 
 真实 `sss / gpt-5.6-sol` 五阶段对话通过：6 个有效回合严格单步推进，关键谜底未授权时保持 customization，模型自报 ready 仍受完整 Draft/用户确认门禁约束；最终指令进入现有启动主链并在 writing 前无章节收场。

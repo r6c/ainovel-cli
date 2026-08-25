@@ -3,9 +3,9 @@
 ## 当前状态
 
 - 总体状态：`complete`
-- 当前里程碑：S——真实 Cocreate 五阶段验收（complete）
+- 当前里程碑：T——真实 Import 后续写验收（complete）
 - 当前阶段：无活动阶段
-- 基线提交：`8d14f9f 校准：收窄去 AI 味判据并补充反例`
+- 基线提交：`3a6b457 修复：记录共创流式用量并纳入预算`
 - 完整历史：[`docs/history/plans/2026-08-domain-saga-evolution/`](docs/history/plans/2026-08-domain-saga-evolution/)
 
 ## 已完成里程碑
@@ -36,7 +36,8 @@
 | Q | 终态恢复与正文 provenance 收口 | `37df0ca` |
 | P1 | 真实外部正文 Revision 验收 | `4fd8d15` |
 | R | AI 味判据证据校准 | `8d14f9f` |
-| S | 真实 Cocreate 五阶段验收与流式用量修复 | 本次提交 |
+| S | 真实 Cocreate 五阶段验收与流式用量修复 | `3a6b457` |
+| T | 真实 Import 后续写验收与原文写权限修复 | 本次提交 |
 
 ## 稳定架构边界
 
@@ -871,3 +872,45 @@ git diff --check
 状态：`complete`
 
 记录轮次、阶段轨迹、费用、工件和 P0/P1/P2；临时对话、正文、配置和日志不进 Git。运行相关测试、全量/vet/race/格式与链接检查后中文提交。
+
+# 里程碑 T：真实 Import 后续写验收
+
+## 目标
+
+用 `sss / gpt-5.6-sol` 在隔离目录导入一篇自建两章未完小说，先确认切分，再完成分析/综合/发布；验证 imported provenance 和全书投影后，显式接力 Writer 续写第 3 章，确认继承导入事实。发现 P0/P1 时先修，不扩展 Import 管线。
+
+## 阶段 151：自动化基线与自建源文本
+
+状态：`complete`
+
+复跑 Import 端到端、事实零污染、stale Pending、Knowledge/Foreshadow 发布和 continue 接力测试。创建不含第三方内容的两章科幻悬疑源文，明确故事未完，并设置可验证的角色状态、物件、地点、伏笔和作者真相。
+
+## 阶段 152：真实切分与人工确认
+
+状态：`complete`
+
+首次 `AutoConfirm=false`，要求得到两章切分预览且无错误；检查边界/标题后用 `AcceptSegmentation=true` 显式确认。Source/Manifest/Segmentation/Confirmation 必须完整，正式 Store 仍为空。
+
+## 阶段 153：真实分析、综合与正式发布
+
+状态：`complete`
+
+使用 `StoryResolution=open`、`ContinueAfter=false` 完成两章分析、综合和发布。验证 ChapterRecord 1/2 均为 imported、原文哈希一致、Progress/Checkpoint/Hold 正确、无 PendingCommit，Knowledge/Foreshadow/Timeline/Relationship/State 投影可全量重建。
+
+## 阶段 154：下游 Context 一致性
+
+状态：`complete`
+
+调用 `novel_context(chapter=3)`，确认只注入角色/读者可知信息，不泄露隐藏 Truth；当前角色状态、未回收伏笔和第 2 章结尾目标可供 Writer 使用。
+
+## 阶段 155：真实续写第 3 章
+
+状态：`complete`
+
+显式接力现有 Engine，只允许新增第 3 章后暂停。验证 Writer 不重写 1/2 章，不违反导入 Knowledge 边界，推进或回收既有伏笔时复用 ID；ChapterRecord 3 为 generated，三章全量重放通过。
+
+## 阶段 156：导出、脱敏记录与提交
+
+状态：`complete`
+
+验证 TXT/EPUB 含三章且不泄露内部状态；记录阶段、费用、工件和 P0/P1/P2，源文/正文/日志/配置不进 Git。运行全量/vet/race/格式/链接后中文提交。

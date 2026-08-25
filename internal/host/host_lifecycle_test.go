@@ -3,6 +3,7 @@ package host
 import (
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -42,6 +43,59 @@ func TestUpgradeProjectMigratesLegacyBook(t *testing.T) {
 	version, err := st.LoadProjectFormatVersion()
 	if err != nil || version != storepkg.CurrentProjectFormatVersion {
 		t.Fatalf("format version = %d, err = %v", version, err)
+	}
+}
+
+func TestUpgradeProjectRemovesProtectedOriginsFromLegacyRewriteQueue(t *testing.T) {
+	for _, tc := range []struct {
+		name      string
+		origins   []domain.ChapterOrigin
+		wantQueue []int
+		wantFlow  domain.FlowState
+	}{
+		{name: "mixed", origins: []domain.ChapterOrigin{domain.ChapterOriginImported, domain.ChapterOriginGenerated, domain.ChapterOriginUser}, wantQueue: []int{2}, wantFlow: domain.FlowRewriting},
+		{name: "protected_only", origins: []domain.ChapterOrigin{domain.ChapterOriginImported, domain.ChapterOriginUser}, wantFlow: domain.FlowWriting},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			st := storepkg.NewStore(t.TempDir())
+			if err := st.Init(); err != nil {
+				t.Fatal(err)
+			}
+			if err := st.SaveProjectFormatVersion(storepkg.CurrentProjectFormatVersion); err != nil {
+				t.Fatal(err)
+			}
+			if err := st.Progress.Init(len(tc.origins)); err != nil {
+				t.Fatal(err)
+			}
+			queue := make([]int, 0, len(tc.origins))
+			for i, origin := range tc.origins {
+				chapter := i + 1
+				if _, err := st.ChapterRecords.Accept(chapter, origin, "已接纳正文", domain.ChapterFacts{}, domain.StyleDelta{}); err != nil {
+					t.Fatal(err)
+				}
+				if err := st.Progress.MarkChapterComplete(chapter, 100, "", ""); err != nil {
+					t.Fatal(err)
+				}
+				queue = append(queue, chapter)
+			}
+			if err := st.Progress.SetPendingRewrites(queue, "升级前遗留队列"); err != nil {
+				t.Fatal(err)
+			}
+			if err := st.Progress.SetFlow(domain.FlowRewriting); err != nil {
+				t.Fatal(err)
+			}
+
+			if err := upgradeProject(st); err != nil {
+				t.Fatal(err)
+			}
+			progress, err := st.Progress.Load()
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !slices.Equal(progress.PendingRewrites, tc.wantQueue) || progress.Flow != tc.wantFlow {
+				t.Fatalf("flow=%s queue=%v want flow=%s queue=%v", progress.Flow, progress.PendingRewrites, tc.wantFlow, tc.wantQueue)
+			}
+		})
 	}
 }
 

@@ -221,7 +221,13 @@ internal/store/signals.go
 
 `phase=complete` 不是充分条件。Headless/TUI 只有在目录租约可取得、无 PendingCommit、无 PendingRevision、无未完成 Import 且无外部正文修改时，才显示干净完成态。`Host.Resume` 会先用现有 Commit Saga 同步收尾 PendingCommit，再重新判定终态；外部修订与 Import 只给 `/sync`、`/import` 指引，不自动调用模型。
 
-## 6. Revision 与 Projector
+## 6. 正文来源与自动写权限
+
+`ChapterRecord.Origin` 区分 `generated / imported / user`。Editor 可以在 chapter/global/arc Review 中记录任何来源章节的问题和完整 `affected_chapters`，但自动返工队列只允许 `origin=generated`（或旧兼容缺记录）的章节。`imported/user` 是作者原文，Writer 不得自动覆盖；需要修改时由作者编辑正文后执行 `/sync`。
+
+`SaveReviewTool` 在生成控制状态时过滤非 generated 章节；`CommitChapterTool` 在冻结 Rewrite PendingCommit 前再次检查 provenance，防止升级前遗留脏返工队列绕过权限；Start/Resume 的 `upgradeProject` 修复接缝还会幂等清理历史残留的 imported/user 返工项，避免 Router 反复派 Writer。若 Review 只指向 imported/user，评审工件照常保存，但控制 Flow 回到 writing，不能制造空返工死循环。
+
+## 7. Revision 与 Projector
 
 Revision 用于接纳外部或用户正文修改，并重建后续派生事实。
 
@@ -238,7 +244,7 @@ internal/revision/migration.go
 - Rewrite 创建 PendingCommit 前，必须先验证候选记录集不会破坏后续事实引用。
 - 用户删除 reveal、learn、belief 等动作时允许由全量重建回退对应投影；不要强制恢复用户已删除的认知事实。
 
-## 7. Import 工作区
+## 8. Import 工作区
 
 Import 是独立的语义编译工作区：
 
@@ -267,7 +273,7 @@ internal/host/imp/publish.go
 - `NextAction` 通过现有状态推导自然回到 Analyze，不新增验证 Stage。
 - 发布门禁必须在正式 Foundation、Hold 或章节写入之前完成。
 
-## 8. 规则所有权
+## 9. 规则所有权
 
 | 规则 | 正式位置 |
 |---|---|
@@ -282,7 +288,7 @@ internal/host/imp/publish.go
 
 动作枚举可在 Schema、Prompt、Import 局部反馈中出现，但正式跨章生命周期规则不得复制到这些 Adapter。
 
-## 9. 修改纪律
+## 10. 修改纪律
 
 ### 新增或修改 ChapterFacts 字段
 
@@ -325,7 +331,7 @@ Context/Diagnostics 消费
 - legacy 前段与后段兼容
 - 完整性错误时的零副作用与工件保留
 
-## 10. 确定性 Prose Lint
+## 11. 确定性 Prose Lint
 
 `internal/rules.Lint` 是始终执行的产品底线检查；它只生成 `Violation` 事实，不自行裁决。正文接纳 adapter 按 provenance 应用政策：模型生成正文在 PendingCommit 前拒绝 `markdown_residue`，Import 原文逐字保留并只记录同一事实；两者都不新增 verdict 或 Route。
 
@@ -349,7 +355,7 @@ Commit 和 Revision Projector 都必须复用同一个 `rules.Lint`，不要建�
 
 校准证据位于 `evals/anti-ai-tone/`：16 条自建匿名网文最小对、独立金标、三轮盲评和 Writer 三重复 A/B。外部 `lieflat-less-ai-tone` 仅作为候选假设来源；未安装 Skill、未运行其 Python 脚本、未采用其不可复核统计阈值，也不新增第二条去 AI 味流程。
 
-## 11. Knowledge 诊断与导出边界
+## 12. Knowledge 诊断与导出边界
 
 作者侧 `diag.Analyze` 聚合：Truth 数、角色知情关系数、读者已知 Truth 数和活跃错误信念数。本地 `/diag` 可以显示长期未纠正 belief 的 Knowledge ID、角色与形成章，但不复制 Truth 或 Belief 正文。
 
@@ -357,7 +363,7 @@ Commit 和 Revision Projector 都必须复用同一个 `rules.Lint`，不要建�
 
 Diagnostics 只是当前投影的只读 Adapter，不得修改 Knowledge、自动生成 `learn` 或成为新事实源。
 
-## 12. 目标平台 Rubric 试点
+## 13. 目标平台 Rubric 试点
 
 目标平台属于用户意图，持久化在 `meta/user_rules.json` 的 `structured.platform`；当前只支持显式 `fanqie`。含糊的“免费阅读平台/移动端平台”不得猜测，未指定时不加载任何平台参考。
 
@@ -365,7 +371,7 @@ Diagnostics 只是当前投影的只读 Adapter，不得修改 Knowledge、自�
 
 Rubric 区分官方可核事实与 ainovel-cli 产品软评价，映射现有七维，不新增平台评分状态、Verdict 或 Route。官方公开资料未提供黄金三章字数、爽点数量或推荐算法阈值，禁止编造这些硬指标。用户偏好、章节合同与人物逻辑优先。
 
-## 13. 单章篇幅目标
+## 14. 单章篇幅目标
 
 用户规则快照 v4 支持：
 
@@ -377,7 +383,7 @@ structured.chapter_target_chars
 
 Architect、Writer 和 Editor 通过现有 `working_memory.user_rules` 消费同一字段。Commit 使用 `domain.WordCount` 的现有 Unicode 字符口径，只在正文超过目标 120% 时于 PendingCommit 创建前拒绝；不设置机械下限，偏短章节仍由 Editor 在 pacing 维度判断，避免为达标注水。普通提交与 Rewrite 必须使用同一上限规则。
 
-## 14. 阶段化冷启动共创
+## 15. 阶段化冷启动共创
 
 启动模式仍只有 quick 与 cocreate，没有第三种 interview 模式。冷启动 cocreate 由 `startup.CoCreateSession` 确定性维护：
 
@@ -393,7 +399,7 @@ core → customization → title → confirmation → ready
 
 冷启动和运行中阶段共创的流式模型调用必须经过同一个 `UsageTracker`，归入 `thinking` 角色；否则书级成本、Token、缓存和预算会失明。每轮共创请求前复用 `BudgetSentinel.Refuse`，上一轮已越线时不得继续调用。瞬时流式失败由 Session 保持原阶段和 Draft，用户可重试；不得在失败时推进阶段或清空累计草稿。
 
-## 15. 本地拆文方法画像
+## 16. 本地拆文方法画像
 
 独立命令：
 
@@ -409,7 +415,7 @@ ainovel-cli deconstruct <本地语料目录>
 
 扫榜功能已从产品路线移除。为保持 Linux、服务器、NAS 和无头环境可移植性，不引入 Chrome/CDP、浏览器登录态、平台爬虫、反爬或番茄/起点/晋江页面适配。需要分析的资料必须由用户以本地文本主动提供。
 
-## 16. Linux 与无头环境边界
+## 17. Linux 与无头环境边界
 
 顶层 `--help/-h/help` 和 `deconstruct --help` 必须在配置、首次引导、TTY、模型和 Host 初始化之前返回；它们可用于 Linux/Docker 无配置健康检查。
 
@@ -417,7 +423,7 @@ Linux amd64/arm64 发布目标均使用 `CGO_ENABLED=0`。CI 除 Ubuntu/Windows 
 
 桌面通知是 best-effort Adapter：Linux 缺少 `notify-send` 时只降级日志，不能影响 Engine、Route 或恢复流程。生产代码不得引入 Chrome/CDP、浏览器登录态、GUI 动态库或绝对临时目录依赖。
 
-## 17. 常用验证
+## 18. 常用验证
 
 ```bash
 go test ./... -timeout=5m

@@ -1242,6 +1242,48 @@ func TestCommitChapterRejectsNonPendingRewrite(t *testing.T) {
 	}
 }
 
+func TestCommitChapterRejectsAutomaticRewriteOfImportedChapter(t *testing.T) {
+	s := store.NewStore(t.TempDir())
+	if err := s.Init(); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Progress.Init(10); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.ChapterRecords.Accept(2, domain.ChapterOriginImported, "用户导入原文。", domain.ChapterFacts{
+		Title: "第二章", Summary: "导入摘要", KeyEvents: []string{"导入事件"},
+	}, domain.StyleDelta{}); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Progress.MarkChapterComplete(2, 100, "", ""); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Progress.SetPendingRewrites([]int{2}, "升级前残留返工队列"); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Progress.SetFlow(domain.FlowRewriting); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Drafts.SaveDraft(2, "Writer 自动重写正文。"); err != nil {
+		t.Fatal(err)
+	}
+	args, _ := json.Marshal(map[string]any{
+		"chapter": 2, "title": "第二章", "summary": "自动重写",
+		"characters": []string{"主角"}, "key_events": []string{"覆盖原文"},
+	})
+
+	if _, err := newTestCommitChapterTool(s).Execute(context.Background(), args); err == nil || !strings.Contains(err.Error(), "imported") {
+		t.Fatalf("automatic rewrite of imported chapter must be rejected, got %v", err)
+	}
+	if pending, err := s.Signals.LoadPendingCommit(); err != nil || pending != nil {
+		t.Fatalf("rejection must happen before PendingCommit: pending=%+v err=%v", pending, err)
+	}
+	record, err := s.ChapterRecords.Load(2)
+	if err != nil || record == nil || record.Origin != domain.ChapterOriginImported || record.Content != "用户导入原文。" {
+		t.Fatalf("imported record changed: record=%+v err=%v", record, err)
+	}
+}
+
 func TestCommitChapterAllowsPendingRewrite(t *testing.T) {
 	dir := t.TempDir()
 	store := store.NewStore(dir)
