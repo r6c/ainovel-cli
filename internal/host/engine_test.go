@@ -1167,8 +1167,11 @@ func TestEngine_ExitRaceRestoresPendingDispatch(t *testing.T) {
 		t.Fatalf("phase: %v", err)
 	}
 
-	// worker 挂起直到 ctx 取消:制造"入队后引擎被 abort"的窗口。
+	// 等 worker 确实进入模型调用后再入队并 abort，稳定制造"入队后引擎被 abort"的窗口。
+	workerStarted := make(chan struct{})
+	var workerStartedOnce sync.Once
 	blocked := &scriptedChatModel{fn: func([]agentcore.Message) agentcore.Message {
+		workerStartedOnce.Do(func() { close(workerStarted) })
 		time.Sleep(50 * time.Millisecond)
 		return testTextMsg("...")
 	}}
@@ -1181,6 +1184,11 @@ func TestEngine_ExitRaceRestoresPendingDispatch(t *testing.T) {
 
 	if !e.start(nil) {
 		t.Fatal("engine start")
+	}
+	select {
+	case <-workerStarted:
+	case <-time.After(time.Second):
+		t.Fatal("worker 未进入模型调用")
 	}
 	// worker 运行中:入队 pause+dispatch,随即 abort(动作永远等不到下个边界)。
 	e.enqueue(controlOp{
