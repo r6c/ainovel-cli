@@ -23,6 +23,8 @@
 
 阶段 163/164 收口：新增 `internal/tools/novel_context_reader_boundary_test.go`，在现有 Context 公共夹具中提供第 3 章 OutlineEntry，验证代码层边界：读者已知但当前角色未知的 Truth 可见并保留 ReaderRevealedAt；苏弦已知的 Truth 带 KnownBy；顾临独知/读者未知的 Truth 不泄露。internal/tools、revision、host/imp 回归通过。该测试不冒充真实 Architect 扩弧；真实扩弧仍因 Provider 阻塞未生成第 3 章大纲，因此阶段 161 的真实链路限制继续保留。
 
+里程碑 V 阶段 165/166：新增 `internal/tools/commit_process_recovery_test.go`，使用 Go 测试自调用子进程和真实磁盘 Store，验证 `progress_marked` 密封 PendingCommit 可跨进程收尾：checkpoint 追加、PendingCommit 清理、Progress 完成章节保持不变。首轮夹具缺少正文、摘要和 ChapterRecord 工件，按真实 Checkpoint 摘要校验逐层补齐；没有把夹具错误当产品红灯。现有 `started/state_applied/progress_marked/signal_saved`、密封、Imported provenance、Knowledge/Foreshadow 组合恢复矩阵与 Race 均已通过。评估后不新增生产故障注入开关；阶段 167 进入终态与全量收口。
+
 阶段 158 首次基线未产出有效结果：人工复核发现 ik09 金标要求 believe 却未建立同 ID Truth，按正式领域规则该样本非法；已终止未完成进程、删除无效结果，修正为“真实动机 establish+reader reveal，许澄持有相反稳定 belief”。不把该试跑计入模型证据。
 
 临时包内 live runner 首次编译因 helper `itoa` 与现有 `synthesize_test.go` 同名失败，尚未调用模型或产生费用；改用 `strconv.Itoa` 内联并删除本地 helper，不重复占用包级名字。

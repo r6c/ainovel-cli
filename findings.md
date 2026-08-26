@@ -290,3 +290,5 @@ P2：最终指令明确“全文约 1500 字”，Normalizer 按现有保守语�
 完整三轮基线仍未取得，因此不能计算完整 precision/recall 或一致性；阶段 159 已基于定向探针完成最小 Prompt 修订，但不把有限结果包装成完整 A/B。Provider 通道稳定后可从阶段 158/160 继续，临时 live runner、结果、日志和一次性进程均已删除。
 
 阶段 163/164 代码层替代验证已完成：在现有 `novel_context` 测试夹具中提供第 3 章 OutlineEntry，确认 ReaderKnown 但当前角色未知的 Truth 可注入，苏弦已知的 Truth 保留 KnownBy，顾临独知且读者未知的 Truth 不泄露。该测试不替代真实 Architect 扩弧；真实扩弧此前两次均在 Provider 请求处阻塞，未生成第 3 章大纲。
+
+里程碑 V 的跨进程恢复审查：仓库没有现成故障注入钩子；直接新增生产环境变量会扩大运行时边界，因此没有采用。新增测试子进程只执行已有 `CommitChapterTool.Execute`，父进程通过重新打开磁盘 Store 验证 `progress_marked` 收尾。现有四个 Commit Stage、密封完整性、Imported provenance、Knowledge/Foreshadow 重放矩阵和 Race 已覆盖；没有发现需要新增生产修复的恢复缺口。

@@ -2,10 +2,10 @@
 
 ## 当前状态
 
-- 总体状态：`blocked_provider`
-- 当前里程碑：U——Import 认知事实提取校准
-- 当前阶段：阶段 158——当前 Import Prompt 三轮基线（blocked_provider）
-- 基线提交：`3fddb1e 修复：保护导入与用户正文不被自动返工覆盖`
+- 总体状态：`complete`
+- 当前里程碑：V——跨进程 PendingCommit 恢复验收
+- 当前阶段：阶段 167——终态与回归收口（complete）
+- 基线提交：`99cf65e 测试：补齐读者与角色知识边界回归`
 - 完整历史：[`docs/history/plans/2026-08-domain-saga-evolution/`](docs/history/plans/2026-08-domain-saga-evolution/)
 
 ## 已完成里程碑
@@ -974,3 +974,25 @@ git diff --check
 状态：`complete`
 
 根据阶段 163 的测试结果更新脱敏验收记录。若代码边界通过但真实 Architect 仍因 Provider 阻塞未验证，则保留该限制，不修改生产逻辑、不伪报真实链路完成。
+
+# 里程碑 V：跨进程 PendingCommit 恢复验收
+
+目标：在不新增生产故障开关的前提下，验证真实磁盘上的 PendingCommit 可由新进程安全收尾，并为后续阶段内故障注入决定是否有必要增加测试专用 seam。
+
+## 阶段 165：跨进程 progress_marked 收尾
+
+状态：`complete`
+
+父测试准备合法 `progress_marked` 密封 PendingCommit，子进程通过真实 `CommitChapterTool.Execute` 收尾；父进程重新打开 Store，断言 checkpoint 已追加、PendingCommit 已清理、Progress 与章节记录不漂移。只验证公开持久化协议，不修改生产代码。
+
+## 阶段 166：多 Stage/事实组合恢复
+
+状态：`complete`
+
+在已有公共恢复矩阵基础上，评估是否需要真实进程级强杀；覆盖 started、state_applied、progress_marked、signal_saved，以及 Knowledge/Foreshadow/imported/rewrite 组合。若现有公共测试已充分证明且没有可安全注入的生产外部 seam，则不新增故障开关，仅补进程级代表性场景。
+
+## 阶段 167：终态与回归收口
+
+状态：`complete`
+
+验证 complete + PendingCommit、密封损坏、Imported provenance 和全量 Projector；同步发布验收记录，执行全量测试、vet、race、格式检查并提交。跨进程代表性恢复、已有四 Stage 矩阵、密封/Imported/Knowledge/Foreshadow 组合和 Race 均通过；未新增生产故障注入开关。
