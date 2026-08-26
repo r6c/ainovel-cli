@@ -692,23 +692,6 @@ func findLastStateChange(changes []domain.StateChange, entity string, currentCha
 	return 0
 }
 
-// knowledgeBoundary 是给 Writer 的净化知识视图，不是新的事实源。
-// Truth 只有在当前角色或读者已知时才输出；角色可只看到自己的活跃错误信念。
-type knowledgeBoundaryBelief struct {
-	Character string `json:"character"`
-	Content   string `json:"content"`
-	FormedAt  int    `json:"formed_at"`
-}
-
-type knowledgeBoundary struct {
-	ID               string                    `json:"id"`
-	Truth            string                    `json:"truth,omitempty"`
-	EstablishedAt    int                       `json:"established_at,omitempty"`
-	KnownBy          []domain.KnowledgeHolder  `json:"known_by,omitempty"`
-	Beliefs          []knowledgeBoundaryBelief `json:"beliefs,omitempty"`
-	ReaderRevealedAt int                       `json:"reader_revealed_at,omitempty"`
-}
-
 // matchOutlineCharacters 从大纲文本中匹配出场角色名。
 func (t *ContextTool) selectKnowledgeForCurrentOutline(state contextBuildState, reads *contextReads) []knowledgeBoundary {
 	if state.currentEntry == nil || len(state.knowledge) == 0 {
@@ -721,49 +704,7 @@ func (t *ContextTool) selectKnowledgeForCurrentOutline(state contextBuildState, 
 		return nil
 	}
 	matched := matchOutlineCharacters(outlineText, characters)
-	if len(matched) == 0 {
-		return nil
-	}
-	wanted := make(map[string]bool, len(matched))
-	for _, character := range matched {
-		wanted[character] = true
-	}
-	const maxKnowledge = 8
-	var selected []knowledgeBoundary
-	for i := len(state.knowledge) - 1; i >= 0; i-- {
-		entry := state.knowledge[i]
-		if entry.EstablishedAt >= state.chapter {
-			continue
-		}
-		boundary := knowledgeBoundary{ID: entry.ID, EstablishedAt: entry.EstablishedAt}
-		for _, holder := range entry.KnownBy {
-			if wanted[holder.Character] && holder.LearnedAt < state.chapter {
-				boundary.KnownBy = append(boundary.KnownBy, holder)
-			}
-		}
-		for _, belief := range entry.BelievedBy {
-			activeBeforeChapter := belief.FormedAt < state.chapter && (belief.CorrectedAt == 0 || belief.CorrectedAt >= state.chapter)
-			if wanted[belief.Character] && activeBeforeChapter {
-				boundary.Beliefs = append(boundary.Beliefs, knowledgeBoundaryBelief{
-					Character: belief.Character, Content: belief.Content, FormedAt: belief.FormedAt,
-				})
-			}
-		}
-		readerKnown := entry.ReaderRevealedAt > 0 && entry.ReaderRevealedAt < state.chapter
-		if readerKnown {
-			boundary.ReaderRevealedAt = entry.ReaderRevealedAt
-		}
-		if len(boundary.KnownBy) > 0 || readerKnown {
-			boundary.Truth = entry.Truth
-		}
-		if boundary.Truth != "" || len(boundary.Beliefs) > 0 {
-			selected = append(selected, boundary)
-			if len(selected) == maxKnowledge {
-				break
-			}
-		}
-	}
-	return selected
+	return selectKnowledgeBoundaries(state.knowledge, matched, state.chapter)
 }
 
 func matchOutlineCharacters(text string, chars []domain.Character) []string {

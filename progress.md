@@ -252,3 +252,11 @@ Commit 测试共 75 个，名称唯一且与拆分前一致。Rewrite、Integrit
 阶段 193—194 负责候选 2/3/4 的全量测试、vet、race、格式、文档和路线收口。当前下一步是阶段 180：测试资产归属清单。
 
 阶段 183 第五个切片与阶段 184 收口已完成：`segment_test.go`、`source_test.go`、`state_test.go`、`synthesize_test.go`、`workspace_test.go`、`call_test.go`、`contracts_test.go` 原本已按职责独立，无需继续移动。Import 全部测试集合与拆分前 HEAD 保持 103 个唯一测试，未丢失、重复或新增；全量测试、vet、关键回归和 diff check 通过。候选 4 的测试资产整理完成，生产代码无差异。
+
+阶段 185 已完成：建立 `docs/context-policy-map.md`，盘点 ContextTool 的输入、选择、净化、预算、序列化和测试 seam。确认 `ContextTool.Execute` 适合作为适配器，若深化只考虑集中选择/净化纯逻辑，不引入 Context Service/Repository。
+
+阶段 186 开始：进行 deletion test，验证删除 Knowledge 净化、选择、预算裁剪或 envelope builder 是否会造成泄漏、调用方复杂度转移或行为回归；不以文件行数单独决定生产重构。
+
+阶段 186 已完成：在临时副本中做了可编译 deletion test。删除 Knowledge 选择会使 Knowledge/Reader 边界测试失败；删除预算裁剪会使预算契约失败；删除 Envelope apply 会使分区和净化结果缺失。结论：三者均承担真实职责，但不值得创建通用 Context Service。阶段 187 限定为同包内的纯 Knowledge 选择/净化策略深化，IO、预算和 JSON envelope 保持在现有适配器。
+
+阶段 187—188 已完成：将 Knowledge 选择、时间边界、ReaderKnown/CharacterKnown 过滤、active belief 净化与 8 条上限提取到 `internal/tools/context_knowledge_policy.go` 的同包纯策略函数。`ContextTool` 继续负责 Store IO、角色匹配、错误降级、预算和 JSON envelope。Knowledge/Reader Boundary、Context 全包、全量测试、vet、关键 race 与 diff check 全部通过；未创建 Context Service/Repository，未改变公共 JSON 行为。

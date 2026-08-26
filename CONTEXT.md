@@ -118,7 +118,11 @@ episodic_memory.knowledge_boundaries
 
 ```text
 internal/tools/novel_context.go
-  selectKnowledgeForCurrentOutline
+  selectKnowledgeForCurrentOutline  // 读取 Store 与匹配当前大纲角色
+
+internal/tools/context_knowledge_policy.go
+  selectKnowledgeBoundaries         // 纯选择、时间过滤、净化与 8 条上限
+
 ```
 
 约束：

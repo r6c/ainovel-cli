@@ -354,3 +354,9 @@ Import Prompt 已有定向修订和有限真实证据，但完整三轮 baseline
 
 
 候选 4 收口结论：剩余 Import 测试文件已经按职责独立，继续拆分只会增加文件噪声。阶段 183—184 完成后，Commit、Context、Import 测试均按 seam 可导航，且 103 个 Import 测试与 HEAD 集合完全一致；未修改生产代码。
+
+候选 2 阶段 185 结论：Context 生产逻辑主要集中在 `novel_context.go` 与 `novel_context_builders.go`，已有测试按 Knowledge、Recall、Budget、References、Modes、Envelope、Errors 分组。当前明确边界是 ContextTool 继续作为适配器；是否需要更深的选择策略模块，必须由 deletion test 证明。
+
+阶段 186 deletion test 结论：Knowledge 选择/净化、预算裁剪、Envelope 装配均不可删除。第一版 Knowledge 变体因脚本破坏局部变量而无效；修正为可编译 no-op 后，相关边界测试稳定失败。由此只批准阶段 187 的 Knowledge 选择纯逻辑局部化，不批准 Context Service/Repository、Budget 模块或 Envelope 重构。
+
+阶段 187—188 结论：Knowledge 选择与净化已集中到同包纯函数 `selectKnowledgeBoundaries`，只接收已加载投影、当前角色匹配结果和章节号，不执行 IO、预算裁剪或序列化。ContextTool 仍是唯一公共适配器；现有 JSON、泄漏、时间边界、8 条上限和预算行为均保持不变。

@@ -3,9 +3,9 @@
 ## 当前状态
 
 - 总体状态：`complete`
-- 当前路线：候选 2/3/4 架构深化与评测准备
-- 当前阶段：候选 4——测试按 seam 拆分（complete）
-- 基线提交：`6d6bcd5 重构：按接缝整理 Commit 测试资产`
+- 当前路线：候选 2 Context 选择策略已收敛；候选 3 Provider 评测按需暂停
+- 当前阶段：候选 2——Context selection policy（complete）
+- 基线提交：`5437350 重构：完成测试资产按接缝整理`
 - 当前工作区：仅规划/发现/进度记录有未提交变更；未开始生产代码修改。
 - 已完成发布候选稳定化：X（阶段 174—179 complete）
 - 当前不创建版本标签；候选 2/3/4 先完成规划与低风险准备。
@@ -275,7 +275,7 @@ git diff --check
 
 ### 阶段 185：Context 依赖与选择矩阵
 
-状态：`planned`
+状态：`complete`
 
 列出当前 `ContextTool` 的所有输入与输出：
 
@@ -294,7 +294,7 @@ git diff --check
 
 ### 阶段 186：deletion test 与候选模块形状
 
-状态：`planned`
+状态：`complete`
 
 对以下逻辑做 deletion test：
 
@@ -307,7 +307,9 @@ git diff --check
 
 ### 阶段 187：Context selection policy 的最小实现（条件阶段）
 
-状态：`planned`
+状态：`complete`
+
+结论：仅将 Knowledge 选择/净化规则提取为同包纯策略函数；`ContextTool` 继续负责 Store IO、角色匹配、错误降级、预算和 JSON envelope。
 
 仅当阶段 186 证明值得深化时执行：
 
@@ -320,7 +322,9 @@ git diff --check
 
 ### 阶段 188：Context 全量回归与提交
 
-状态：`planned`
+状态：`complete`
+
+结论：Knowledge 纯选择/净化策略行为等价；未改变 JSON envelope、Budget、References、ReaderKnown/CharacterKnown 或错误降级语义。
 
 运行：
 
