@@ -15,6 +15,8 @@
 
 本次采用每次单片段调用和独立超时，结果只保存动作级脱敏数据和 Usage；Provider 长连接/HTTP 502 的无效运行不计入模型质量证据。
 
+阶段 161 真实两章 Import/Context 回归：使用当前 Prompt 与 sss/gpt-5.6-sol 在全新隔离目录完成 ingest→segment→analysis→synthesis→publish。两条 ChapterRecord 均为 imported/revision=1，Knowledge 投影 2 条、Foreshadow 投影 2 条、无 PendingCommit、phase=writing；K001/K002 的 KnownBy 均为苏弦，ReaderRevealedAt 为 1/2，原文保持。第 3 章尚无 OutlineEntry，因此 novel_context(chapter=3) 按安全策略不注入 knowledge_boundaries，但保留北侧冷阱/中继器线索且未泄露全量 Truth；未手工扩展大纲或续写。阶段 161 标记 partial_evidence，阶段 162 暂不收口。
+
 阶段 158 首次基线未产出有效结果：人工复核发现 ik09 金标要求 believe 却未建立同 ID Truth，按正式领域规则该样本非法；已终止未完成进程、删除无效结果，修正为“真实动机 establish+reader reveal，许澄持有相反稳定 belief”。不把该试跑计入模型证据。
 
 临时包内 live runner 首次编译因 helper `itoa` 与现有 `synthesize_test.go` 同名失败，尚未调用模型或产生费用；改用 `strconv.Itoa` 内联并删除本地 helper，不重复占用包级名字。

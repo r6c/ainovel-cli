@@ -232,6 +232,15 @@ Writer A/B 复用 `writer_first_chapter`：旧判据与校准判据各运行 3 �
 
 ### 3.12 真实 Import 后续写验收
 
+### 3.13 真实 Import 认知事实/Context 回归（阶段 161）
+
+使用当前修订后的 `import-analyze.md` 与 `sss / gpt-5.6-sol`，在全新隔离目录导入两章自建未完科幻悬疑文本。结果：两条 ChapterRecord 均为 `origin=imported`、`revision=1`，正式发布无 PendingCommit，phase=writing；Knowledge 投影包含两条 Truth，KnownBy 均只有苏弦，ReaderRevealedAt 分别为第 1/2 章，伏笔投影包含两条，原文保持。
+
+导入后的 `outline.json` 只覆盖第 1/2 章，没有第 3 章 OutlineEntry。因此调用 `novel_context(chapter=3)` 时，系统按安全策略不注入 `knowledge_boundaries`，避免在没有当前大纲角色边界时把全量作者 Truth 送入 Writer；Context 仍保留北侧冷阱/中继器线索，且未泄露全量 Knowledge。没有手工写大纲或强行续写第 3 章，因此“第 3 章大纲存在后的 ReaderKnown/CharacterKnown 注入”仍待 Architect 扩弧时验证。
+
+状态：**部分通过**。Import 发布、provenance、Knowledge 投影和无大纲时的安全降级通过；第 3 章角色认知边界的完整注入尚未执行。
+
+
 使用 `sss / gpt-5.6-sol` 导入自建两章未完科幻悬疑文本。首次运行停在 2/2 切分确认，确认前正式 Book 和完成章节为空；显式确认后完成分析、综合、全书事实验证与发布，两条 ChapterRecord 均为 `origin=imported`、无 PendingCommit，并建立“等待验收后续写”的 boundary Hold。
 
 续写时先由 `Resume` 消费 Hold，再切换逐章验收并精确许可第 3 章。Architect 将两章导入骨架扩为后续分层大纲，Writer 只新增 generated 第 3 章并停下；三条记录全量重放通过，TXT/EPUB 均含三章且未泄露 Knowledge、Foreshadow ID、PendingCommit 或 provenance 元数据。

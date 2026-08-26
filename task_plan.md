@@ -951,12 +951,14 @@ git diff --check
 
 ## 阶段 161：真实两章 Import/Context 回归
 
-状态：`pending`
+状态：`partial_evidence`
 
-复用自建两章源文，要求求救信标 Truth 的 EstablishedAt/苏弦 KnownBy/ReaderRevealedAt 正确，顾临未知；第3章大纲存在后 Context 显示 reader known 与苏弦 known，不泄露其它隐藏 Truth。无需再续写整章，除非 Context 结果不明确。
+真实两章 Import 已完成：两条 ChapterRecord 均为 imported/revision=1；Knowledge 投影得到 K001/K002，KnownBy 均只有苏弦，ReaderRevealedAt 分别为 1/2；伏笔投影为 2 条；无 PendingCommit，phase=writing。正式 ChapterRecord 与原文保真结果已通过检查。
+
+第 3 章尚无正式 OutlineEntry（Import 大纲当前只覆盖两章），因此 `novel_context(chapter=3)` 按既有安全策略不注入 `knowledge_boundaries`，但仍提供北侧冷阱/中继器等摘要和伏笔线索，且未泄露全量 Truth。未手工写大纲、未强行续写；完整的“第 3 章大纲存在后，ReaderKnown/CharacterKnown 边界”验证留待后续真实续写或 Architect 扩弧时完成。阶段 162 暂不收口为完整通过。
 
 ## 阶段 162：文档、全量验证与提交
 
-状态：`pending`
+状态：`complete`
 
-保存脱敏数据、指标和局限，不提交完整模型响应/源文/凭证。运行 Import/Context/assets/eval、全量/vet/race/格式/链接/敏感信息门禁后中文提交。
+已保存阶段 161 的脱敏 Import/Context 结果和局限，没有提交完整模型响应、源文、凭证或临时工作区。校准集、assets、Import、全量 go test、vet、关键 race、格式和敏感信息门禁全部通过。阶段 161 因第 3 章尚无正式 OutlineEntry 保持 `partial_evidence`，不把 Context 未注入 knowledge_boundaries 误报为完整角色边界通过。
