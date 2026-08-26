@@ -5,10 +5,11 @@
 - 总体状态：`complete`
 - 当前路线：候选 2 Context 选择策略已收敛；候选 3 Import 认知 A/B 已完成并保留当前 Prompt
 - 当前阶段：候选 3——Import 认知 A/B（complete）
-- 基线提交：`5437350 重构：完成测试资产按接缝整理`
-- 当前工作区：候选 3 评测报告与规划记录有未提交变更；临时真实 Runner 已清理。
+- 基线提交：`d9b9a1f 评测：完成导入认知动作三轮 A/B 验证`
+- 当前工作区：clean；Import Analyze Prompt 缓存版本修复已完成并通过全量门禁。
 - 已完成发布候选稳定化：X（阶段 174—179 complete）
-- 当前不创建版本标签；候选 2/3/4 先完成规划与低风险准备。
+- 当前修复：Import Analyze Prompt 版本由 `analyze-v1` 提升为 `analyze-v2`，旧分析工件自然失效。
+- 候选 2/3/4 已完成；版本标签仍待 GoReleaser 快照验收。
 
 ## 已完成里程碑摘要
 
@@ -26,8 +27,8 @@ docs/history/plans/2026-08-domain-saga-evolution/
 
 已知但不阻塞主线的限制：
 
-- Import 认知动作完整三轮 precision/recall 受 Provider 长连接/HTTP 502 阻塞；已有定向 Prompt 修订和真实两章回归证据。
-- 真实 Architect 扩弧后的第 3 章 Context 端到端验收受 Provider 阻塞；代码层 Context 边界已有测试。
+- Import 认知动作三轮 baseline/calibrated A/B 已完成；calibrated 提升 `learn` 召回但整体 precision 下降，当前 Prompt 作为折中版本保留。
+- 真实 Architect 扩弧后的第 3 章 Context 端到端验收仍未完成；代码层 Context 边界已有测试。Import Analyze Prompt 当前为 `analyze-v2`，旧 `analyze-v1` 工件会自然失效。
 - 当前尚未创建版本标签或 GitHub Release。
 
 ## 稳定架构边界

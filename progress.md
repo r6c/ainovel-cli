@@ -3,15 +3,15 @@
 ## 当前会话
 
 - 日期：2026-08-26
-- 基线：`3dc0348 校准：补充导入认知多动作提取边界`
-- 当前里程碑：U——Import 认知事实提取校准
-- 当前阶段：阶段 160——小型 Prompt A/B（partial_evidence）
+- 基线：`d9b9a1f 评测：完成导入认知动作三轮 A/B 验证`
+- 当前里程碑：S1——Import Prompt 缓存一致性修复
+- 当前阶段：Import Prompt 缓存一致性修复——complete
 
-定向真实探针：旧 Prompt 下 ik03/ik04 漏报 learn，ik05 漏报 reveal_to_reader；ik07 输出三动作但额外出现 believe。修订 Prompt 后 ik03 成功输出 establish→learn→reveal_to_reader；ik04 输出 establish→learn→reveal_to_reader；ik05 输出 establish→reveal_to_reader；ik07 输出 establish→learn→reveal_to_reader，但额外输出顾临 believe。baseline ik07 也有同样的 believe，因此不是本次修订引入。
+本次修复：Import Analyze Prompt 已从 `analyze-v1` 提升为 `analyze-v2`。旧版本分析工件在当前运行时不再复用；通过新增回归测试同时证明旧版本工件在旧版本参数下可复用、在当前版本下失效。
 
-负例复验：ik10（猜测）、修正后的 ik11（未经核验的说法）、ik12（明确不相信）在修订 Prompt 下均输出空数组。ik11 原始文本中的“故意撒谎”本身是客观事件，原金标过窄，已改为真正的未经核验说法。
+候选 3 的完整三轮 baseline/calibrated A/B 已完成：12 条自建样本、3 轮顺序变化，共 36/36 结果有效、Provider 错误与超时为 0。calibrated 的 `learn` recall 提升，但整体 precision 和动作集合完全匹配下降，因此当前 Prompt 作为折中版本保留，不继续追加规则。详细脱敏统计见 `evals/import-knowledge/ab-summary.json` 与 `report.md`。
 
-有效小型 A/B：baseline ik04 仅输出 establish，calibrated ik04 输出 establish→learn(林澈)→reveal_to_reader；baseline/calibrated ik07 均输出 establish→learn(苏弦)→reveal_to_reader 并额外输出顾临 believe。完整三轮基线与 A/B 尚未完成，不能计算完整 precision/recall 或一致性，不进入阶段 161。
+真实 Architect 扩弧后的第 3 章 Context 端到端验收仍未完成：代码层 ReaderKnown/CharacterKnown 边界已有回归，但真实 Provider 在弧末评审/扩弧阶段多次阻塞，未生成第 3 章 OutlineEntry。该限制与已完成的 Import 认知 A/B 评测分开记录。
 
 本次采用每次单片段调用和独立超时，结果只保存动作级脱敏数据和 Usage；Provider 长连接/HTTP 502 的无效运行不计入模型质量证据。
 

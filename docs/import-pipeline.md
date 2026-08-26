@@ -399,7 +399,7 @@ type ChapterAnalysisPayload struct {
 }
 ```
 
-每个 `analyses/NNNNNN.json` 都是 `Artifact[ChapterAnalysisPayload]`。同一批次落盘的章节记录相同 `BatchStart/BatchEnd`；其 `InputDigest` 采用**逐章绑定**：切分身份（segmentation 工件的 `InputDigest`）+ prompt/schema 版本 + 章号 + 单章正文。之所以逐章而非按批次划分绑定，是因为批次边界随模型输入/输出能力变化（换更强模型批次自然变大）；若把批次划分写进身份，换模型后已成功的分析会整体失配、被迫重算重复收费。绑定切分身份则保证「重新切分、改 prompt/schema 版本、改源」时下游分析自然失配，而单纯换模型不误伤——这才是恢复真正需要的失效语义。
+每个 `analyses/NNNNNN.json` 都是 `Artifact[ChapterAnalysisPayload]`。同一批次落盘的章节记录相同 `BatchStart/BatchEnd`；其 `InputDigest` 采用**逐章绑定**：切分身份（segmentation 工件的 `InputDigest`）+ prompt/schema 版本 + 章号 + 单章正文。之所以逐章而非按批次划分绑定，是因为批次边界随模型输入/输出能力变化（换更强模型批次自然变大）；若把批次划分写进身份，换模型后已成功的分析会整体失配、被迫重算重复收费。绑定切分身份则保证「重新切分、改 prompt/schema 版本、改源」时下游分析自然失配，而单纯换模型不误伤——这才是恢复真正需要的失效语义。语义 Prompt 的实际修改必须与 `analyzePromptVersion` 递增在同一变更中完成；当前分析 Prompt 版本为 `analyze-v2`，旧 `analyze-v1` 工件不会复用。
 
 `ImportedCharacterFact` 和 `ImportedWorldFact` 是用于全书综合的紧凑观察，不直接写正式角色或世界规则。它们至少携带章节号，使综合结果有稳定来源。
 

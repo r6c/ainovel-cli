@@ -76,6 +76,51 @@ func TestLoadStateReflectsWorkspace(t *testing.T) {
 	}
 }
 
+// TestLoadStateInvalidatesAnalysisFromPreviousPromptVersion 守护 Import 分析 Prompt
+// 的语义版本参与工作区恢复；Prompt 升级后旧分析必须回到 Analyze，而不能静默复用。
+func TestLoadStateInvalidatesAnalysisFromPreviousPromptVersion(t *testing.T) {
+	book := t.TempDir()
+	src := filepath.Join(book, "book.txt")
+	if err := os.WriteFile(src, []byte("第一章\n正文\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	ws, _, err := Ingest(book, src, Intent{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	norm, err := ws.LoadSource()
+	if err != nil {
+		t.Fatal(err)
+	}
+	seg := Segmentation{Chapters: []ChapterSpan{{Number: 1, Title: "第一章", Start: 0, End: len(norm)}}}
+	segDigest := segmentInputDigest(Digest(norm), "", segmentPromptVersion)
+	if err := writeArtifact(ws, fileSegmentation, segDigest, seg); err != nil {
+		t.Fatal(err)
+	}
+	segRaw, err := ws.readBytes(fileSegmentation)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := writeArtifact(ws, fileConfirmation, Digest(segRaw), Confirmation{Method: confirmMethodAuto, Chapters: 1}); err != nil {
+		t.Fatal(err)
+	}
+	const oldPromptVersion = "analyze-v1"
+	oldDigest := chapterInputDigest(segDigest, oldPromptVersion, &seg, norm, 0)
+	if err := writeArtifact(ws, analysisPath(1), oldDigest, ChapterAnalysisPayload{
+		Facts: ImportedChapterFacts{Chapter: 1, Title: "第一章", Summary: "旧分析"},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if got := analyzedChapters(ws, &seg, norm, segDigest, oldPromptVersion); got != 1 {
+		t.Fatalf("旧 Prompt 工件在旧版本下应可复用，got %d", got)
+	}
+
+	state := mustLoadState(t, ws)
+	if state.AnalyzedChapters != 0 || NextAction(state) != ActionAnalyze {
+		t.Fatalf("当前 Prompt 版本必须使旧分析失效：state=%+v action=%s", state, NextAction(state))
+	}
+}
+
 func TestLoadStateReportsCorruptArtifact(t *testing.T) {
 	book := t.TempDir()
 	src := filepath.Join(book, "book.txt")

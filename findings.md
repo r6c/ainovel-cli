@@ -1,5 +1,9 @@
 # ainovel-cli 稳定发现
 
+## 2026-08-26 Import Analyze Prompt 缓存修复
+
+最终 Review 发现 `assets/prompts/import-analyze.md` 已有语义修改，但运行时 `analyzePromptVersion` 仍为 `analyze-v1`，可能复用旧 Prompt 产生的分析工件。已通过回归测试确认旧 `analyze-v1` 工件在旧版本参数下可复用、在当前运行时路径下失效；生产版本已提升为 `analyze-v2`。Import 包、全量测试、vet、Race 和格式门禁已重新执行并通过。
+
 ## 总体结论
 
 项目没有跑偏，仍是“事实层确定、语义层自主”的本地 AI 小说创作运行时：模型负责开放创作与语义判断，代码负责状态、约束、事务、恢复和验证。

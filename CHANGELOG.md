@@ -30,6 +30,6 @@
 
 ### 已知限制
 
-- Import 认知动作已完成定向 Prompt 校准，但完整三轮 precision/recall 统计受 Provider 长连接和 HTTP 502 阻塞，未作为完整统计发布。
-- 真实 Architect 扩弧后的第 3 章 Context 端到端验收曾受 Provider 阻塞；代码层 ReaderKnown/CharacterKnown 净化边界已有确定性回归。
+- Import 认知动作已完成三轮 baseline/calibrated A/B 评测；calibrated 提升了 `learn` 召回，但整体 precision 和动作集合完全匹配下降，因此作为折中版本保留，不继续追加规则。
+- 真实 Architect 扩弧后的第 3 章 Context 端到端验收仍未完成；代码层 ReaderKnown/CharacterKnown 净化边界已有确定性回归。分析 Prompt 版本现为 `analyze-v2`，旧 `analyze-v1` 工件会失效。
 - `usage.updated_at` 可能在零模型调用的 Host 关闭时刷新；Cost/Token/PerAgent 数值不变。
