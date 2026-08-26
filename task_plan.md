@@ -2,10 +2,10 @@
 
 ## 当前状态
 
-- 总体状态：`in_progress`
-- 当前里程碑：X——发布候选稳定化与交付检查
-- 当前阶段：阶段 174——版本、干净环境与构建基线（in_progress）
-- 基线提交：`e0cb158 修复：接入拆文方法画像用量追踪`
+- 总体状态：`complete`
+- 当前里程碑：X——发布候选稳定化与交付检查（complete）
+- 当前阶段：阶段 179——发布候选收口（complete）
+- 基线提交：`a60f814 发布：完成候选版本交付检查`
 - 完整历史：[`docs/history/plans/2026-08-domain-saga-evolution/`](docs/history/plans/2026-08-domain-saga-evolution/)
 
 ## 已完成里程碑
