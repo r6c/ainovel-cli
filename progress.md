@@ -17,6 +17,8 @@
 
 阶段 161 真实两章 Import/Context 回归：使用当前 Prompt 与 sss/gpt-5.6-sol 在全新隔离目录完成 ingest→segment→analysis→synthesis→publish。两条 ChapterRecord 均为 imported/revision=1，Knowledge 投影 2 条、Foreshadow 投影 2 条、无 PendingCommit、phase=writing；K001/K002 的 KnownBy 均为苏弦，ReaderRevealedAt 为 1/2，原文保持。第 3 章尚无 OutlineEntry，因此 novel_context(chapter=3) 按安全策略不注入 knowledge_boundaries，但保留北侧冷阱/中继器线索且未泄露全量 Truth；未手工扩展大纲或续写。阶段 161 标记 partial_evidence，阶段 162 暂不收口。
 
+阶段 161 后续扩弧尝试：使用同一隔离 Import 作品调用 Host.Resume，正确消费导入 Hold；切换 review 并请求第 3 章后，现有弧末评审开始读取第 1/2 章并进入卷摘要维护，但 Provider 长时间无响应，约 45 秒内无新事件，未生成第 3 章 OutlineEntry 或正文。临时驱动已安全停止；Progress 仍为 completed=[1,2]、total_chapters=2、无 PendingCommit，原两章 imported/revision=1 未改变。该次不计为产品逻辑失败，也不把第 3 章认知边界验收标记为通过。
+
 阶段 158 首次基线未产出有效结果：人工复核发现 ik09 金标要求 believe 却未建立同 ID Truth，按正式领域规则该样本非法；已终止未完成进程、删除无效结果，修正为“真实动机 establish+reader reveal，许澄持有相反稳定 belief”。不把该试跑计入模型证据。
 
 临时包内 live runner 首次编译因 helper `itoa` 与现有 `synthesize_test.go` 同名失败，尚未调用模型或产生费用；改用 `strconv.Itoa` 内联并删除本地 helper，不重复占用包级名字。

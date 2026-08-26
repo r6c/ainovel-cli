@@ -10,7 +10,9 @@
 
 ## Import 认知提取校准的当前证据
 
-阶段 158 的完整三轮 baseline 仍受 Provider 长连接/HTTP 502 阻塞，阶段 159 的 Prompt 最小修订没有改变 Schema 或生产生命周期。有限真实证据显示：ik04 的 baseline 仅输出 establish，calibrated 输出 establish→learn(林澈)→reveal_to_reader；calibrated ik05 输出 establish→reveal_to_reader；calibrated ik07 虽输出 establish→learn(苏弦)→reveal_to_reader，却额外误报顾临 believe。结论是召回方向改善但 belief 误报风险仍存在，不能据此完成完整 A/B，也不启动 Context 回归阶段 161。临时 runner、结果和日志已清理。
+阶段 158 的完整三轮 baseline 仍受 Provider 长连接/HTTP 502 阻塞，阶段 159 的 Prompt 最小修订没有改变 Schema 或生产生命周期。
+
+阶段 161 的第 3 章 Context 完整边界仍未能验证：真实 Import 两章发布后的 `outline.json` 只覆盖第 1/2 章；尝试通过 Host.Resume→review→AdvanceOneChapter 触发 Architect 扩弧时，Import Hold 被正确消费，但弧末评审在 Provider 调用处长时间无响应，未生成第 3 章 OutlineEntry。未手工写大纲或绕过 Engine；两章 imported 事实未改变。有限真实证据显示：ik04 的 baseline 仅输出 establish，calibrated 输出 establish→learn(林澈)→reveal_to_reader；calibrated ik05 输出 establish→reveal_to_reader；calibrated ik07 虽输出 establish→learn(苏弦)→reveal_to_reader，却额外误报顾临 believe。结论是召回方向改善但 belief 误报风险仍存在，不能据此完成完整 A/B，也不启动 Context 回归阶段 161。临时 runner、结果和日志已清理。
 
 ## 当前领域事实
 
