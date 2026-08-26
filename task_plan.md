@@ -352,7 +352,9 @@ git diff --check
 
 ### 阶段 189：可断点评测 runner 设计
 
-状态：`planned`
+状态：`complete`
+
+结论：新增仅供校准使用的离线 Runner；逐样本原子落盘、Prompt 身份隔离、损坏结果 fail-loud、错误摘要续跑均由 fake executor 测试锁定。
 
 要求：
 

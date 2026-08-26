@@ -360,3 +360,5 @@ Import Prompt 已有定向修订和有限真实证据，但完整三轮 baseline
 阶段 186 deletion test 结论：Knowledge 选择/净化、预算裁剪、Envelope 装配均不可删除。第一版 Knowledge 变体因脚本破坏局部变量而无效；修正为可编译 no-op 后，相关边界测试稳定失败。由此只批准阶段 187 的 Knowledge 选择纯逻辑局部化，不批准 Context Service/Repository、Budget 模块或 Envelope 重构。
 
 阶段 187—188 结论：Knowledge 选择与净化已集中到同包纯函数 `selectKnowledgeBoundaries`，只接收已加载投影、当前角色匹配结果和章节号，不执行 IO、预算裁剪或序列化。ContextTool 仍是唯一公共适配器；现有 JSON、泄漏、时间边界、8 条上限和预算行为均保持不变。
+
+候选 3 阶段 189 结论：可断点 Runner 已完成且不进入运行时 Import。结果按样本落盘，成功结果携带 Prompt 身份和 Usage，错误只保存摘要；结果损坏或身份不匹配时不会静默跳过。阶段 190 仍需 Provider 稳定后再做有限探针，不能因 Runner 完成而伪报完整 A/B。

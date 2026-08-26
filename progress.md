@@ -260,3 +260,5 @@ Commit 测试共 75 个，名称唯一且与拆分前一致。Rewrite、Integrit
 阶段 186 已完成：在临时副本中做了可编译 deletion test。删除 Knowledge 选择会使 Knowledge/Reader 边界测试失败；删除预算裁剪会使预算契约失败；删除 Envelope apply 会使分区和净化结果缺失。结论：三者均承担真实职责，但不值得创建通用 Context Service。阶段 187 限定为同包内的纯 Knowledge 选择/净化策略深化，IO、预算和 JSON envelope 保持在现有适配器。
 
 阶段 187—188 已完成：将 Knowledge 选择、时间边界、ReaderKnown/CharacterKnown 过滤、active belief 净化与 8 条上限提取到 `internal/tools/context_knowledge_policy.go` 的同包纯策略函数。`ContextTool` 继续负责 Store IO、角色匹配、错误降级、预算和 JSON envelope。Knowledge/Reader Boundary、Context 全包、全量测试、vet、关键 race 与 diff check 全部通过；未创建 Context Service/Repository，未改变公共 JSON 行为。
+
+阶段 189 已完成：新增 `internal/eval/import_knowledge_runner.go`，仅用于离线 Import 认知校准。Runner 按样本原子写入脱敏结果，记录 Prompt 名称/摘要，Prompt 身份变化不会错误复用旧结果；单样本错误写入错误摘要并可续跑，损坏结果 fail-loud，未保存原始模型响应。fake executor 测试覆盖首次运行、断点恢复、Prompt 隔离、错误续跑和损坏工件。
