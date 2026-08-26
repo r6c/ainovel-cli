@@ -19,6 +19,8 @@
 
 阶段 161 后续扩弧尝试：使用同一隔离 Import 作品调用 Host.Resume，正确消费导入 Hold；切换 review 并请求第 3 章后，现有弧末评审开始读取第 1/2 章并进入卷摘要维护，但 Provider 长时间无响应，约 45 秒内无新事件，未生成第 3 章 OutlineEntry 或正文。临时驱动已安全停止；Progress 仍为 completed=[1,2]、total_chapters=2、无 PendingCommit，原两章 imported/revision=1 未改变。该次不计为产品逻辑失败，也不把第 3 章认知边界验收标记为通过。
 
+阶段 161 有界重试：重新创建两章隔离 Import 并调用真实 Host.Resume→review→AdvanceOneChapter。Import Hold 被正常消费，随后弧末评审开始读取章节并维护卷摘要；Provider 在约 45 秒内没有新事件，进程被安全终止。未生成第 3 章 OutlineEntry/正文，Progress 仍为 completed=[1,2]、total_chapters=2、无 PendingCommit；两章 imported/revision=1 未改变。该次继续记为 Provider 阻塞，不修改生产代码、不手工写大纲。
+
 阶段 158 首次基线未产出有效结果：人工复核发现 ik09 金标要求 believe 却未建立同 ID Truth，按正式领域规则该样本非法；已终止未完成进程、删除无效结果，修正为“真实动机 establish+reader reveal，许澄持有相反稳定 belief”。不把该试跑计入模型证据。
 
 临时包内 live runner 首次编译因 helper `itoa` 与现有 `synthesize_test.go` 同名失败，尚未调用模型或产生费用；改用 `strconv.Itoa` 内联并删除本地 helper，不重复占用包级名字。
