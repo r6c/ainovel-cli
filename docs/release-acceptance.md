@@ -212,7 +212,28 @@ Provider：`sss / gpt-5.6-sol`；硬预算 `$0.25`，实际费用 `$0.010818`。
 
 `larashero3-dotcom/lieflat-less-ai-tone`（MIT，审查 commit `27d29232f10124db904ca9c0536d0b67cb3b2833`）不整体安装。它与现有 `anti-ai-tone`、`rules` 和 `story-deslop` 重叠，三个 Python 脚本只做语料统计，不是小说运行时执行器。后续仅把白名单最小修改、信息守恒及少数有证据的候选规则纳入本项目网文样本校准；不直接复制 Skill 或新增第二条去 AI 味管线。
 
-### 3.10 AI 味判据证据校准
+### 3.11 本地拆文方法画像真实验收
+
+使用全新隔离目录和三篇完全自建本地语料执行：
+
+```text
+ainovel-cli deconstruct <本地语料目录>
+```
+
+真实 Provider：`sss / gpt-5.6-sol`。修复 `Host.SimulateDir` 的用量接线后，首次运行得到 3 篇 source reports 与 1 份 `simulation_profile.v1`；累计用量为 input=22084、output=15499、cost 约 `$0.199158`，`per_agent.simulation` 正确记录，missing usage=0。
+
+增量结果：
+
+- 未修改二次运行：`analyze/merge=0`，Usage 数值不变；
+- 新增 `.markdown`：只分析 1 篇，画像累计 3 篇；
+- 修改 `.txt`：只分析 1 篇，画像仍为 3 篇；
+- 非文本 `.json`：被扫描器忽略。
+
+安全检查：画像不含连续自建原文、人物/地点专名或具体作者模仿指令；“仿写/签名短语”只出现在禁止复制与抽象语言特征字段中。Context 只消费 compact profile，不注入 `source_reports`；读者 TXT/EPUB 隔离测试通过。
+
+本次真实验收的临时语料、配置、日志和画像没有进入 Git。此前生产缺口已修复：拆文调用现在通过既有 `UsageTracker` 归入 `simulation` agent，并接受现有预算哨兵约束。
+
+## 3.10 AI 味判据证据校准
 
 使用 16 条 ainovel-cli 自建匿名中文网文最小对和独立金标，对 `sss / gpt-5.6-sol` 执行三轮顺序变化盲评。原始金标中一条单次人物核心恐惧对照句被三轮一致指出具有明确叙事功能；人工按预先协议修正后，多数票与 16 条金标全部一致。直接 Judge 响应记录 Token 7,724，但 Provider 未返回 Cost，故费用记为 unavailable，不伪报 `$0`。
 

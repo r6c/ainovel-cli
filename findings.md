@@ -292,3 +292,11 @@ P2：最终指令明确“全文约 1500 字”，Normalizer 按现有保守语�
 阶段 163/164 代码层替代验证已完成：在现有 `novel_context` 测试夹具中提供第 3 章 OutlineEntry，确认 ReaderKnown 但当前角色未知的 Truth 可注入，苏弦已知的 Truth 保留 KnownBy，顾临独知且读者未知的 Truth 不泄露。该测试不替代真实 Architect 扩弧；真实扩弧此前两次均在 Provider 请求处阻塞，未生成第 3 章大纲。
 
 里程碑 V 的跨进程恢复审查：仓库没有现成故障注入钩子；直接新增生产环境变量会扩大运行时边界，因此没有采用。新增测试子进程只执行已有 `CommitChapterTool.Execute`，父进程通过重新打开磁盘 Store 验证 `progress_marked` 收尾。现有四个 Commit Stage、密封完整性、Imported provenance、Knowledge/Foreshadow 重放矩阵和 Race 已覆盖；没有发现需要新增生产修复的恢复缺口。
+
+## 里程碑 W：本地拆文方法画像真实验收
+
+离线基线复用现有 `internal/host/sim`、`internal/entry/deconstruct`、SimulationProfile 和 Context 测试，全绿。真实自建语料验收覆盖：首次 2 篇、未修改二次零分析、新增 `.markdown` 单篇增量、修改 `.txt` 单篇增量；非文本 JSON 被忽略。
+
+首次真实 Provider 运行暴露一个真实 P1：`Host.SimulateDir` 直接使用 architect 模型，未经过 `UsageTracker`，导致画像调用实际发生但 `usage.json` 为零。已用 fake-model Host 公共测试先取得红灯，再以现有 `newUsageTrackedModel` 复用方式接入 `simulation` agent；修复后真实复跑记录 `input=22084/output=15499/cost≈$0.199158/missing_usage=0`。
+
+真实画像安全扫描没有发现连续自建原文、人物专名或地点专名。关键词“仿写/签名短语”仅出现在模型生成的禁止复制与抽象语言特征字段中；具体内容明确禁止复制，不是模仿指令。Context 仍只注入 compact profile，不注入 `source_reports`；TXT/EPUB 隔离回归通过。

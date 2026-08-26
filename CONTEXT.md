@@ -407,7 +407,7 @@ core → customization → title → confirmation → ready
 ainovel-cli deconstruct <本地语料目录>
 ```
 
-它只读取本地 `.txt/.md/.markdown`，复用现有 `internal/host/sim` 与 `SimulationProfile`，写入当前配置 `OutputDir/meta/simulation_profile.json`；不启动 Engine。TUI `/simulate` 继续委托 `Host.Simulate()` 读取 cwd/simulate，独立命令通过 `Host.SimulateDir()` 传显式目录。
+它只读取本地 `.txt/.md/.markdown`，复用现有 `internal/host/sim` 与 `SimulationProfile`，写入当前配置 `OutputDir/meta/simulation_profile.json`；不启动 Engine。TUI `/simulate` 继续委托 `Host.Simulate()` 读取 cwd/simulate，独立命令通过 `Host.SimulateDir()` 传显式目录。拆文模型调用必须经 `UsageTracker` 归入 `simulation` agent，并受现有预算哨兵约束；不得绕过用量和预算系统。
 
 `SimulationProfile` 已是单篇报告、聚合方法画像、SHA 增量和 Agent Context 的唯一协议，不得另建 Benchmark DTO/Pipeline。内部 Simulation 命名为兼容保留；用户和 Prompt 统一称“拆文方法画像”。
 

@@ -996,3 +996,45 @@ git diff --check
 状态：`complete`
 
 验证 complete + PendingCommit、密封损坏、Imported provenance 和全量 Projector；同步发布验收记录，执行全量测试、vet、race、格式检查并提交。跨进程代表性恢复、已有四 Stage 矩阵、密封/Imported/Knowledge/Foreshadow 组合和 Race 均通过；未新增生产故障注入开关。
+
+# 里程碑 W：本地拆文方法画像真实验收
+
+目标：使用用户主动提供的自建本地 `.txt/.md/.markdown` 语料，验证现有 `deconstruct` 命令、SimulationProfile、增量指纹、合规抽象边界和 Context 消费；不抓网页、不访问 URL、不安装外部 Skill，不新增 Benchmark DTO/Pipeline。
+
+## 阶段 168：离线命令与增量基线
+
+状态：`complete`
+
+复用现有命令、scanner、runner 和 SimulationProfile 测试，覆盖自建语料目录、支持扩展名、忽略非文本文件、空/非法目录、首次生成、未修改二次运行零模型调用、新增/修改文件增量分析。若已有测试充分，只补验收文档和代表性命令，不重复建设 E2E 框架。
+
+## 阶段 169：真实 Provider 拆文
+
+状态：`complete`
+
+在隔离临时目录用 `sss / gpt-5.6-sol` 对 2—3 篇自建短篇执行 `deconstruct`，记录脱敏的篇数、调用数、Token/费用、画像生成和失败恢复。真实模型失败不得写成合规或质量结论。
+
+## 阶段 170：画像抽象与安全边界
+
+状态：`complete`
+
+检查 SimulationProfile 不包含连续原文、具体作者模仿、原作专名/设定或签名短语；确认只提炼结构、节奏、冲突、信息释放、钩子和情绪方法。若发现问题，只做最小 Prompt/Schema 修订，不新增运行时过滤器。
+
+## 阶段 171：增量真实回归
+
+状态：`complete`
+
+真实画像首次生成后，分别验证未修改二次运行零模型调用、新增一篇只处理新增内容、修改一篇只重处理修改内容；以来源指纹和调用计数为证，不读取完整原文进入版本库。
+
+## 阶段 172：Context 消费与成品隔离
+
+状态：`complete`
+
+验证显式导入 SimulationProfile 后，Writer/Architect 只消费抽象画像、不获得原始语料；画像参与既有预算裁剪；TXT/EPUB 不包含画像或语料内容。未指定画像时 Context 不注入任何画像。
+
+## 阶段 173：文档、全量验证与中文提交
+
+状态：`complete`
+
+W 的真实拆文验收、用量接线修复、增量回归、画像安全扫描、Context/Exporter 回归及最终门禁全部通过。
+
+更新 `docs/release-acceptance.md`、`CONTEXT.md` 和 findings，记录真实费用及限制；执行全量测试、vet、race、格式、敏感信息和临时文件检查后，用中文提交.

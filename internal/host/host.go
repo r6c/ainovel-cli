@@ -1816,7 +1816,7 @@ func (h *Host) SimulateDir(ctx context.Context, sourceDir string) (<-chan sim.Ev
 
 	deps := sim.Deps{
 		Store: h.store,
-		LLM:   h.models.ForRole("architect"),
+		LLM:   newUsageTrackedModel(h.models.ForRole("architect"), "simulation", h.usage.Record),
 		Prompts: sim.Prompts{
 			Source: h.bundle.Prompts.SimulationSource,
 			Merge:  h.bundle.Prompts.SimulationMerge,
