@@ -931,7 +931,9 @@ git diff --check
 
 状态：`blocked_provider`
 
-每轮改变样本批次顺序，直接使用当前 import analysisContract 与严格 Schema；统计动作级 precision/recall、完整集合准确率、三轮一致性、Token/费用。不得用简化 Judge 替代真实 Import 协议。
+每轮改变样本顺序，直接使用当前 import analysisContract 与严格 Schema；本次改为每次单片段调用，避免不同 Truth 的 Knowledge ID 在同一批次互相污染。统计动作级 precision/recall、完整集合准确率、三轮一致性、Token/费用。不得用简化 Judge 替代真实 Import 协议。
+
+前次完整运行受本地代理长连接、模型不一致 Knowledge ID 自愈和 HTTP 502 阻塞，未计入证据；本次每次调用使用独立 5 分钟 context timeout。单批通道曾成功，但随后单片段三轮重跑再次长时间停在本地代理 TCP 连接，无结果文件；已终止，不计入模型证据。Provider 通道稳定后再从本阶段重跑。
 
 最小单批通道验证成功：2 条普通事实约 31 秒，均正确输出 establish，Usage 有记录。完整三轮基线未取得有效结果：一次长时间停在本地代理 TCP 连接；改为每批 2 条后，第 1 轮第 3 批出现模型不一致 Knowledge ID，进入正式未知引用自愈，随后 HTTP 502 并在 5 分钟 context timeout 结束。没有完整结果文件，不计入模型质量证据。保持当前 Prompt，不进入阶段 159/160；Provider 通道稳定后从本阶段重跑。
 

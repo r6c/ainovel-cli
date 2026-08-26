@@ -27,6 +27,10 @@
 
 这两次都不计入 precision/recall、一致性或 Prompt 质量证据。没有因无效试跑修改 `import-analyze.md`。
 
+## 追加通道复核（2026-08-26）
+
+将完整三轮改为每次单片段、每次独立 5 分钟 context timeout，以排除跨样本 Knowledge ID 污染。该运行仍在本地代理 TCP 连接上长时间无输出，未生成结果文件，已终止；不计入模型质量证据。当前不修改 Prompt，继续等待 Provider 通道稳定。
+
 ## 当前决策
 
 - 阶段 157：`complete`。

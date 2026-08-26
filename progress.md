@@ -7,6 +7,8 @@
 - 当前里程碑：U——Import 认知事实提取校准
 - 当前阶段：阶段 158——当前 Import Prompt 三轮基线（blocked_provider）
 
+本次重跑改为每次单片段调用，三轮共 36 次真实 Import 严格协议请求，每次独立 5 分钟 context timeout；不修改生产 Prompt，结果只保存动作级脱敏数据和 Usage。
+
 阶段 158 首次基线未产出有效结果：人工复核发现 ik09 金标要求 believe 却未建立同 ID Truth，按正式领域规则该样本非法；已终止未完成进程、删除无效结果，修正为“真实动机 establish+reader reveal，许澄持有相反稳定 belief”。不把该试跑计入模型证据。
 
 临时包内 live runner 首次编译因 helper `itoa` 与现有 `synthesize_test.go` 同名失败，尚未调用模型或产生费用；改用 `strconv.Itoa` 内联并删除本地 helper，不重复占用包级名字。
