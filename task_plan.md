@@ -180,7 +180,9 @@ baseline/calibrated × 3 轮
 
 ## 阶段 209：评测结果解释
 
-状态：`planned`
+状态：`complete`
+
+已生成 `evals/import-knowledge/explanation.md`。报告仅基于现有聚合统计，解释 `learn` 召回提升、`reveal_to_reader` 精确率下降、`believe` 未改善和整体 exact-match 下降；未从缺失的逐样本数据反推具体预测。
 
 对现有 `ab-summary.json` 做脱敏再分析，输出：
 
@@ -197,7 +199,7 @@ baseline/calibrated × 3 轮
 
 ## 阶段 210：扩展自建样本
 
-状态：`planned`
+状态：`in_progress`
 
 从 12 条扩展到 24 条，新增 12 条独立样本，按现有混淆分层：
 
@@ -305,4 +307,4 @@ G2：稳定工作记忆归档
 → 再决定 v0.1.0-rc.1
 ```
 
-当前入口：U2 阶段 209——解释已有 Import 认知 A/B。
+当前入口：U2 阶段 210——样本 12→24。阶段 209 已完成；本轮只扩展自建样本，不调用 Provider。

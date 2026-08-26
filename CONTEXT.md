@@ -429,7 +429,7 @@ Linux amd64/arm64 发布目标均使用 `CGO_ENABLED=0`。CI 除 Ubuntu/Windows 
 
 ## 17.1 发布候选文档
 
-发布候选的用户可读说明位于 `docs/release-notes.md`，升级兼容边界位于 `docs/upgrade.md`，变更记录位于 `CHANGELOG.md`。发布前逐项验收继续使用 `docs/release-acceptance.md`。Import 认知动作三轮 baseline/calibrated A/B 已完成；当前 calibrated 是经评测保留的折中版本。真实 Architect 扩弧后的第 3 章 Context 端到端验收仍未完成，必须与代码层 Context 回归分开记录。Import Analyze Prompt 版本现为 `analyze-v2`；每次语义 Prompt 修改必须递增该版本。
+发布候选的用户可读说明位于 `docs/release-notes.md`，升级兼容边界位于 `docs/upgrade.md`，变更记录位于 `CHANGELOG.md`。发布前逐项验收继续使用 `docs/release-acceptance.md`。Import 认知动作三轮 baseline/calibrated A/B 已完成；解释报告位于 `evals/import-knowledge/explanation.md`，当前 calibrated 是经评测保留的折中版本：`learn` 召回提升，但整体 precision、`reveal_to_reader` precision 和动作集合完全匹配下降。真实 Architect 扩弧后的第 3 章 Context 端到端验收仍未完成，必须与代码层 Context 回归分开记录。Import Analyze Prompt 版本现为 `analyze-v2`；每次语义 Prompt 修改必须递增该版本。
 
 ## 18. 常用验证
 

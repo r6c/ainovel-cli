@@ -5,7 +5,8 @@
 - 日期：2026-08-26
 - 基线：`a20fad7 文档：继续归档并收敛稳定工作记忆`
 - 当前里程碑：C2——Context selection policy 二次深化
-- 当前阶段：C2 已完成，下一步为 U2 阶段 209
+- 当前阶段：U2 阶段 210—样本 12→24（in_progress）
+- 阶段 209 已完成：新增 `evals/import-knowledge/explanation.md`，仅基于现有聚合数据解释 A/B 权衡；不从缺失的逐样本结果反推具体错误。
 - 阶段 205 已完成：新增 `docs/context-policy-decision-matrix.md`，覆盖 Context 输入、候选资格、排除原因、净化、排序/上限、预算裁剪和 Envelope 输出；未修改生产代码。
 - 阶段 206 已完成：临时副本删除实验确认 Knowledge 选择/净化、预算裁剪和 Envelope 装配均不可删除；阶段 207 不做无证据的生产重构，不新增 Context Service/Repository/决策 trace。
 - 本轮不修改生产代码、不调用 Provider、不执行 GoReleaser。
@@ -90,11 +91,11 @@ docs/history/plans/2026-08-pre-release-candidates/
 
 ## U2 计划：Import 认知 A/B 解释与样本扩展
 
-### 阶段 209：解释已有 A/B——pending
+### 阶段 209：解释已有 A/B——complete
 
-不调用 Provider，按混淆矩阵和语义类别解释 baseline/calibrated 的权衡。
+已生成 `evals/import-knowledge/explanation.md`，仅基于现有聚合统计解释 baseline/calibrated 的权衡；没有从缺失的逐样本数据反推具体预测。
 
-### 阶段 210：样本 12→24——pending
+### 阶段 210：样本 12→24——in_progress
 
 新增 12 条完全自建样本，扩展明确 learn、明确 reveal、同 Truth 多动作、未证实转述、belief 和不同题材/视角反例。
 
