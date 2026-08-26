@@ -3,10 +3,10 @@
 ## 当前状态
 
 - 总体状态：`complete`
-- 当前路线：候选 2 Context 选择策略已收敛；候选 3 Provider 评测按需暂停
-- 当前阶段：候选 2——Context selection policy（complete）
+- 当前路线：候选 2 Context 选择策略已收敛；候选 3 Import 认知 A/B 已完成并保留当前 Prompt
+- 当前阶段：候选 3——Import 认知 A/B（complete）
 - 基线提交：`5437350 重构：完成测试资产按接缝整理`
-- 当前工作区：仅规划/发现/进度记录有未提交变更；未开始生产代码修改。
+- 当前工作区：候选 3 评测报告与规划记录有未提交变更；临时真实 Runner 已清理。
 - 已完成发布候选稳定化：X（阶段 174—179 complete）
 - 当前不创建版本标签；候选 2/3/4 先完成规划与低风险准备。
 
@@ -346,6 +346,8 @@ git diff --check
 
 # 候选 3：Import 认知 A/B 完整评测
 
+状态：`complete`
+
 ## 目标
 
 补齐 `establish/believe/learn/reveal_to_reader` 的动作级 precision/recall 与负例统计；不把 Provider 不稳定误判成 Prompt 质量，不把评测 runner 变成运行时框架。
@@ -370,7 +372,9 @@ git diff --check
 
 ### 阶段 190：有限稳定通道探针
 
-状态：`planned`
+状态：`complete`
+
+结论：7/7 指定样本均取得 baseline/calibrated 有效双侧结果，满足进入完整 A/B 的门槛。`ik03/ik04` 本次两版均输出三动作，`ik05` 两版均只输出 reveal，`ik07` 两版均额外输出 believe；负例 `ik10/ik11/ik12` 两版均为空。此前同样本结果存在随机差异，因此仅作为有限证据，不据此宣称 Prompt 因果改善。
 
 只跑：
 
@@ -390,7 +394,9 @@ baseline/calibrated 各一次
 
 ### 阶段 191：完整三轮 A/B
 
-状态：`planned`
+状态：`complete`
+
+结论：12 条自建样本 × baseline/calibrated × 3 轮共 36 条结果全部有效，0 Provider 错误、0 超时；每个 arm 结果按轮次逐样本落盘。
 
 执行：
 
@@ -413,7 +419,9 @@ baseline/calibrated 各一次
 
 ### 阶段 192：评测报告与 Go/No-Go
 
-状态：`planned`
+状态：`complete`
+
+结论：36/36 条结果有效，负例 9/9 保持为空；calibrated 的 learn recall 提升，但整体 precision 和动作集合完全匹配下降，因此保留当前 Prompt，不继续追加规则。详细脱敏统计见 `evals/import-knowledge/ab-summary.json` 与 `report.md`。
 
 只有满足以下条件才允许合入进一步 Prompt 修改：
 

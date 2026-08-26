@@ -1,0 +1,101 @@
+{
+  "version": 1,
+  "status": "complete",
+  "samples": 12,
+  "rounds": 3,
+  "arms": 6,
+  "valid_results": 36,
+  "errors": 0,
+  "baseline": {
+    "runs": 36,
+    "exact_order": 16,
+    "exact_set": 21,
+    "tp": 45,
+    "fp": 4,
+    "fn": 12,
+    "precision": 0.9184,
+    "recall": 0.7895,
+    "usage_input": 60738,
+    "usage_output": 29261,
+    "negative_empty": 9,
+    "by_action": {
+      "establish": {
+        "tp": 20,
+        "fp": 1,
+        "fn": 7,
+        "precision": 0.9524,
+        "recall": 0.7407
+      },
+      "learn": {
+        "tp": 7,
+        "fp": 0,
+        "fn": 5,
+        "precision": 1.0,
+        "recall": 0.5833
+      },
+      "reveal_to_reader": {
+        "tp": 15,
+        "fp": 0,
+        "fn": 0,
+        "precision": 1.0,
+        "recall": 1.0
+      },
+      "believe": {
+        "tp": 3,
+        "fp": 3,
+        "fn": 0,
+        "precision": 0.5,
+        "recall": 1.0
+      }
+    }
+  },
+  "calibrated": {
+    "runs": 36,
+    "exact_order": 17,
+    "exact_set": 19,
+    "tp": 49,
+    "fp": 9,
+    "fn": 8,
+    "precision": 0.8448,
+    "recall": 0.8596,
+    "usage_input": 69018,
+    "usage_output": 28663,
+    "negative_empty": 9,
+    "by_action": {
+      "establish": {
+        "tp": 19,
+        "fp": 0,
+        "fn": 8,
+        "precision": 1.0,
+        "recall": 0.7037
+      },
+      "learn": {
+        "tp": 12,
+        "fp": 0,
+        "fn": 0,
+        "precision": 1.0,
+        "recall": 1.0
+      },
+      "reveal_to_reader": {
+        "tp": 15,
+        "fp": 6,
+        "fn": 0,
+        "precision": 0.7143,
+        "recall": 1.0
+      },
+      "believe": {
+        "tp": 3,
+        "fp": 3,
+        "fn": 0,
+        "precision": 0.5,
+        "recall": 1.0
+      }
+    }
+  },
+  "prompt_decision": "keep_current_calibrated_prompt_no_further_revision",
+  "limitations": [
+    "动作级金标为本项目自建样本",
+    "结果受模型随机性影响",
+    "不对具体 Truth 文本做语义质量外推"
+  ]
+}

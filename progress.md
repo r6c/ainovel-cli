@@ -262,3 +262,14 @@ Commit 测试共 75 个，名称唯一且与拆分前一致。Rewrite、Integrit
 阶段 187—188 已完成：将 Knowledge 选择、时间边界、ReaderKnown/CharacterKnown 过滤、active belief 净化与 8 条上限提取到 `internal/tools/context_knowledge_policy.go` 的同包纯策略函数。`ContextTool` 继续负责 Store IO、角色匹配、错误降级、预算和 JSON envelope。Knowledge/Reader Boundary、Context 全包、全量测试、vet、关键 race 与 diff check 全部通过；未创建 Context Service/Repository，未改变公共 JSON 行为。
 
 阶段 189 已完成：新增 `internal/eval/import_knowledge_runner.go`，仅用于离线 Import 认知校准。Runner 按样本原子写入脱敏结果，记录 Prompt 名称/摘要，Prompt 身份变化不会错误复用旧结果；单样本错误写入错误摘要并可续跑，损坏结果 fail-loud，未保存原始模型响应。fake executor 测试覆盖首次运行、断点恢复、Prompt 隔离、错误续跑和损坏工件。
+
+阶段 190 有限探针已开始：可断点 Runner 的离线行为已完成。真实单样本探针 `ik03` 的 baseline/calibrated 均成功，但动作输出存在随机差异；`ik04` 本次 baseline 与 calibrated 均输出 `establish→learn(林澈)→reveal_to_reader`，与此前单次结果不同，因此不把单次结果当作 Prompt 因果证据。当前仅继续收集独立样本，结果写入临时目录，完成后清理。
+
+
+阶段 191 已开始：有限探针 7/7 双侧有效后，启动完整 12 条样本 × baseline/calibrated × 3 轮 A/B。六个 arm 按轮转、反序和原序分别运行；每条结果独立落盘，错误单独记录，不保存原始模型响应。
+
+阶段 191 评测器启动记录：首次启动在调用 Provider 前失败，原因是 shell 计算的 DIGEST_BASE/DIGEST_CAL 未 export 给 Python 协调器；未产生模型调用。将改为协调器内部计算摘要，并修正临时 Runner 的每样本原子写入、单样本 Usage 增量和错误继续策略后再启动。
+
+阶段 190 已完成：7/7 有限探针均取得 baseline/calibrated 有效双侧结果，满足完整 A/B 门槛。阶段 191 已完成：12 条自建样本、两种 Prompt、三轮顺序变化共 36 条结果全部有效，0 Provider 错误、0 超时；结果逐样本落盘，未保存原始响应。阶段 192 已完成：baseline 总 precision/recall=0.9184/0.7895，calibrated=0.8448/0.8596；calibrated 的 learn recall 由 0.5833 提升至 1.0000，但 reveal_to_reader precision 由 1.0000 降至 0.7143，动作集合完全匹配由 21/36 降至 19/36。因此 Go/No-Go 为保留当前 calibrated Prompt，不继续追加规则。脱敏汇总见 `evals/import-knowledge/ab-summary.json` 与 `report.md`。
+
+候选 3 阶段 190—192 已完成：有限探针 7/7 双侧有效；完整 12 条样本 × baseline/calibrated × 3 轮共 36/36 有效结果，0 Provider 错误、0 超时。最终统计：baseline precision/recall=0.9184/0.7895，calibrated=0.8448/0.8596；calibrated 的 learn recall 0.5833→1.0000，但总 precision、reveal_to_reader precision 与动作集合完全匹配下降。负例两版均 9/9 为空。Go/No-Go：保留当前 calibrated Prompt，不继续追加规则。原始模型响应、临时 Runner 和结果已清理，版本库仅保留脱敏汇总。

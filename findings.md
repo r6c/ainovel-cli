@@ -362,3 +362,11 @@ Import Prompt 已有定向修订和有限真实证据，但完整三轮 baseline
 阶段 187—188 结论：Knowledge 选择与净化已集中到同包纯函数 `selectKnowledgeBoundaries`，只接收已加载投影、当前角色匹配结果和章节号，不执行 IO、预算裁剪或序列化。ContextTool 仍是唯一公共适配器；现有 JSON、泄漏、时间边界、8 条上限和预算行为均保持不变。
 
 候选 3 阶段 189 结论：可断点 Runner 已完成且不进入运行时 Import。结果按样本落盘，成功结果携带 Prompt 身份和 Usage，错误只保存摘要；结果损坏或身份不匹配时不会静默跳过。阶段 190 仍需 Provider 稳定后再做有限探针，不能因 Runner 完成而伪报完整 A/B。
+
+候选 3 阶段 190 真实探针补充：`ik03` baseline/calibrated 均成功；`ik04` 本次两版均成功输出三动作。此前同样本曾出现只输出 establish，说明 Provider/模型输出有随机性；阶段 190 需要累计有效双侧样本，不能用单次输出声称召回改善。
+
+阶段 191 工具错误：完整 A/B 协调器首次启动前因摘要变量未导出而失败，未调用 Provider；不能计入质量结果。临时 Runner 需先修正每样本 Usage 与错误续跑，再重启。
+
+候选 3 阶段 191—192 结论：完整 A/B 已取得 36/36 有效结果。calibrated Prompt 明显提高 learn recall，但降低总体 precision 和动作集合完全匹配；三个负例 baseline/calibrated 均 9/9 为空，believe precision 两版均为 0.5，说明当前修订没有改善该问题。按 Go/No-Go 保留已提交 calibrated Prompt，不继续叠加 Import 规则，也不把单一指标提升包装为整体改进。完整动作级统计与限制见 `evals/import-knowledge/ab-summary.json` 和 `report.md`。
+
+候选 3 完整 A/B 收口：36/36 结果有效，Provider 错误/超时为 0。calibrated 只在 learn recall 上取得明显收益，整体 precision 与动作集合完全匹配下降；reveal_to_reader precision 下降至 0.7143，believe precision 两版均为 0.5，负例无新增动作。当前 Prompt 作为折中版本保留，后续不再基于这组 12 条样本继续堆叠规则；若未来需要优化，应扩大独立样本与人工金标，而不是局部追加禁令。
