@@ -8,6 +8,10 @@
 
 - [`docs/history/plans/2026-08-domain-saga-evolution/findings.md`](docs/history/plans/2026-08-domain-saga-evolution/findings.md)
 
+## Import 认知提取校准的当前证据
+
+阶段 158 的完整三轮 baseline 仍受 Provider 长连接/HTTP 502 阻塞，阶段 159 的 Prompt 最小修订没有改变 Schema 或生产生命周期。有限真实证据显示：ik04 的 baseline 仅输出 establish，calibrated 输出 establish→learn(林澈)→reveal_to_reader；calibrated ik05 输出 establish→reveal_to_reader；calibrated ik07 虽输出 establish→learn(苏弦)→reveal_to_reader，却额外误报顾临 believe。结论是召回方向改善但 belief 误报风险仍存在，不能据此完成完整 A/B，也不启动 Context 回归阶段 161。临时 runner、结果和日志已清理。
+
 ## 当前领域事实
 
 ### ChapterFacts / ChapterRecord

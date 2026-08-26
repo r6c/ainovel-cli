@@ -5,9 +5,11 @@
 - 日期：2026-08-26
 - 基线：`3fddb1e 修复：保护导入与用户正文不被自动返工覆盖`
 - 当前里程碑：U——Import 认知事实提取校准
-- 当前阶段：阶段 159——最小 Prompt 修订（partial_prompt_revision）
+- 当前阶段：阶段 160——小型 Prompt A/B（partial）
 
 定向真实探针：旧 Prompt 下 ik03/ik04 漏报 learn，ik05 漏报 reveal_to_reader；ik07 输出三动作但额外出现 believe。已加入最小多动作 worked example 与负例边界。ik03 修订后成功输出 establish→learn→reveal_to_reader；ik05/ik07 修订探针因 Provider 长连接/宿主 120 秒限制未取得结果。完整三轮基线与 A/B 未完成，不计作统计证据。
+
+小型 A/B 已取得一条有效对照：baseline ik04 仅输出 establish；修订 Prompt 的 calibrated ik04 输出 establish→learn(林澈)→reveal_to_reader，Usage 分别为 2383/2676 tokens。随后 calibrated ik05 正确输出 establish→reveal_to_reader；calibrated ik07 输出 establish→learn(苏弦)→reveal_to_reader，但额外误报顾临 believe。证据支持 learn/reveal 召回改善，也保留 belief 误报风险；完整 A/B 统计尚未完成，不进入阶段 161。
 
 本次重跑改为每次单片段调用，三轮共 36 次真实 Import 严格协议请求，每次独立 5 分钟 context timeout；不修改生产 Prompt，结果只保存动作级脱敏数据和 Usage。
 

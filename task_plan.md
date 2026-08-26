@@ -945,9 +945,9 @@ git diff --check
 
 ## 阶段 160：同模型 Prompt A/B
 
-状态：`pending`
+状态：`partial_evidence`
 
-Baseline 与 calibrated 各三轮，使用相同样本、模型、严格契约和顺序变体。成功条件：learn/reveal 召回提高，猜测/暗示/谎言误报不增加，belief 不退化，完整动作集合准确率与一致性提高。
+完整三轮 A/B 暂未完成，不能计算完整 precision/recall 或一致性。已取得三条有效单样本对照/修订证据：ik04 baseline 仅 establish，calibrated 输出 establish→learn→reveal_to_reader；ik05 calibrated 输出 establish→reveal_to_reader（baseline 旧结果此前超时，无有效对照）；ik07 calibrated 输出三动作但额外误报顾临 believe。证据支持召回改善，也保留误报风险，不能进入阶段 161。完整 A/B 仍需 Provider 稳定后从阶段 158/160 重跑。
 
 ## 阶段 161：真实两章 Import/Context 回归
 
