@@ -236,15 +236,22 @@ func TestCheckpointStore_SeqNotConsumedOnWriteFailure(t *testing.T) {
 		t.Fatalf("seed append: %v", err)
 	}
 
-	// 把 jsonl 文件本身改为只读，使下一次 OpenFile 写入失败
+	// 把 jsonl 文件替换为目录，使 OpenFile 追加稳定失败；不依赖运行用户是否为 root。
 	jsonlPath := filepath.Join(dir, checkpointsFile)
-	if err := os.Chmod(jsonlPath, 0o444); err != nil {
-		t.Skipf("chmod readonly not supported: %v", err)
+	seed, err := os.ReadFile(jsonlPath)
+	if err != nil {
+		t.Fatalf("read seed checkpoints: %v", err)
 	}
-	t.Cleanup(func() { _ = os.Chmod(jsonlPath, 0o644) })
+	if err := os.Remove(jsonlPath); err != nil {
+		t.Fatalf("remove checkpoints file: %v", err)
+	}
+	if err := os.Mkdir(jsonlPath, 0o755); err != nil {
+		t.Fatalf("create blocking directory: %v", err)
+	}
+	t.Cleanup(func() { _ = os.RemoveAll(jsonlPath) })
 
 	if _, err := cs.Append(domain.ChapterScope(2), "plan", "p", "sha256:2"); err == nil {
-		t.Fatal("expected write failure on readonly file")
+		t.Fatal("expected write failure when checkpoints path is a directory")
 	}
 
 	// cache 不应被污染
@@ -252,9 +259,12 @@ func TestCheckpointStore_SeqNotConsumedOnWriteFailure(t *testing.T) {
 		t.Fatalf("cache leaked failed entry, len=%d", len(all))
 	}
 
-	// 恢复写权限，重试应得 seq=2 而不是 seq=3
-	if err := os.Chmod(jsonlPath, 0o644); err != nil {
-		t.Fatalf("restore chmod: %v", err)
+	// 恢复普通文件，重试应得 seq=2 而不是 seq=3。
+	if err := os.Remove(jsonlPath); err != nil {
+		t.Fatalf("remove blocking directory: %v", err)
+	}
+	if err := os.WriteFile(jsonlPath, seed, 0o644); err != nil {
+		t.Fatalf("restore checkpoints file: %v", err)
 	}
 	cp, err := cs.Append(domain.ChapterScope(2), "plan", "p", "sha256:2")
 	if err != nil {
