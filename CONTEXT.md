@@ -423,6 +423,10 @@ Linux amd64/arm64 发布目标均使用 `CGO_ENABLED=0`。CI 除 Ubuntu/Windows 
 
 桌面通知是 best-effort Adapter：Linux 缺少 `notify-send` 时只降级日志，不能影响 Engine、Route 或恢复流程。生产代码不得引入 Chrome/CDP、浏览器登录态、GUI 动态库或绝对临时目录依赖。
 
+## 17.1 发布候选文档
+
+发布候选的用户可读说明位于 `docs/release-notes.md`，升级兼容边界位于 `docs/upgrade.md`，变更记录位于 `CHANGELOG.md`。发布前逐项验收继续使用 `docs/release-acceptance.md`。Import 认知动作完整统计和真实 Architect 扩弧验收若受 Provider 阻塞，必须保留未完成状态，不得在发布说明中伪报为完整统计。
+
 ## 18. 常用验证
 
 ```bash

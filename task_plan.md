@@ -2,10 +2,10 @@
 
 ## 当前状态
 
-- 总体状态：`complete`
-- 当前里程碑：V——跨进程 PendingCommit 恢复验收
-- 当前阶段：阶段 167——终态与回归收口（complete）
-- 基线提交：`99cf65e 测试：补齐读者与角色知识边界回归`
+- 总体状态：`in_progress`
+- 当前里程碑：X——发布候选稳定化与交付检查
+- 当前阶段：阶段 174——版本、干净环境与构建基线（in_progress）
+- 基线提交：`e0cb158 修复：接入拆文方法画像用量追踪`
 - 完整历史：[`docs/history/plans/2026-08-domain-saga-evolution/`](docs/history/plans/2026-08-domain-saga-evolution/)
 
 ## 已完成里程碑
@@ -1036,5 +1036,55 @@ git diff --check
 状态：`complete`
 
 W 的真实拆文验收、用量接线修复、增量回归、画像安全扫描、Context/Exporter 回归及最终门禁全部通过。
+
+# 里程碑 X：发布候选稳定化与交付检查
+
+## 阶段 174：版本、干净环境与构建基线
+
+状态：`complete`
+
+干净 HOME 下的帮助、版本和 deconstruct 帮助通过；linux/amd64、linux/arm64、darwin/amd64、darwin/arm64、windows/amd64 的 CGO_DISABLED 构建通过。未修改版本策略。
+
+核对实际版本入口、`--version/version`、干净 HOME 下的帮助/版本/`deconstruct --help`，并执行 linux/amd64、linux/arm64、darwin/amd64、darwin/arm64、windows/amd64 的 CGO_DISABLED 构建。不得修改版本策略或默认配置路径。
+
+## 阶段 175：旧格式与兼容矩阵
+
+状态：`complete`
+
+UserRules v1—v3、ChapterRecord/ProjectFormat 旧版本、PendingCommit legacy/v1/v2、SimulationProfile v1 和未来版本拒绝矩阵通过。
+
+运行旧 UserRules v1—v3、ChapterRecord v1、ProjectFormat 旧版本、PendingCommit v1/legacy、SimulationProfile v1 的兼容测试；未知未来格式必须明确拒绝，不得静默降级。
+
+## 阶段 176：模型入口与预算审计
+
+状态：`complete`
+
+Architect、Writer、Editor、Arbiter、Import、Revision、Cocreate、Deconstruct 的入口均有 UsageTracker 接线；真实拆文缺口已修复为 `simulation` agent。
+
+静态审计并用 fake 模型确认 Architect、Writer、Editor、Arbiter、Import、Revision、Cocreate、Deconstruct 八类入口均经过 UsageTracker；确认真实拆文修复后的 `simulation` agent 和既有 BudgetSentinel 不被绕过。
+
+## 阶段 177：恢复与成品发布矩阵
+
+状态：`complete`
+
+Commit/Rewrite/Knowledge/Foreshadow/Imported provenance/complete/跨进程恢复和 TXT/EPUB 隔离矩阵通过，未新增故障注入开关。
+
+运行 Commit/Rewrite/Knowledge/Foreshadow/Imported provenance/complete/跨进程恢复矩阵，以及 TXT/EPUB 内部状态隔离；不新增故障注入开关或新 Saga Stage。
+
+## 阶段 178：交付文档与变更说明
+
+状态：`complete`
+
+新增 CHANGELOG、发布说明和升级说明，记录 v2 密封、UserRules v4、Imported provenance、本地 deconstruct、Linux/无头边界、扫榜不支持和 Import 校准限制。
+
+新增或更新 `CHANGELOG.md`、`docs/release-notes.md`、`docs/upgrade.md`，记录 PendingCommit v2、UserRules v4、Imported provenance、deconstruct、本地/Linux 边界、扫榜明确不支持和 Import 校准限制。
+
+## 阶段 179：发布候选收口
+
+状态：`complete`
+
+全量测试、vet、关键 race、五目标交叉编译、干净 HOME 帮助/版本、Markdown 链接、敏感信息和临时产物扫描全部通过。X 发布候选文档已齐，当前未创建版本标签。
+
+执行全量测试、vet、race、gofmt、git diff --check、Markdown 链接、敏感信息和临时产物扫描；确认工作区只包含候选记录后，用中文提交。
 
 更新 `docs/release-acceptance.md`、`CONTEXT.md` 和 findings，记录真实费用及限制；执行全量测试、vet、race、格式、敏感信息和临时文件检查后，用中文提交.
