@@ -217,6 +217,24 @@ Commit 测试共 75 个，名称唯一且与拆分前一致。Rewrite、Integrit
 
 阶段 181 收口验证：Commit 测试集合与 HEAD 中的 `commit_chapter_test.go`、`commit_process_recovery_test.go` 完全一致，共 75 个唯一测试，无丢失、重复或新增。Commit 测试已按 seam 分布到 payload、knowledge、foreshadow、rewrite、integrity、side_effects 和 process_recovery 文件；生产代码无差异。全量测试、vet、关键 race、diff check 全部通过。
 
+阶段 182 首个切片已完成：新增 `internal/tools/context_knowledge_test.go`，移动 6 个 Knowledge/Belief/ReaderKnown 测试。完整 Context 测试集合与 HEAD 对比为 33 个唯一测试，未丢失、重复或新增；定向测试、`internal/tools`、全量测试、vet 与 diff check 通过。生产代码无差异。
+
+阶段 182 第二个切片已完成：新增 `internal/tools/context_recall_test.go`，移动 8 个 Recall/伏笔/Review 记忆测试。完整 Context 测试集合仍为 33 个唯一测试，未丢失、重复或新增；Recall 定向测试、`internal/tools`、全量测试、vet 与 diff check 全部通过。生产代码无差异。
+
+阶段 182 第三个切片已完成：新增 `internal/tools/context_budget_test.go` 与 `internal/tools/context_references_test.go`，移动 7 个 Budget/Platform Rubric/References 测试。完整 Context 测试集合仍为 33 个唯一测试，未丢失、重复或新增；Budget/References 定向测试、`internal/tools`、全量测试、vet 与 diff check 全部通过。生产代码无差异。
+
+阶段 182 已完成：最后 10 个测试拆分为 `context_errors_test.go`、`context_modes_test.go`、`context_envelope_test.go`；原文件仅保留共享 helper，Simulation 与 Reader Boundary 独立文件保持不动。全部 Context 测试与 HEAD 对比为 33 个唯一测试，未丢失、重复或新增；定向测试、`internal/tools`、全量测试、vet 与 diff check 全部通过。候选 4 下一步进入阶段 183 Import 测试资产拆分。
+
+阶段 182 收口：Context 测试按 Knowledge、Recall、Budget、References、Modes、Envelope、Errors 七个消费 seam 完成整理；`novel_context_simulation_test.go` 和 `novel_context_reader_boundary_test.go` 保持独立。完整测试集合与 HEAD 保持 33 个唯一测试，生产代码无差异。阶段 183 已进入进行中。
+
+阶段 183 首个切片已完成：严格 Contracts 已确认无需移动，原本集中在 `analyze_test.go` 的 8 个 Knowledge/认知连续性测试已迁移至 `analyze_knowledge_test.go`。Import 全部测试集合与 HEAD 对比为 103 个唯一测试，无丢失、重复或新增；Knowledge 定向、Import 全包、全量测试与 vet 通过。生产代码无差异。
+
+阶段 183 第二个切片已完成：`publish_test.go` 中 4 个映射、Knowledge 发布与元数据规范化测试已迁移至 `publish_provenance_test.go`；`TestPublishChapterHandlesStalePendingCommit` 保留在原文件作为恢复测试。Import 全部测试集合与 HEAD 对比仍为 103 个唯一测试，无丢失、重复或新增；发布定向、Import 全包、全量测试与 vet 通过。生产代码无差异。
+
+阶段 183 第三个切片已完成：`runner_test.go` 中 6 个 Import 主流程、全书事实发布前门禁、Synthesis 门禁、原文保真与 Completion Hold 测试已迁移至 `runner_recovery_test.go`；运行时配置、错误反馈和重分段测试保留在原文件。Import 全部测试集合与 HEAD 对比仍为 103 个唯一测试，无丢失、重复或新增；Runner 定向、Import 全包、全量测试与 vet 通过。生产代码无差异。
+
+阶段 183 第四个切片已完成：`analyze_test.go` 中 6 个全书事实校验与工作区失效测试已迁移至 `analyze_facts_test.go`；批次分析、Salvage、预算和 Schema 失效测试保留在原文件。Import 全部测试集合与 HEAD 对比仍为 103 个唯一测试，无丢失、重复或新增；Analyze 定向、Import 全包、全量测试与 vet 通过。生产代码无差异。
+
 ### 候选 4：测试按 seam 拆分
 
 从阶段 180 开始，先建立 Commit/Context/Import 测试函数归属表，再按 seam 移动文件。保持测试名称、数量、公共接口和 `-run` 筛选稳定；每次移动后先局部测试再全量。该线不新增测试框架、不修改生产代码。
@@ -232,3 +250,5 @@ Commit 测试共 75 个，名称唯一且与拆分前一致。Rewrite、Integrit
 ### 共同门禁
 
 阶段 193—194 负责候选 2/3/4 的全量测试、vet、race、格式、文档和路线收口。当前下一步是阶段 180：测试资产归属清单。
+
+阶段 183 第五个切片与阶段 184 收口已完成：`segment_test.go`、`source_test.go`、`state_test.go`、`synthesize_test.go`、`workspace_test.go`、`call_test.go`、`contracts_test.go` 原本已按职责独立，无需继续移动。Import 全部测试集合与拆分前 HEAD 保持 103 个唯一测试，未丢失、重复或新增；全量测试、vet、关键回归和 diff check 通过。候选 4 的测试资产整理完成，生产代码无差异。

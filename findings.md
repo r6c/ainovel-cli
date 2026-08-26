@@ -334,3 +334,23 @@ Import Prompt 已有定向修订和有限真实证据，但完整三轮 baseline
 ```
 
 明确不做：候选 4 不顺手重构生产；候选 2 不创建通用 Context Service/Repository；候选 3 不因 Provider 阻塞伪造质量结论或新增 Import Schema。
+阶段 182 首个 Knowledge/信息边界切片已完成：6 个 Context 测试移动到 `context_knowledge_test.go`。完整 Context 测试集合与 HEAD 对比为 33 个唯一测试，未丢失、重复或新增；此前集合审计第一次漏算了独立的 `novel_context_reader_boundary_test.go` 与 `novel_context_simulation_test.go`，随后已用全部 Context 测试文件重新核对通过。生产代码无差异。
+
+阶段 182 第二个 Recall 切片已完成：8 个 Recall/伏笔/Review 记忆测试移动到 `context_recall_test.go`。完整 Context 测试集合与 HEAD 保持 33 个唯一测试，未丢失、重复或新增；生产代码无差异。
+
+阶段 182 第三个 Budget/References 切片已完成：4 个预算裁剪测试移动到 `context_budget_test.go`，3 个平台 Rubric/References 测试移动到 `context_references_test.go`。完整 Context 测试集合与 HEAD 保持 33 个唯一测试；生产代码无差异。
+
+阶段 182 已完成：最后 10 个 Context 测试拆分到 `context_errors_test.go`、`context_modes_test.go`、`context_envelope_test.go`；`novel_context_test.go` 仅保留共享 helper，Simulation/Reader Boundary 独立文件保持不动。全部 Context 测试与 HEAD 保持 33 个唯一测试，生产代码无差异。
+
+阶段 182 收口：最后 10 个 Context 测试已拆分到 `context_errors_test.go`、`context_modes_test.go`、`context_envelope_test.go`。`novel_context_test.go` 仅保留共享 helper；Simulation/Reader Boundary 测试保持独立。与 HEAD 对比为 33 个唯一测试，生产代码无差异；阶段 183 已进入进行中。
+
+阶段 183 首个切片已完成：`contracts_test.go` 原本已按职责独立，无需移动；`analyze_test.go` 中 8 个 Knowledge/认知连续性测试已迁移至 `analyze_knowledge_test.go`。Import 测试集合与 HEAD 保持 103 个唯一测试，无丢失、重复或新增；生产代码无差异。
+
+阶段 183 第二个切片已完成：`publish_test.go` 中 4 个映射、Knowledge 发布与元数据规范化测试已迁移到 `publish_provenance_test.go`；`TestPublishChapterHandlesStalePendingCommit` 继续留在原文件作为发布恢复测试。Import 测试集合与 HEAD 保持 103 个唯一测试，生产代码无差异。
+
+阶段 183 第三个切片已完成：`runner_test.go` 中 6 个 Import 主流程、全书事实发布前门禁、Synthesis 门禁、原文保真与 Completion Hold 测试已迁移至 `runner_recovery_test.go`；运行时配置、错误反馈和重分段测试保留在原文件。Import 测试集合与 HEAD 保持 103 个唯一测试，生产代码无差异。
+
+阶段 183 第四个切片已完成：`analyze_test.go` 中 6 个全书事实校验与工作区失效测试已迁移至 `analyze_facts_test.go`；批次分析、Salvage、预算和 Schema 失效测试保留在原文件。Import 测试集合与 HEAD 保持 103 个唯一测试，生产代码无差异。
+
+
+候选 4 收口结论：剩余 Import 测试文件已经按职责独立，继续拆分只会增加文件噪声。阶段 183—184 完成后，Commit、Context、Import 测试均按 seam 可导航，且 103 个 Import 测试与 HEAD 集合完全一致；未修改生产代码。

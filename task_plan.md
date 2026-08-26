@@ -2,10 +2,10 @@
 
 ## 当前状态
 
-- 总体状态：`planned`
+- 总体状态：`complete`
 - 当前路线：候选 2/3/4 架构深化与评测准备
-- 当前阶段：阶段 181——Commit 测试按 seam 拆分（in_progress）
-- 基线提交：`230ce1f 文档：收口发布候选计划状态`
+- 当前阶段：候选 4——测试按 seam 拆分（complete）
+- 基线提交：`6d6bcd5 重构：按接缝整理 Commit 测试资产`
 - 当前工作区：仅规划/发现/进度记录有未提交变更；未开始生产代码修改。
 - 已完成发布候选稳定化：X（阶段 174—179 complete）
 - 当前不创建版本标签；候选 2/3/4 先完成规划与低风险准备。
@@ -182,7 +182,13 @@ internal/tools/commit_rewrite_test.go
 
 ### 阶段 182：Context 测试按消费 seam 拆分
 
-状态：`planned`
+状态：`complete`
+
+阶段 182 已完成：Context 测试按消费 seam 拆分为 Knowledge、Recall、Budget、References、Modes、Envelope、Errors；保留 `novel_context_simulation_test.go` 与 `novel_context_reader_boundary_test.go` 两个独立文件，原文件仅保留共享 helper。与拆分前 HEAD 对比仍为 33 个唯一测试，未丢失、重复或新增；定向测试、`internal/tools`、全量测试、vet、diff check 全部通过。生产代码无差异。候选 4 下一步进入阶段 183：Import 测试资产按阶段拆分。
+
+第二个 Recall 切片已完成：新增 `internal/tools/context_recall_test.go`，移动 8 个 Recall/伏笔/Review 记忆测试；原测试名保持不变。完整 Context 测试集合仍为 33 个唯一测试，未丢失、重复或新增；定向测试、`internal/tools`、全量测试与 vet 已通过。下一切片处理 Budget/References/Envelope，保留已有独立 Simulation 与 Reader Boundary 文件。
+
+第三个切片已完成：新增 `context_budget_test.go` 与 `context_references_test.go`，移动 7 个 Budget/Platform Rubric/References 测试；原测试名保持不变。完整 Context 测试集合仍为 33 个唯一测试，未丢失、重复或新增；Budget/References 定向测试、`internal/tools`、全量测试与 vet 已通过。下一切片处理 Envelope/错误降级与基础模式测试。
 
 候选文件：
 
@@ -205,7 +211,7 @@ internal/tools/context_simulation_test.go
 
 ### 阶段 183：Import 测试资产按阶段拆分
 
-状态：`planned`
+状态：`complete`
 
 候选文件：
 
@@ -221,7 +227,7 @@ internal/host/imp/recovery_test.go
 
 ### 阶段 184：拆分回归与范围审计
 
-状态：`planned`
+状态：`complete`
 
 运行：
 
@@ -245,6 +251,10 @@ git diff --check
 ```text
 重构：按接缝整理测试资产
 ```
+
+### 阶段 183—184 完成结论
+
+阶段 183 已将 Import 测试按 Contracts、Knowledge、事实校验、Provenance、Runner/Recovery 等 seam 拆分；已有独立的 Segment、Source、State、Synthesis、Workspace、Call 测试文件保持不动。阶段 184 完成 103 个唯一测试的集合审计和全量回归，生产代码未修改。
 
 # 候选 2：Context selection policy 深化
 

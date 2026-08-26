@@ -1,6 +1,6 @@
 # 测试资产归属表
 
-> 阶段 180 产物。只记录当前测试函数与 seam 的归属，不代表已经移动文件。候选 4 的后续移动必须保持测试名称、数量、公共接口和 `-run` 筛选兼容。
+> 阶段 180—184 产物。记录当前测试函数与 seam 的归属及已完成拆分；候选 4 保持测试名称、数量、公共接口和 `-run` 筛选兼容。
 >
 > 盘点基线：`230ce1f 文档：收口发布候选计划状态`。本文件创建时没有修改任何 Go 文件。
 
@@ -22,33 +22,39 @@
 
 ## 2. Context 测试
 
-当前文件：`internal/tools/novel_context_test.go`（约 1516 行）。共享构造入口：`newTestContextTool`。
+共享构造入口仍为 `newTestContextTool`；Context 测试已按消费 seam 拆分，原文件仅保留共享 helper。
 
 | 目标 seam | 预期文件 | 测试范围 |
 |---|---|---|
 | Knowledge 选择、净化与信息边界 | `context_knowledge_test.go` | `TestContextToolBoundsKnowledgeForCurrentOutline`; `TestContextToolDoesNotExposeTruthUntilAfterReaderRevealChapter`; `TestContextToolExposesActiveBeliefWithoutLeakingHiddenTruth`; `TestContextToolSanitizesBeliefBoundariesByReaderCharacterAndTime`; `TestContextToolExposesReaderKnownTruthWithoutTeachingCurrentCharacter`; `TestContextToolSelectsKnowledgeForCharactersInCurrentOutline`; `TestContextToolReaderBoundary...`（若测试名后续扩展） |
 | Recall/伏笔/章节与 Review 记忆 | `context_recall_test.go` | `TestContextToolSelectedMemoryRecallsStoryThreadsAndReviewLessons`; `TestContextToolSelectedMemorySurfacesAgingForeshadow`; `TestContextToolSelectedMemoryIncludesGlobalReviewLessons`; `TestContextToolKeepsFullForeshadowWhenRecallNotTriggered`; `TestContextToolFallsBackToFullForeshadowWhenSelectionIsTooSparse`; `TestContextToolLoadsArcReviewAffectingEarlierChapter`; `TestContextToolInjectsRewriteBriefForPendingRewriteChapter`; `TestContextToolOmitsRewriteBriefForNormalChapter` |
-| Budget/裁剪/规范化 envelope | `context_budget_test.go` | `TestTrimByBudgetRecordsKnowledgeBoundaries`; `TestTrimByBudgetCanRemovePlatformRubricWithReferences`; `TestTrimByBudgetRemovesCanonicalMemoryKeys`; `TestTrimByBudgetKeepsStyleStats`; `TestBuildProgressStatusHidesLayeredCapacityEstimate` |
-| References/平台/用户规则/文风 | `context_references_test.go` | `TestContextToolInjectsFanqieRubricOnlyWhenExplicitlySelected`; `TestContextToolUnspecifiedPlatformDoesNotLeakLoadedFanqieRubric`; `TestContextToolArchitectModeInjectsExplicitFanqieRubric`; `TestContextToolInjectsChapterTargetForArchitectAndWriter`; `TestContextToolDoesNotInjectUserDirectives`; `TestContextToolInjectsRuleViolations`; `TestContextToolInjectsStyleStats` |
-| Architect/Writer envelope与SimulationProfile | `context_envelope_test.go` | `TestContextToolChapterModeIncludesWorkingAndReferenceFields`; `TestContextToolArchitectModeIncludesPlanningAndFoundation`; `TestContextToolArchitectModeIncludesFlatOutline`; `TestContextToolInjectsCompactSimulationProfile`（当前位于独立 `novel_context_simulation_test.go`，保持该文件） |
+| Budget/裁剪 | `context_budget_test.go` | `TestTrimByBudgetRecordsKnowledgeBoundaries`; `TestTrimByBudgetCanRemovePlatformRubricWithReferences`; `TestTrimByBudgetRemovesCanonicalMemoryKeys`; `TestTrimByBudgetKeepsStyleStats` |
+| References/平台 | `context_references_test.go` | `TestContextToolInjectsFanqieRubricOnlyWhenExplicitlySelected`; `TestContextToolUnspecifiedPlatformDoesNotLeakLoadedFanqieRubric`; `TestContextToolArchitectModeInjectsExplicitFanqieRubric` |
+| 基础模式与 UserRules/Style | `context_modes_test.go` | `TestContextToolInjectsStyleStats`; `TestContextToolChapterModeIncludesWorkingAndReferenceFields`; `TestContextToolArchitectModeIncludesPlanningAndFoundation`; `TestContextToolArchitectModeIncludesFlatOutline`; `TestContextToolInjectsChapterTargetForArchitectAndWriter` |
+| Envelope 与规则事实 | `context_envelope_test.go` | `TestBuildProgressStatusHidesLayeredCapacityEstimate`; `TestContextToolDoesNotInjectUserDirectives`; `TestContextToolInjectsRuleViolations` |
+| SimulationProfile | `novel_context_simulation_test.go` | `TestContextToolInjectsCompactSimulationProfile`（保留已有独立文件） |
 | 错误降级与核心状态 | `context_errors_test.go` | `TestContextToolWarnsWhenOptionalDataIsCorrupt`; `TestContextToolRejectsCorruptCoreState` |
 
-说明：Context 测试的 JSON 断言不能改成字符串断言；ReaderKnown/CharacterKnown、隐藏 Truth 和 `_trimmed` 必须继续使用结构化检查。当前已有 `novel_context_simulation_test.go` 和 `novel_context_reader_boundary_test.go`，候选 4 不应为了“统一文件名”无收益地移动它们。
+说明：Context 测试的 JSON 断言不能改成字符串断言；ReaderKnown/CharacterKnown、隐藏 Truth 和 `_trimmed` 必须继续使用结构化检查。当前已有 `novel_context_simulation_test.go` 和 `novel_context_reader_boundary_test.go`，候选 4 保留这两个独立文件，不做无收益移动。
 
 ## 3. Import 测试
 
-Import 当前测试按职责已经部分拆分，阶段 180 不移动文件，只补充归属映射。
+Import 测试已按职责拆分；保留已有独立文件，不为拆分而拆分。
 
 | 当前文件/目标 seam | 主要测试 |
 |---|---|
 | `contracts_test.go` / 严格结构化契约 | `TestStructuredContractsAreStrictReady`; `TestAnalysisContractAcceptsKnowledgeActions`; `TestAnalysisContractAcceptsForeshadowLifecycleActions`; `TestCallStructuredUsesNativeSchemaWithoutPromptDuplication`; `TestCallStructuredPromptModeInjectsContract` |
 | `call_test.go` / 结构化调用与错误反馈 | `TestCallStructuredNotifiesRetries`; `TestBriefErrIncludesAdapterFacts`; `TestCallStructuredCancelIsNotSemanticFailure`; `TestCallStructuredCarriesRawOnSemanticFailure`; `TestCallStructuredCarriesRawOnProtocolFailure` |
-| `analyze_test.go` / 全书事实、Knowledge、批次与失效 | `TestValidateImportedFactSequence*`; `TestInvalidWorkspaceFactsReturnStateToAnalyze`; `TestValidateWorkspaceFactsInvalidatesFromFirstIllegalChapter`; `TestDiscardAnalysesAfter`; `TestBuildLedger*`; `TestValidateBatch*`; `TestAnalyzeNext*`; `TestSalvagePrefix*`; `TestAnalyzedChapters*` |
-| `publish_test.go` / 映射、发布与 provenance | `TestPublishChaptersPersistsKnowledgeState`; `TestImportedFactsMappingMatchesPublishedCommitFacts`; `TestCommitArgsIncludesKnowledgeUpdates`; `TestCheckFoundationConflictsNormalizesBookMetadata`; `TestPublishChapterHandlesStalePendingCommit` |
-| `runner_test.go` / Import 主流程、零污染、发布恢复 | `TestPublishRejectsInvalidFullBookFactsBeforeWritingOfficialStore`; `TestSynthesizeRejectsInvalidFullBookFactsBeforeModelCall`; `TestRunEndToEnd`; `TestRunPreservesImportedMarkdownWithoutGeneratedDraftGate`; `TestRunSetsCompletionHold`; `TestRunRejectsDifferentSource`; `TestConfirmNotesGate`; `TestStoryChoiceIgnoresStaleResolution`; `TestRunSavesFailureOnContractViolation`; `TestRunGuidanceResegments` |
+| `analyze_test.go` / 批次分析、Salvage、预算与 Schema 失效 | `TestPlanBatchOutputBudgetCaps`; `TestPlanBatchInputBudgetCaps`; `TestValidateBatchRejections`; `TestAnalyzeNextPersistsWithRebatchOnTruncation`; `TestAnalyzeNextRejectsInvalidCumulativeSalvagePrefix`; `TestSalvagePrefixContiguous`; `TestSalvagePrefixStopsAtGap`; `TestAnalyzedChaptersInvalidatesPreviousAnalysisSchemaVersion`; `TestAnalyzedChaptersInvalidatesOnUpstreamChange` |
+| `analyze_knowledge_test.go` / Knowledge 连续性与 ledger | `TestValidateImportedFactSequenceRejectsBeliefAfterLearnAcrossBatches`; `TestBuildLedger*`; `TestValidateBatchReaderReveal*`; `TestValidateBatchBeliefContinuityAndFields`; `TestValidateBatchKnowledgeContinuity` |
+| `publish_provenance_test.go` / 映射、发布与 provenance | `TestPublishChaptersPersistsKnowledgeState`; `TestImportedFactsMappingMatchesPublishedCommitFacts`; `TestCommitArgsIncludesKnowledgeUpdates`; `TestCheckFoundationConflictsNormalizesBookMetadata` |
+| `publish_test.go` / 发布恢复 | `TestPublishChapterHandlesStalePendingCommit` |
+| `runner_recovery_test.go` / Import 主流程、零污染、发布前门禁 | `TestPublishRejectsInvalidFullBookFactsBeforeWritingOfficialStore`; `TestSynthesizeRejectsInvalidFullBookFactsBeforeModelCall`; `TestRunEndToEnd`; `TestRunPreservesImportedMarkdownWithoutGeneratedDraftGate`; `TestRunSetsCompletionHold`; `TestRunRejectsDifferentSource` |
+| `runner_test.go` / Import 恢复与运行时配置 | `TestConfirmNotesGate`; `TestStoryChoiceIgnoresStaleResolution`; `TestRunSavesFailureOnContractViolation`; `TestRunGuidanceResegments`; `TestBudgetsFromDepsPerTier`; `TestBudgetsFromRuntime`; `TestProfileForKeyPolicy`; `TestCallProfileOptions` |
 | `segment_test.go` / 分章与切分 | 全部 `TestResolveSegmentation*`、`TestSegment*`、`TestPlanChunks*`、`TestChunkValidator*`、`TestPlanningBudget`、`TestBuildProjectionContextByteCap`、`TestCallStructuredTruncation` |
 | `source_test.go` / 输入解码与换行 | `TestDecodeSource*`; `TestNormalizeLineEndings` |
-| `state_test.go` / 工作区状态与 NextAction | `TestNextActionChain`; `TestLoadState*`; `TestIngestSnapshotConsistent`; `TestGuidanceChangeInvalidatesSegmentation`; `TestResumeSummary`; `TestResumeStatusPublishedIsTerminal`; `TestImportPreconditions` |
+| `state_test.go` / 工作区状态与 NextAction | `TestNextActionChain`; `TestLoadState*`; `TestIngestSnapshotConsistent`; `TestGuidanceChangeInvalidatesSegmentation`; `TestResumeSummary`; `TestResumeStatusPublishedIsTerminal`; `TestImportPreconditions`（已按职责独立，无需迁移） |
+| `analyze_facts_test.go` / 全书事实与工作区失效 | `TestValidateImportedFactSequenceRejectsOutOfOrderArtifactChapters`; `TestValidateImportedFactSequenceReplaysCrossBatchLifecycles`; `TestInvalidWorkspaceFactsReturnStateToAnalyze`; `TestValidateWorkspaceFactsInvalidatesFromFirstIllegalChapter`; `TestDiscardAnalysesAfter`; `TestAnalyzeNextRejectsCrossBatchFactConflictBeforeWritingArtifact` |
 | `synthesize_test.go` / 综合、范围和画像 | `TestRangeDigestIdentityIgnoresFactsItDoesNotConsume`; `TestValidateStructure`; `TestAssembleFoundation*`; `TestImportedBookTitle`; `TestPlanFactRangesSplits`; `TestToCompactCarriesEvidence`; `TestSynthesizeRejectsRangeMismatch`; `TestGroupDigestsByBudget`; `TestReduceToFitMergesUntilBudget`; `TestSynthesizeDirectWithMock` |
 | `workspace_test.go` / 工件与原子工作区 | 全部 `TestWorkspace*`、`TestArtifactRoundtripPreservesIdentity`、`TestDigestStableAndDistinct` |
 
@@ -59,3 +65,10 @@ Import 当前测试按职责已经部分拆分，阶段 180 不移动文件，�
 - Import 已按职责分文件，后续主要是把 `analyze_test.go` 中的 Knowledge/全书事实测试进一步分离，拆分前必须处理共享 helper 和包级 fixture。
 - 阶段 181 应先从 Commit 测试拆分开始；阶段 182 再处理 Context；阶段 183 最后处理 Import。
 - 目前没有移动文件、修改测试或修改生产代码。
+
+## 阶段 183—184 收口
+
+- Import 主流程、事实校验、Knowledge 连续性和 Provenance 测试已迁移到职责对应文件。
+- `contracts_test.go`、`call_test.go`、`segment_test.go`、`source_test.go`、`state_test.go`、`synthesize_test.go`、`workspace_test.go` 原本已按职责独立，未做无收益移动。
+- 全部 Import 测试与拆分前 HEAD 保持 103 个唯一测试，未丢失、重复或新增。
+- 候选 4 不修改生产代码、不新增测试框架、不改变测试语义。
