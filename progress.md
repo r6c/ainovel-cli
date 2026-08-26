@@ -182,3 +182,53 @@ Revision 代表性自动化、全包、race、vet 全部通过；新增完结书
 阶段 146 自动化基线全绿。阶段 147 一次性真实 Cocreate 程序首次编译因猜错 `Store.Premise` 访问器失败，尚未调用模型或产生费用；改读真实 Store 结构后只修验收程序，不改生产代码。第一次真实对话 1→4 轮停在 core/customization：模型持续要求用户决定或授权选择求救包真相，固定脚本没有回答，证明模型未擅自补关键谜底；第 5 轮又遇上游 HTTP 502。已终止并清理隔离目录，保留脱敏阶段轨迹；该次 Usage 随目录清理无法复算，费用记 unavailable，不伪造。第二次已明确授权模型选择真相，但第 1 轮即遇同类 HTTP 502，未形成有效对话。第三次按现有 TUI“失败保留 Session、用户重试”语义，在同一轮最多重试 3 次并记录次数；不修改生产流式重试策略。
 
 阶段 127 启动时一次读取猜错 `internal/store/checkpoint.go`，实际文件为 `checkpoints.go`；未重复错误路径。首个 Headless 恢复测试夹具又因 Book 缺必填 Synopsis 在行为 seam 前失败；不作为产品红灯，补合法作品元数据后重跑。最小恢复实现后 PendingCommit 已清理，但测试用旧 Store 的 CheckpointStore 内存镜像观察不到另一个 Host 新增的 checkpoint；改为重开 Store 读取磁盘事实。随后猜测了不存在的 `internal/host/resume_test.go`；Host 无独立 Resume 测试文件，Headless 公共用例已通过真实 Host.Resume 覆盖，不再猜文件名。阶段 129 批量切换 Headless 到 Host 终态探测时，import/函数片段与预期不完全匹配，结构化编辑未应用；改为读取真实文件后分步替换。阶段 130 首个 Import 测试误把 `LoadRuleViolations` 当作双返回接口，编译失败未当作产品红灯；按真实单返回接口修正。增强篇幅目标夹具时又把 `UserRules.Save` 的指针参数传成值，仍未触达产品行为，已按真实接口修正。阶段 133 首次受限夹具迁移使用 `node`，但用户环境无该命令，迁移未执行；新增断言同时缺 `rules` import。改用已确认存在的 `python3` 并补 import，不重复 Node 方案。
+
+## 里程碑 X：发布候选稳定化与交付检查（2026-08-26）
+
+- 阶段 174：干净 HOME 帮助/版本/`deconstruct --help` 通过；五目标 CGO_DISABLED 交叉编译通过。
+- 阶段 175：UserRules v1—v3、ChapterRecord/ProjectFormat 旧版本、PendingCommit legacy/v1/v2、SimulationProfile v1 与未知未来格式拒绝矩阵通过。
+- 阶段 176：八类模型入口 UsageTracker 接线审计通过，`simulation` 入口已在前一提交修复。
+- 阶段 177：Commit、Rewrite、Knowledge、Foreshadow、Imported provenance、complete、跨进程恢复和 TXT/EPUB 隔离矩阵通过。
+- 阶段 178：新增 `CHANGELOG.md`、`docs/release-notes.md`、`docs/upgrade.md`，README/CONTEXT 导航同步。
+- 阶段 179：全量测试、vet、关键 race、gofmt、git diff、134 个 Markdown 链接、敏感信息与临时产物扫描通过。当前未创建版本标签；X 仅完成候选验证和交付文档，不代表已发布 GitHub Release。
+
+## 候选 2/3/4 规划（2026-08-26）
+
+本会话只完成路线规划，没有修改生产代码。
+
+阶段 180 已完成：生成 `docs/test-asset-map.md`，盘点 Commit/Context/Import 测试函数的 seam 归属。基线数量为 commit 74、Context 31、Import analyze 23、runner 14、contracts 5；`go test ./internal/tools ./internal/host/imp`、`go test ./...`、`go vet ./...`、`git diff --check` 全部通过。没有移动文件或修改 Go 代码。Context 已有独立 simulation/reader-boundary 测试文件，不做机械合并。
+
+阶段 181 当前开始：先拆 Commit 测试，不触碰生产代码；保持原测试名、数量、公共接口和 `-run` 筛选兼容。
+
+阶段 181 首个切片已完成：新增 `internal/tools/commit_payload_test.go`，移动篇幅、Markdown、Lint、Schema 与嵌套字段测试。原测试名保持不变；只修正测试文件 import 依赖。定向测试、`internal/tools`、全量测试、vet 与 diff check 全部通过。后续 Knowledge/Foreshadow/Rewrite/Integrity/Completion 测试继续小切片移动。
+
+阶段 181 第二个切片已完成：新增 `internal/tools/commit_knowledge_test.go`，移动 20 个 Knowledge/Belief/ReaderKnown/Knowledge Replay 测试；原测试名保持不变，未修改生产代码。定向 Knowledge 测试、`internal/tools`、全量测试、vet 与 diff check 全部通过。下一切片处理 Rewrite/Integrity/Completion 测试。
+
+阶段 181 第三个切片已完成：新增 `internal/tools/commit_foreshadow_test.go`，移动 9 个 Foreshadow 生命周期、Rewrite 重建与 Saga 重放测试；原测试名保持不变，未修改生产代码。Foreshadow 定向测试、`internal/tools`、全量测试、vet 与 diff check 全部通过。
+
+阶段 181 最后切片已完成：
+- `commit_rewrite_test.go`：15 个 Rewrite/完成态测试；
+- `commit_integrity_test.go`：16 个 PendingCommit 密封/恢复测试；
+- `commit_completion_test.go`：2 个基础/兼容测试；
+- 原 `commit_chapter_test.go` 保留 2 个基础测试；
+- 独立 `commit_process_recovery_test.go` 保留 1 个跨进程测试。
+
+Commit 测试共 75 个，名称唯一且与拆分前一致。Rewrite、Integrity、Completion 定向测试、`internal/tools`、全量测试、vet 与 diff check 全部通过。阶段 181 已完成，候选 4 进入下一阶段。
+
+阶段 181 收口验证：Commit 测试集合与 HEAD 中的 `commit_chapter_test.go`、`commit_process_recovery_test.go` 完全一致，共 75 个唯一测试，无丢失、重复或新增。Commit 测试已按 seam 分布到 payload、knowledge、foreshadow、rewrite、integrity、side_effects 和 process_recovery 文件；生产代码无差异。全量测试、vet、关键 race、diff check 全部通过。
+
+### 候选 4：测试按 seam 拆分
+
+从阶段 180 开始，先建立 Commit/Context/Import 测试函数归属表，再按 seam 移动文件。保持测试名称、数量、公共接口和 `-run` 筛选稳定；每次移动后先局部测试再全量。该线不新增测试框架、不修改生产代码。
+
+### 候选 2：Context selection policy
+
+候选 4 之后进入阶段 185—188。先盘点 Context 输入/输出与测试面，再做 deletion test；只有删除选择、Knowledge 净化或预算逻辑会集中复杂度时才深化模块。否则以测试整理和文档结论收口，不创建 Context Service/Repository，不改变 JSON envelope、ReaderKnown/CharacterKnown、未来信息过滤、8 条上限或预算裁剪。
+
+### 候选 3：Import 认知 A/B
+
+阶段 189—192 独立并行准备。先用 fake model 验证可断点 runner，再在 Provider 稳定时执行有限探针和完整三轮 A/B。每条结果立即落盘；缺结果失败，不允许 skip；连续 Provider 阻塞即停止。完整统计不阻塞 Release Candidate，也不因不完整证据继续修改 Prompt。
+
+### 共同门禁
+
+阶段 193—194 负责候选 2/3/4 的全量测试、vet、race、格式、文档和路线收口。当前下一步是阶段 180：测试资产归属清单。

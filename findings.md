@@ -300,3 +300,37 @@ P2：最终指令明确“全文约 1500 字”，Normalizer 按现有保守语�
 首次真实 Provider 运行暴露一个真实 P1：`Host.SimulateDir` 直接使用 architect 模型，未经过 `UsageTracker`，导致画像调用实际发生但 `usage.json` 为零。已用 fake-model Host 公共测试先取得红灯，再以现有 `newUsageTrackedModel` 复用方式接入 `simulation` agent；修复后真实复跑记录 `input=22084/output=15499/cost≈$0.199158/missing_usage=0`。
 
 真实画像安全扫描没有发现连续自建原文、人物专名或地点专名。关键词“仿写/签名短语”仅出现在模型生成的禁止复制与抽象语言特征字段中；具体内容明确禁止复制，不是模仿指令。Context 仍只注入 compact profile，不注入 `source_reports`；TXT/EPUB 隔离回归通过。
+
+## 里程碑 X：发布候选稳定化与交付检查
+
+阶段 174—179 已完成。干净 HOME 下 `--help/-h/help`、`--version/version`、`deconstruct --help` 通过；linux/amd64、linux/arm64、darwin/amd64、darwin/arm64、windows/amd64 的 CGO_DISABLED 构建通过。旧 UserRules、ChapterRecord、ProjectFormat、PendingCommit、SimulationProfile 兼容矩阵和未来版本拒绝行为通过。
+
+八类模型入口 Architect、Writer、Editor、Arbiter、Import、Revision、Cocreate、Deconstruct 均已确认使用 UsageTracker；Deconstruct 先前绕过 `simulation` 记账的缺口已在 `e0cb158` 修复。Commit/Rewrite/Knowledge/Foreshadow/Imported provenance/complete/跨进程恢复和 TXT/EPUB 隔离矩阵通过。
+
+新增交付文档：`CHANGELOG.md`、`docs/release-notes.md`、`docs/upgrade.md`。发布候选仍未创建版本标签；源码构建显示 `dev` 是未注入 GoReleaser ldflags 的预期行为。Import 认知完整三轮统计和真实 Architect 扩弧 Context 仍保留 Provider 阻塞限制，不影响已验证的主流程发布候选。
+
+## 候选 2/3/4 规划决策（2026-08-26）
+
+本次全项目 Review 后决定并行规划三条后续线，但不立即编码。阶段 180 已完成静态归属盘点和原始测试基线；阶段 181 进入 Commit 测试按 seam 拆分，仍不修改生产代码。首个 payload/Schema/篇幅/格式切片已完成：移动测试到 `commit_payload_test.go` 后所有基线通过，未修改生产代码。第二个 Knowledge/Belief/ReaderKnown 切片也已完成，移动到 `commit_knowledge_test.go` 后所有基线继续通过。第三个 Foreshadow 生命周期切片也已完成，移动到 `commit_foreshadow_test.go` 后所有基线继续通过。随后 Rewrite/Integrity/Completion/Side-effects 剩余测试也已按接缝拆分完成，全部基线继续通过。完整集合审计确认 75 个测试与 HEAD 完全一致：
+
+### 候选 4：按接缝拆分测试资产
+
+当前最大测试热点是 `commit_chapter_test.go`、`novel_context_test.go`、`world_test.go` 与 `engine_test.go`。拆分的目标是改善 locality 和 AI 可导航性，不改变测试语义或生产代码。先做函数归属表，再按 Commit、Context、Import 的 seam 移动；每次移动后保持测试名称、数量和 `-run` 筛选稳定。
+
+### 候选 2：Context selection policy 深化
+
+`novel_context.go` 与 builders 已集中处理 Knowledge 净化、相关章节/伏笔、References、SimulationProfile、平台 Rubric、预算裁剪和 JSON envelope。它值得研究但不应凭文件大小直接重构。先用候选 4 的测试面和 deletion test 判断“删除选择/净化/预算逻辑是否会集中复杂度”；只有证明存在真实深度机会，才形成更深的 selection policy。否则只保留测试拆分，不创建空壳接口或 Context Service。
+
+### 候选 3：Import 认知动作完整 A/B
+
+Import Prompt 已有定向修订和有限真实证据，但完整三轮 baseline/calibrated 仍被 Provider 长连接和 HTTP 502 阻塞。规划采用可断点、逐样本落盘 runner：缺结果必须失败，不得 skip 伪成功；连续 Provider 阻塞即停止。只有动作级 precision/recall、负例误报和 believe 不退化证据足够，才允许继续修改 Prompt。该线不阻塞 Release Candidate，也不引入运行时评测框架。
+
+### 依赖与顺序
+
+```text
+候选 4 测试按 seam 拆分
+→ 候选 2 deletion test / Context selection 评估
+候选 3 Import A/B 独立并行、可暂停
+```
+
+明确不做：候选 4 不顺手重构生产；候选 2 不创建通用 Context Service/Repository；候选 3 不因 Provider 阻塞伪造质量结论或新增 Import Schema。

@@ -2,1089 +2,460 @@
 
 ## 当前状态
 
-- 总体状态：`complete`
-- 当前里程碑：X——发布候选稳定化与交付检查（complete）
-- 当前阶段：阶段 179——发布候选收口（complete）
-- 基线提交：`a60f814 发布：完成候选版本交付检查`
-- 完整历史：[`docs/history/plans/2026-08-domain-saga-evolution/`](docs/history/plans/2026-08-domain-saga-evolution/)
+- 总体状态：`planned`
+- 当前路线：候选 2/3/4 架构深化与评测准备
+- 当前阶段：阶段 181——Commit 测试按 seam 拆分（in_progress）
+- 基线提交：`230ce1f 文档：收口发布候选计划状态`
+- 当前工作区：仅规划/发现/进度记录有未提交变更；未开始生产代码修改。
+- 已完成发布候选稳定化：X（阶段 174—179 complete）
+- 当前不创建版本标签；候选 2/3/4 先完成规划与低风险准备。
 
-## 已完成里程碑
+## 已完成里程碑摘要
 
-| 里程碑 | 结果 | 提交 |
-|---|---|---|
-| A | 伏笔生命周期升级 | `13a775b` |
-| B | 作者真相与角色知情 | `6a7b7f7` |
-| C1 | 读者揭示与信息差 | `03bf271` |
-| C2a | 角色错误信念与纠正 | `3ee475c` |
-| D | Import 发布前全书事实重放门禁 | `cafb752` |
-| E1 | Knowledge 纯 Apply/Replay 规则收敛 | `a041b5c` |
-| E2 | Foreshadow 纯 Apply/Replay 规则收敛 | `429bb4a` |
-| F | PendingCommit 冻结载荷完整性 | `f5e91de` |
-| G | 稳定文档与规划历史归档 | `2f6768b` |
-| H | 确定性重复段落 Prose Lint | `83fbb92` |
-| I | Knowledge 最小诊断与脱敏统计 | `25a43d5` |
-| J | 番茄平台 Rubric 试点 | `6b4050f` |
-| K | 现有 cocreate 阶段化访谈 | `91b0224` |
-| L1 | 本地拆文独立命令 | `4ed5e6b` |
-| M | Linux 与无头环境兼容性验收 | `ade8108` |
-| N | 端到端创作验收与发布就绪检查 | `efcef9f` |
-| N2 | sss 真实 Provider 最小 Headless 验收 | `9c0324b` |
-| O1 | Headless 已完结会话 | `652acbd` |
-| O2 | Markdown 提交前格式门禁 | `3ab06d0` |
-| O3 | 结构化单章篇幅目标 | `f99af1b` |
-| O4 | sss 问题修复真实回归 | `bdba5d1` |
-| Q | 终态恢复与正文 provenance 收口 | `37df0ca` |
-| P1 | 真实外部正文 Revision 验收 | `4fd8d15` |
-| R | AI 味判据证据校准 | `8d14f9f` |
-| S | 真实 Cocreate 五阶段验收与流式用量修复 | `3a6b457` |
-| T | 真实 Import 后续写验收与原文写权限修复 | `3fddb1e` |
-
-## 稳定架构边界
-
-1. `ChapterRecord.Facts` 是章节派生事实的重建输入；章节正文与事实变更通过 Commit/Revision 接纳。
-2. `knowledge_state.json`、`foreshadow_ledger.json` 等是可由 ChapterRecords 全量重建的当前投影，不是第二事实源。
-3. Knowledge 与 Foreshadow 生命周期分别由专用纯 Apply 函数唯一裁决；Store、Commit、Projector 是适配器。
-4. Import 在分析、综合和发布前按章重放正式 ChapterFacts；非法尾部失效后自然回到 Analyze。
-5. PendingCommit 首次冻结前执行纯载荷 + 当前状态校验；恢复执行密封 + 纯载荷校验后幂等重放，不按部分应用后的当前投影重新裁决。
-6. Writer 只消费净化后的 `knowledge_boundaries`，不能看到当前角色与读者均未知的作者真相。
-7. 不引入数据库、通用状态机、CRUD Service 或并行相邻章节写作。
-
-# 里程碑 G：稳定文档与规划历史归档
-
-## 阶段 64：归档完整历史
-
-状态：`complete`
-
-完整快照和索引已写入：
+A—X 已完成，完整过程见：
 
 ```text
 docs/history/plans/2026-08-domain-saga-evolution/
 ```
 
-## 阶段 65：压缩根规划工作记忆
+最近完成：
 
-状态：`complete`
+- V：跨进程 PendingCommit 恢复验收
+- W：本地拆文方法画像真实验收
+- X：发布候选稳定化与交付检查
 
-根目录三份规划文件只保留稳定现状、当前路线、最近验证和下一候选。
+已知但不阻塞主线的限制：
 
-## 阶段 66：建立稳定词汇表
+- Import 认知动作完整三轮 precision/recall 受 Provider 长连接/HTTP 502 阻塞；已有定向 Prompt 修订和真实两章回归证据。
+- 真实 Architect 扩弧后的第 3 章 Context 端到端验收受 Provider 阻塞；代码层 Context 边界已有测试。
+- 当前尚未创建版本标签或 GitHub Release。
 
-状态：`complete`
+## 稳定架构边界
 
-新增根目录 `CONTEXT.md`，记录领域术语、事实源/投影边界、关键代码入口和修改纪律。
+1. `ChapterRecord.Facts` 是派生事实的重建输入；正文与事实变更必须经过 Commit/Revision 接纳。
+2. `knowledge_state.json`、`foreshadow_ledger.json` 等是可由 ChapterRecords 全量重建的当前投影，不是第二事实源。
+3. Knowledge 与 Foreshadow 生命周期分别由专用纯 Apply 函数唯一裁决。
+4. Import 在分析、综合、发布前按章重放正式 ChapterFacts；非法尾部失效后回到 Analyze。
+5. PendingCommit 首次冻结前执行纯载荷 + 当前状态校验；恢复执行密封 + 纯载荷校验后幂等重放。
+6. Writer 只消费净化后的 `knowledge_boundaries`；当前角色与读者都未知的 Truth 不能泄露。
+7. 不引入数据库、通用状态机、CRUD Service、浏览器自动化、扫榜或并行相邻章节写作。
 
-## 阶段 67：同步 README 与架构导航
-
-状态：`complete`
-
-补充认知事实、密封提交恢复和稳定文档入口，不改变产品定位。
-
-## 阶段 68：验证与中文提交
-
-状态：`complete`
-
-验收：
-
-```text
-Markdown 相对链接可解析
-根规划文件显著缩小
-无 Go 生产代码变更
-git diff --check
-```
-
-提交信息：
+## 候选依赖总览
 
 ```text
-文档：归档演进计划并补充领域词汇表
+候选 4：测试按接缝拆分
+        │ 提供更清晰的测试面与失败定位
+        ▼
+候选 2：Context selection policy 深化
+        │ 复用拆分后的 context_knowledge/context_budget/context_recall 测试面
+        ▼
+候选 2b：Context 深化实现（若 deletion test 证明值得）
+
+候选 3：Import 认知 A/B 完整评测
+        └── 独立并行、可暂停，不阻塞候选 2/4 或 Release Candidate
 ```
 
-# 里程碑 H：确定性重复段落 Prose Lint
+> 候选 4 是结构准备，候选 2 是模块深化，候选 3 是真实 Provider 评测。三者不合并成一个大提交。
 
-## 行为边界
-
-- 公共接缝：`rules.Lint(text) []Violation`；Commit/Revision 继续自动消费。
-- 段落：修剪首尾空白后的非空、非 `#` 标题单行。
-- 仅检测完全相同段落；不做相似度或语义判定。
-- 最小长度：24 个 Unicode 字符；短对话、拟声词不报。
-- 同段出现至少 2 次时返回 warning：`rule=duplicate_paragraph`、`limit=1`、`actual=出现次数`。
-- Target 只保存有限长度示例，避免把整段正文复制进诊断。
-
-## 阶段 69：首个完全重复长段落
-
-状态：`complete`
-
-写 `rules.Lint` 公开行为失败测试并做最小实现。
-
-## 阶段 70：低误报边界
-
-状态：`complete`
-
-覆盖短段、标题、不同长段、首尾空白、三个以上重复和多个重复组。
-
-## 阶段 71：Violation 契约与隐私边界
-
-状态：`complete`
-
-固定 warning、limit/actual、Target 截断和确定性输出顺序。
-
-## 阶段 72：Commit 与 Revision 集成
-
-状态：`complete`
-
-验证普通提交和 Revision Projector 都将重复段落事实写入既有 rule violations，不阻断流程。
-
-## 阶段 73：Editor 语义消费
-
-状态：`complete`
-
-同步规则注释/文档，确认 Editor 复用 `rule_violations`，不新增 verdict 或 Route。
-
-## 阶段 74：误报样本与范围审计
-
-状态：`complete`
-
-覆盖对话复沓、刻意短句、CRLF、空白行；不加入模糊匹配、跨章累计或可配置阈值。
-
-## 阶段 75：全量验证与中文提交
-
-状态：`complete`
-
-```text
-go test ./internal/rules -count=1
-go test ./internal/tools -run 'CommitChapter|RuleViolation' -count=1
-go test ./internal/revision -run 'Projector|RuleViolation' -count=1
-go test ./... -timeout=5m
-go vet ./...
-git diff --check
-```
-
-提交信息：
-
-```text
-功能：检测章节中的完全重复段落
-```
-
-# 里程碑 I：Knowledge 最小诊断与脱敏导出
-
-## 边界
-
-- 公共接缝：`diag.Analyze(store)`、TUI `/diag` 渲染、`diag.RenderExport`。
-- 统计：Truth 数、角色知情关系数、读者已知 Truth 数、活跃错误信念数。
-- `diag-export.md` 只输出聚合数字，不输出 Truth、Belief、角色名或 Knowledge ID。
-- TXT/EPUB 是读者成品导出，本批禁止加入任何 Knowledge 数据。
-- 第一批不自动修复、不新增事实源、不修改 Knowledge 生命周期。
-
-## 阶段 76：Knowledge 聚合统计
-
-状态：`complete`
-
-通过 `diag.Analyze(store)` 锁定四项聚合统计并接入 Snapshot。
-
-## 阶段 77：空数据与加载失败
-
-状态：`complete`
-
-无 knowledge_state 时保持零值；损坏文件进入既有 LoadError，不伪造统计。
-
-## 阶段 78：长期未纠正信念 Finding
-
-状态：`complete`
-
-以活跃 belief 的 FormedAt 与最新完成章计算停滞，仅输出 ID/角色到本地 Report；中等置信、仅建议、不自动处理。
-
-## 阶段 79：TUI 诊断摘要
-
-状态：`complete`
-
-在既有概览中显示聚合指标，不新增页面或交互状态。
-
-## 阶段 80：脱敏 diag export
-
-状态：`complete`
-
-只导出聚合数字；测试证明 sentinel Truth/Belief/角色名不出包。
-
-## 阶段 81：成品导出隔离与文档
-
-状态：`complete`
-
-锁定 TXT/EPUB 不含 Knowledge；同步 CONTEXT/observability，不扩展读者成品格式。
-
-## 阶段 82：全量验证与中文提交
-
-状态：`complete`
-
-```text
-go test ./internal/diag -count=1
-go test ./internal/entry/tui -run 'Diag|Report' -count=1
-go test ./internal/host/exp -count=1
-go test ./... -timeout=5m
-go vet ./...
-git diff --check
-```
-
-提交信息：
-
-```text
-功能：增加知识状态诊断与脱敏统计
-```
-
-# 里程碑 J：番茄平台 Rubric 试点
-
-## 边界
-
-- 显式输入：`user_rules.structured.platform = fanqie`；未指定平台时不注入。
-- 资源：单个版本化番茄 rubric，不创建通用 Pack 框架。
-- 评分：映射到现有七维，不新增第八维、Verdict、Route 或平台算法分。
-- 官方事实与产品启发式分栏；不把第三方“黄金三章公式”写成官方阈值。
-- 资源允许全局/本书覆盖；旧 user_rules 快照零值兼容。
-
-## 阶段 83：显式平台偏好
-
-状态：`complete`
-
-扩展 `rules.Structured`、Snapshot 合并与版本兼容，先锁定显式 `fanqie` 覆盖。
-
-## 阶段 84：规则归一化
-
-状态：`complete`
-
-仅当用户明确指定番茄时输出 `platform=fanqie`；未指定/含糊时为空，不自行猜测。
-
-## 阶段 85：番茄 Rubric 资源
-
-状态：`complete`
-
-新增官方事实来源、软评价维度与禁用伪阈值说明；支持内置/全局/本书覆盖。
-
-## 阶段 86：Context 条件注入
-
-状态：`complete`
-
-只有平台为 fanqie 时注入 `reference_pack.references.platform_rubric`，并接入既有预算裁剪。
-
-## 阶段 87：Editor 消费纪律
-
-状态：`complete`
-
-映射到 pacing/hook/aesthetic/consistency 等现有维度；不得新增平台维度或机械改写。
-
-## 阶段 88：Writer/Architect 软目标
-
-状态：`complete`
-
-有 rubric 时作为软适配参考，用户偏好与章节合同优先；无 rubric 时行为逐字节不变。
-
-## 阶段 89：文档、来源与范围审计
-
-状态：`complete`
-
-记录官方来源日期、非官方启发式边界、旧快照兼容和不复制外部文案原则。
-
-## 阶段 90：全量验证与中文提交
-
-状态：`complete`
-
-```text
-go test ./internal/rules ./internal/userrules ./assets ./internal/tools -count=1
-go test ./... -timeout=5m
-go vet ./...
-git diff --check
-```
-
-提交信息：
-
-```text
-功能：试点番茄平台创作评审参考
-```
-
-# 里程碑 K：现有 cocreate 阶段化访谈
-
-## 边界
-
-- 不新增第三种启动模式；继续使用 `startupModeCoCreate`。
-- 冷启动阶段：`core → customization → title → confirmation → ready`。
-- 运行中阶段共创保持原协议，不套冷启动访谈。
-- 阶段由 `startup.CoCreateSession` 确定性维护；模型只回报本轮完成阶段，不得自行跳过。
-- 旧/降级回复缺阶段时保持当前阶段；Draft 非空但未到 ready 不允许 Ctrl+S 启动。
-- 最终仍产出一段现有创作指令，继续走 `StartPrepared`，不新增 Foundation 事实源。
-
-## 阶段 91：访谈阶段状态
-
-状态：`complete`
-
-定义稳定阶段、顺序推进与冷启动/阶段共创兼容，首个测试锁定不能跳级和只有 ready 可启动。
-
-## 阶段 92：Host 输出协议
-
-状态：`complete`
-
-新增 `<stage>` 标签和值域；解析缺失/非法阶段时保守保持，不破坏旧降级路径。
-
-## 阶段 93：阶段覆盖条件
-
-状态：`complete`
-
-Prompt 明确各阶段最低信息：核心定位、深度定制、标题简介候选、规划确认；每轮最多问 1—2 个关键问题。
-
-## 阶段 94：TUI 阶段可见性与门禁
-
-状态：`complete`
-
-显示当前阶段/进度，Ctrl+S 仅在 ready 放行；阶段共创保持既有提示与完成行为。
-
-## 阶段 95：最终指令完整性
-
-状态：`complete`
-
-BuildPrompt 必须保留已确认核心定位、定制项、选定标题/简介与规划确认，不创建第二份 Foundation。
-
-## 阶段 96：恢复、取消与流式回归
-
-状态：`complete`
-
-覆盖请求失败、缺标签、建议快捷键、取消、阶段共创、流式预览，不持久化半成品为正式事实。
-
-## 阶段 97：文档与范围审计
-
-状态：`complete`
-
-同步 README/CONTEXT；确认不新增 Engine、Worker、Store schema 或启动模式。
-
-## 阶段 98：全量验证与中文提交
-
-状态：`complete`
-
-```text
-go test ./internal/entry/startup ./internal/host ./internal/entry/tui -count=1
-go test ./... -timeout=5m
-go vet ./...
-git diff --check
-```
-
-提交信息：
-
-```text
-功能：为共创模式增加阶段化访谈
-```
-
-# 里程碑 L1：本地拆文独立命令
-
-## 边界与假设
-
-- 命令：`ainovel-cli deconstruct <本地语料目录>`。
-- 只读取用户本地 `.txt/.md/.markdown`；不抓站、不收 URL、不提供扫榜功能。
-- 复用现有 `host/sim`、`SimulationProfile`、结构化契约和 Agent Context；不新增 Benchmark DTO/Pipeline。
-- 输出写入当前配置 `OutputDir/meta/simulation_profile.json`，与现有 `/simulate` 和 `/importsim` 兼容。
-- 分析只保留抽象写法、结构、钩子、节奏与读者收益；不输出原文段落或模仿具体作者。
-- 为保证 Linux/无头环境可用性，不规划需要 Chrome、登录态、网页抓取或平台页面适配的扫榜能力。
-
-## 阶段 99：命令契约
-
-状态：`complete`
-
-先锁定参数、帮助、缺目录错误和退出码；不先改 sim runner。
-
-## 阶段 100：任意本地目录运行
-
-状态：`complete`
-
-让 Host 现有 Simulate 支持显式 SourceDir；TUI `/simulate` 保持默认 `./simulate`。
-
-## 阶段 101：命令执行与事件输出
-
-状态：`complete`
-
-构造现有 Host、消费 sim.Event、输出画像路径；不启动 Engine。
-
-## 阶段 102：增量与错误回归
-
-状态：`complete`
-
-覆盖空目录、不支持文件、重复运行无新增、模型/Store 失败和取消。
-
-## 阶段 103：合规命名与 Prompt 审计
-
-状态：`complete`
-
-用户可见文案从“仿写”收敛为“拆文/方法画像”，保持内部兼容名；确认不输出原文、作者模仿指令或签名短语。
-
-## 阶段 104：文档与范围审计
-
-状态：`complete`
-
-同步 README/CONTEXT；确认没有网页抓取、排名事实、第二套画像协议或 Engine Route。
-
-## 阶段 105：全量验证与中文提交
-
-状态：`complete`
-
-```text
-go test ./cmd/ainovel-cli ./internal/entry/deconstruct ./internal/host ./internal/host/sim -count=1
-go test ./... -timeout=5m
-go vet ./...
-git diff --check
-```
-
-提交信息：
-
-```text
-功能：增加本地语料拆文命令
-```
-
-## 后续边界
-
-- 扫榜功能已从路线图移除；不新增 Chrome/CDP、浏览器登录态、平台爬虫或排行榜抓取。
-
-## 本批明确不做
-
-- 排行榜抓取、浏览器自动化、URL 下载、反爬或扫榜路线图
-- 第二套 Benchmark/Simulation 领域模型
-- 新 Engine Route、Worker、Store schema 或数据库
-- 自动注入原文、复制签名短语或模仿具体作者
-- 多平台抓取器、插件系统或通用数据源框架
-
-## 错误记录
-
-| 错误 | 处理 |
-|---|---|
-| 搜索 Projector 声明时使用未闭合括号正则 | 停止重复该查询，改用字面搜索确认 `ValidateRecordSet` 与 `Projector.Apply` |
-
-# 里程碑 M：Linux 与无头环境兼容性验收
-
-## 边界与成功标准
-
-- 公共接缝：顶层 CLI 帮助、`deconstruct --help`、现有通知 Adapter、Linux CI、Docker 镜像入口。
-- `--help/-h/help` 必须在配置加载、首次引导、TTY 和模型初始化之前退出。
-- CI 必须显式构建 Linux amd64/arm64，并在 Ubuntu 原生执行帮助命令。
-- Docker 镜像必须能在无配置、无 TTY、无 DISPLAY 情况下执行帮助命令。
-- Linux 缺少桌面通知能力时只降级日志，不影响创作控制流。
-- 不新增浏览器、GUI 库、平台爬虫、配置框架或第二套发布系统。
-
-## 阶段 106：顶层无配置帮助命令
-
-状态：`complete`
-
-先写顶层 CLI 公开行为失败测试：`--help/-h/help` 返回 0、写 stdout，并在常规配置解析前完成；`deconstruct --help` 保持现状。
-
-## 阶段 107：Linux 跨编译门禁
-
-状态：`complete`
-
-在现有 CI 中显式构建 `linux/amd64` 与 `linux/arm64`，使用 `CGO_ENABLED=0`，不创建新的构建框架。
-
-## 阶段 108：Ubuntu 无头与通知降级回归
-
-状态：`complete`
-
-CI 原生执行顶层/deconstruct 帮助；锁定通知缺少 system 通道时为 best-effort，不重写已满足的生产逻辑。
-
-## 阶段 109：Docker 无头冒烟
-
-状态：`complete`
-
-复用现有 Dockerfile，在 Ubuntu CI 构建本地镜像并执行 `--help` 与 `deconstruct --help`；不调用模型、不挂用户配置。
-
-## 阶段 110：Linux 文档与范围审计
-
-状态：`complete`
-
-同步 README/CONTEXT，说明无头帮助、通知降级和扫榜移除边界；确认无生产 `/tmp`、Chrome/CDP 或 GUI 强依赖。
-
-## 阶段 111：全量验证与中文提交
-
-状态：`complete`
-
-```text
-go test ./cmd/ainovel-cli ./internal/entry/deconstruct ./internal/notify -count=1
-go test ./... -timeout=5m
-go vet ./...
-CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build ./cmd/ainovel-cli
-CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build ./cmd/ainovel-cli
-git diff --check
-```
-
-预定提交信息：
-
-```text
-测试：加固 Linux 与无头环境兼容性
-```
-
-# 里程碑 N：端到端创作验收与发布就绪检查
-
-## 边界与成功标准
-
-- 公共路径：Quick、Cocreate、Headless 恢复、Import、Deconstruct、TXT/EPUB 导出。
-- 自动化只使用现有 fake/mock 模型，不调用用户 Provider、不消耗真实额度。
-- 复用现有 Engine/Host/Store 测试接缝，不建立新的 E2E 框架。
-- 新增发布验收文档，区分自动化证据、人工真实模型步骤与阻塞等级。
-- 只有真实覆盖缺口才新增测试；已有强覆盖只引用现有测试命令。
-- 本批不因验收过程顺带增加产品功能或领域状态。
-
-## 阶段 112：验收矩阵与 Headless 首个冒烟
-
-状态：`complete`
-
-盘点五条路径现有覆盖；针对当前唯一明显空白 `internal/entry/headless`，先用公开 `Run` 写一个 fake-model 冒烟红灯。
-
-## 阶段 113：Quick/Engine 与导出证据
-
-状态：`complete`
-
-复用现有 Engine 完整书和 TXT/EPUB 隔离测试；只在入口接线存在真实缺口时补一条最小测试。
-
-## 阶段 114：Cocreate 启动验收
-
-状态：`complete`
-
-复用 Session/Host/TUI 阶段契约，验证完整确认后的 BuildPrompt 仍进入现有启动主链；不新增启动模式。
-
-## 阶段 115：Import 发布与恢复验收
-
-状态：`complete`
-
-运行现有全书门禁、原子发布、首错回退和继续写作接缝；只补缺失的公开路径证明。
-
-## 阶段 116：Deconstruct 增量与合规验收
-
-状态：`complete`
-
-运行现有 CLI/Runner 增量与合规测试，确认第二次运行零模型调用和画像无原文模仿指令。
-
-## 阶段 117：发布验收文档与人工清单
-
-状态：`complete`
-
-新增 `docs/release-acceptance.md`，记录自动化命令、人工真实模型步骤、工件位置与 P0/P1/P2 判定；人工项保持未执行，不自动消费额度。
-
-## 阶段 118：全量验证与中文提交
-
-状态：`complete`
-
-```text
-go test ./internal/entry/headless ./internal/entry/startup ./internal/host ./internal/host/imp ./internal/host/sim ./internal/host/exp -count=1 -timeout=5m
-go test ./... -timeout=5m
-go vet ./...
-git diff --check
-```
-
-预定提交信息：
-
-```text
-测试：建立端到端创作发布验收基线
-```
-
-# 里程碑 N2：真实 Provider 人工验收
-
-## 边界
-
-- 使用用户已明确授权的 `sss / gpt-5.6-sol`，会产生真实 API 用量。
-- 在系统临时目录运行，不污染仓库或正式小说目录。
-- 首个切片仅跑单章约 1200 字科幻短篇 Headless 闭环；15 分钟超时。
-- 项目级配置关闭通知并设置小额硬预算；不修改用户全局配置、不输出密钥。
-- 先检查创作工件、PendingCommit、Checkpoint、Progress、诊断和日志，再决定是否扩大到强杀恢复或 Cocreate。
-
-## 阶段 119：sss 最小 Headless 闭环
-
-状态：`complete`
-
-构建当前二进制，在独立工作区真实运行 `--headless --prompt`，记录耗时、退出码和工件完整性。
-
-## 阶段 120：工件与质量检查
-
-状态：`complete`
-
-检查章节、ChapterRecord、Knowledge/Foreshadow、Progress、Checkpoint、PendingCommit、诊断、规则违规和读者成品；不把内部创作事实写入公开日志。
-
-## 阶段 121：恢复与共创决策
-
-状态：`complete`
-
-根据首轮成本与结果决定是否继续真实强杀恢复/Cocreate；未经再次成本判断不自动扩大调用。
-
-## 阶段 122：记录结果
-
-状态：`complete`
-
-只提交脱敏验收结论和文档状态，不提交临时小说、日志、配置或任何凭证。
-
-# 里程碑 O：真实创作验收问题收敛
-
-## 公共接缝与成功标准
-
-1. O1：`headless.Run`——已完结工作区无 Prompt 启动返回成功摘要，不调用模型、不改工件/费用；空工作区仍报错。
-2. O2：`CommitChapterTool.Execute`——正文含确定性 Markdown 残留时，在创建 PendingCommit 前返回可修正错误；重复段落等审美 warning 仍不阻断。
-3. O3：`UserRules → novel_context/Chapter Contract → Commit`——明确篇幅目标结构化传递，并在提交前给出有界、可修正约束；不建立新配置系统。
-
-每项独立红→绿并独立提交；未完成 O1 前不修改 O2/O3。
-
-## 阶段 123：Headless 完结态
-
-状态：`complete`
-
-首个失败测试：已完结 Store 调用 `headless.Run`，期望返回 nil、输出标题/章数/字数摘要，usage、Progress、章节与 PendingCommit 不变。
-
-## 阶段 124：Markdown 提交前格式门禁
-
-状态：`complete`
-
-只拦截确定性 Markdown 残留，发生在 PendingCommit 创建前；保留 `rules.Lint` 的其他 warning 语义。
-
-## 阶段 125：结构化篇幅目标
-
-状态：`complete`
-
-先盘点 UserRules/Chapter Contract 既有字段与字符计数口径，再确定最小模型；不得用脆弱正则替代已有 Normalizer。
-
-## 阶段 126：真实 sss 回归决策
-
-状态：`complete`
-
-已在全新隔离目录复用 `sss / gpt-5.6-sol` 做同类单章回归：目标 1200、实际 1311 字，Markdown/其它规则违规为 0，无 PendingCommit，完结态二次启动零写入，全量事实重放与 TXT/EPUB 隔离通过；费用约 `$0.161`。临时正文、日志和配置不进入仓库。
-
-# 里程碑 Q：终态恢复与正文接纳 seam 收口
+# 候选 4：按接缝拆分测试文件
 
 ## 目标
 
-在继续真实 Revision 验收前关闭全项目复审发现的两个 S1：
+改善测试的 locality 和接口可导航性，不改变生产行为，不重写测试语义，不在拆分过程中顺手修产品问题。
 
-1. `phase=complete` 仍可能存在 PendingCommit/PendingRevision/Import 等恢复工作，不能直接静默终止。
-2. Import 用户原文复用生成正文格式门禁，可能在正式 Foundation/Hold 写入后卡死发布。
-
-原则：复用现有 Commit Saga、Revision 和 Import 工作区；不新建通用工作流框架，不静默修改用户原文。
-
-## 阶段 127：终态恢复红灯
-
-状态：`complete`
-
-公共 seam：`headless.Run`、`Host.Resume`、TUI bootstrap、`CommitChapterTool.Execute`。
-
-首个场景：构造 `phase=complete + sealed PendingCommit(progress_marked)`，Headless/TUI 必须先补 checkpoint、清 PendingCommit，再显示完成；不得直接命中完成摘要。追加：`signal_saved`、密封损坏、不同章冲突、无 Pending 的纯终态回归。
-
-## 阶段 128：确定性 PendingCommit 恢复优先级
-
-状态：`complete`
-
-优先方案：Host Resume 在生成 resume label 前，直接通过现有 `CommitChapterTool.Execute` 幂等收尾冻结 PendingCommit，不调用 Writer 模型；完成后重新读取 Progress。若测试证明该位置破坏职责，再设计 `flow.State.PendingCommit` 路由，不在 Host/Flow 两处重复恢复规则。
-
-验收：任意 phase 都能恢复四个 Commit Stage；完整性失败保留工件并返回稳定错误；不消耗预算、不改冻结正文。
-
-## 阶段 129：真正可静默终止判定
-
-状态：`complete`
-
-终态摘要只有同时满足以下条件才允许：
+当前热点：
 
 ```text
-当前项目格式
-phase=complete
-无 PendingCommit
-无 PendingRevision
-无未完成 Import 工作区
-无外部正文哈希变化
-取得书目录独占租约
+internal/tools/commit_chapter_test.go 约 3645 行
+internal/tools/novel_context_test.go 约 1516 行
+internal/store/world_test.go          约 1444 行
+internal/host/engine_test.go          约 1205 行
 ```
 
-具体 interface 由阶段 127/128 结果决定；Headless 与 TUI 必须复用同一 Store 派生判定，不各自维护文件清单。外部修订只给出 `/sync` 指引，不在无授权情况下自动调用模型。
-
-## 阶段 130：Import Markdown/篇幅政策红灯
+### 阶段 180：测试资产清单与归属表
 
 状态：`complete`
 
-公共 seam：`imp.Run/publish` + 正式 `CommitChapterTool`。
+产物：`docs/test-asset-map.md`。
 
-构造用户源章节含 `**`、内部 `##`，以及已有书级 `chapter_target_chars` 小于原文章节长度。要求：原文逐字保留发布，Lint 事实可记录，但不能使用生成正文的 Markdown/篇幅硬门禁；若存在其它不可接纳问题，必须在任何正式 Foundation/Hold/章节写入前失败并回退可修复状态。
-
-## 阶段 131：正文 provenance 接纳 module
-
-状态：`complete`
-
-深化现有章节接纳 seam，至少区分：
+基线快照：
 
 ```text
-generated  模型新生成正文：Markdown/篇幅政策生效
-imported   用户导入原文：保留内容，只记录 Lint
-user       外部人工修订：保留内容，经 Revision 语义重建
+commit_chapter_test.go：74 个 Test 函数
+novel_context_test.go：31 个 Test 函数
+analyze_test.go：23 个 Test 函数
+runner_test.go：14 个 Test 函数
+contracts_test.go：5 个 Test 函数
 ```
 
-推荐为 `CommitChapterTool` 增加非模型调用的 imported 接口，并将 provenance 纳入冻结意图/ChapterRecord；普通模型 `Execute` 不能自行伪造 origin。Import 发布前验证与正式提交必须消费同一接纳政策，不复制 Saga。
+原始 `internal/tools`、`internal/host/imp` 测试、全量 `go test ./...`、`go vet ./...` 和 `git diff --check` 均通过。阶段 180 没有移动文件、修改测试或修改生产代码。
 
-## 阶段 132：Import 零污染与恢复矩阵
+为每个测试函数建立静态归属表：
+
+- 文件/测试名
+- 领域 seam
+- 使用的公共接口
+- 是否依赖共享 fixture
+- 是否包含跨 seam 集成行为
+- 预期新文件
+
+首批只盘点 `internal/tools` 与 `internal/host/imp`，不一开始处理全仓。
+
+门禁：不移动文件，不改测试行为；输出一份可审阅的拆分映射。
+
+### 阶段 181：Commit 测试按 seam 拆分
 
 状态：`complete`
 
-验证多章 Markdown 源、发布中断、stale PendingCommit、重新运行和 TXT/EPUB 原文保真。所有失败在正式写入前或由 Saga 可恢复；`NextAction` 不得永久停在 Publish。
+首个切片已完成：新增 `internal/tools/commit_payload_test.go`，移动篇幅、Markdown、Lint、Schema 与嵌套字段测试；原测试名保持不变，未修改生产代码。新文件补充 `domain` import，原文件移除不再使用的 `llmcontract` import。
 
-## 阶段 133：UserRules 撤销语义与数值上界
-
-状态：`complete`
-
-先由测试固定三态：未声明 / 设置正值 / 明确清除。推荐 `*int` 语义（nil=未声明，0=清除，正值=设置），但只有 strict schema 能稳定表达 nullable 时采用；否则定义显式 action 字段。禁止用负数暗号。
-
-为 `chapter_target_chars` 定义合理上界，并用溢出安全公式计算 120%；运行中“取消每章字数限制”必须清除旧快照值。旧 v1-v4 快照兼容。
-
-## 阶段 134：文档、全量验证与真实 Revision 计划门禁
-
-状态：`complete`
-
-同步规则所有权：Lint 只生成事实；正文接纳 adapter 按 provenance 决定哪些事实阻断。更新 CONTEXT、Import 文档、UserRules 文档和发布验收。
-
-最终门禁：
+验证：
 
 ```text
+go test ./internal/tools -run 'TestChapterTargetMax|TestCommitChapterRejectsPersistedChapterTarget|TestCommitChapterRejectsChapterOverTarget|TestCommitChapterDoesNotBlockChapterBelowTarget|TestCommitChapterRewriteRejectsChapterOverTarget|TestCommitChapterRejectsMarkdownResidue|TestCommitChapterPersistsDuplicateParagraph|TestCommitChapterSchema' -count=1
+go test ./internal/tools -count=1
 go test ./... -timeout=5m
 go vet ./...
-go test -race ./internal/store ./internal/tools ./internal/revision ./internal/host ./internal/entry/headless ./internal/host/imp -count=1 -timeout=10m
 git diff --check
 ```
 
-里程碑 Q 完成后再规划 P1 真实外部正文 Revision；未经用户重新确认预算不调用 Provider。
+阶段 181 已完成：Commit 测试按接缝拆分完成，后续阶段进入 Context/Import 测试资产整理。
 
-## 本批明确不做
+完成的 Commit 测试文件：
 
-- 新认知动作、伏笔状态或 ChapterContract 字段
-- 通用工作流/状态机框架
-- 自动清洗用户导入正文
-- 扫榜、浏览器或网络抓取
-- 数据库、Web 事实源或第四 Worker
-- 真实 Provider 调用
+```text
+commit_chapter_test.go       2 个基础/兼容测试
+commit_payload_test.go      10 个 payload/schema/篇幅/格式测试
+commit_knowledge_test.go    20 个 Knowledge/Belief 测试
+commit_foreshadow_test.go    9 个 Foreshadow 测试
+commit_rewrite_test.go      15 个 Rewrite/完成态测试
+commit_integrity_test.go    16 个 PendingCommit 密封/恢复测试
+commit_completion_test.go   2 个嵌套字段/Cast Ledger 测试
+commit_process_recovery_test.go 1 个跨进程恢复测试
+合计                         75 个测试
+```
 
-# 里程碑 P1：真实外部正文 Revision 验收
+原测试名称保持不变，未修改生产代码。定向测试、`internal/tools`、全量测试、vet 与 diff check 全部通过。
+
+第三个切片已完成：新增 `internal/tools/commit_foreshadow_test.go`，移动 9 个 Foreshadow 生命周期、Rewrite 重建与 Saga 重放测试；原测试名保持不变，未修改生产代码。仅清理新文件中未使用的测试 import。
+
+验证：
+
+```text
+go test ./internal/tools -run 'TestCommitChapter.*Foreshadow|TestCommitChapterReinforcesForeshadow|TestCommitChapterReplayKeepsSameChapterAdvancedThenResolvedForeshadow' -count=1
+go test ./internal/tools -count=1
+go test ./... -timeout=5m
+go vet ./...
+git diff --check
+```
+
+第二个切片已完成：新增 `internal/tools/commit_knowledge_test.go`，移动 20 个 Knowledge/Belief/ReaderKnown/Knowledge Replay 测试；原测试名保持不变，未修改生产代码。仅调整新文件的测试 import 依赖。
+
+验证：
+
+```text
+go test ./internal/tools -run 'TestCommitChapter.*Knowledge|TestCommitChapter.*Belief|TestCommitChapter.*Learning|TestCommitChapter.*Reveal|TestCommitChapterReplayDoesNotDuplicateKnowledgeState' -count=1
+go test ./internal/tools -count=1
+go test ./... -timeout=5m
+go vet ./...
+git diff --check
+```
+
+候选文件：
+
+```text
+internal/tools/commit_pending_test.go
+internal/tools/commit_integrity_test.go
+internal/tools/commit_knowledge_test.go
+internal/tools/commit_foreshadow_test.go
+internal/tools/commit_rewrite_test.go
+```
+
+规则：
+
+- 保留原测试名，避免测试历史与筛选命令漂移。
+- 共享 helper 只在确实跨 seam 时留在原文件或迁入同包 `test_helpers_test.go`。
+- 只移动测试，不改变生产代码。
+- 每次移动后先跑原测试集合，再跑全量。
+
+成功标准：`git diff` 只显示文件移动/测试内容位置变化；测试数量、名称和行为不变。
+
+### 阶段 182：Context 测试按消费 seam 拆分
+
+状态：`planned`
+
+候选文件：
+
+```text
+internal/tools/context_knowledge_test.go
+internal/tools/context_recall_test.go
+internal/tools/context_budget_test.go
+internal/tools/context_references_test.go
+internal/tools/context_simulation_test.go
+```
+
+重点保持：
+
+- JSON 结构级泄漏测试；
+- ReaderKnown/CharacterKnown 边界；
+- 预算裁剪与 `_trimmed`；
+- Platform Rubric 条件注入；
+- SimulationProfile compact 注入；
+- 相关章节和伏笔召回。
+
+### 阶段 183：Import 测试资产按阶段拆分
+
+状态：`planned`
+
+候选文件：
+
+```text
+internal/host/imp/contracts_test.go
+internal/host/imp/analyze_facts_test.go
+internal/host/imp/analyze_knowledge_test.go
+internal/host/imp/publish_provenance_test.go
+internal/host/imp/recovery_test.go
+```
+
+只在阶段 180 归属表确认测试边界后执行；不凭文件名猜测移动范围。
+
+### 阶段 184：拆分回归与范围审计
+
+状态：`planned`
+
+运行：
+
+```bash
+go test ./internal/tools ./internal/host/imp -count=1 -timeout=5m
+go test ./... -timeout=5m
+go vet ./...
+git diff --check
+```
+
+确认：
+
+- 测试函数没有重复或丢失；
+- `-run` 过滤路径仍可用；
+- 没有新增测试框架；
+- 没有生产代码改动；
+- 文件移动不会改变 package 初始化或 fixture 生命周期。
+
+建议独立提交：
+
+```text
+重构：按接缝整理测试资产
+```
+
+# 候选 2：Context selection policy 深化
 
 ## 目标
 
-验证作者手工修改已接纳正文后，Revision 能检测哈希变化、使用真实模型重建 ChapterFacts/StyleDelta、全量重建派生投影，并在崩溃恢复后保持幂等。真实调用只在用户确认预算后执行。
+在候选 4 提供清晰测试面后，评估是否值得把现有 Context 装配深化为一个更深、局部性更好的模块：
 
-## 阶段 135：Revision 自动化验收基线
+```text
+事实读取
+→ 相关性/角色选择
+→ Knowledge 净化
+→ References/SimulationProfile 选择
+→ 预算裁剪
+→ JSON envelope 序列化
+```
 
-状态：`complete`
+不新增 Service、Repository、通用 Context 框架或第二个事实源。
 
-复跑并补齐：外部修改扫描、Prepared/RecordsApplied/ProjectionsApplied 三阶段恢复、候选全书事实验证、规则投影刷新、完结书 `/sync` 工作台路径。只补真实缺口，不复制现有 Revision 大矩阵。
+### 阶段 185：Context 依赖与选择矩阵
 
-## 阶段 136：隔离真实作品与修改方案
+状态：`planned`
 
-状态：`complete`
+列出当前 `ContextTool` 的所有输入与输出：
 
-从临时验收作品复制到新的隔离目录，不修改原真实验收目录。选择一处明确但有限的事实变化，保存修改前 ChapterRecord、投影、Progress、Usage 与正文摘要；不记录 Provider 密钥。
+- Store 当前投影；
+- Outline/ChapterContract；
+- UserRules；
+- References；
+- SimulationProfile；
+- Revision style；
+- Budget；
+- Writer/Architect envelope。
 
-## 阶段 137：用户确认预算
+将测试按选择、净化、预算、序列化分组，确认真实 seam。
 
-状态：`complete`
+门禁：只读分析，不先引入接口。
 
-向用户确认本次 Revision 真实模型预算上限；未确认前停止。建议上限 `$0.25`，通知关闭，超限硬停。
+### 阶段 186：deletion test 与候选模块形状
 
-## 阶段 138：真实 Revision 与恢复验证
+状态：`planned`
 
-状态：`complete`
+对以下逻辑做 deletion test：
 
-执行 `/sync` 等价 Host 接口，必要时在 PendingRevision 中间阶段做一次可控强杀；验证 revision+1、origin=user、ContentSHA 更新、旧事实移除、新事实重建、PendingRevision 清理、再次同步零调用。
+- 删除 Knowledge 选择是否会把复杂度错误地转移到调用方；
+- 删除净化步骤是否直接造成 Truth 泄漏；
+- 删除预算裁剪是否破坏 Worker 合同；
+- 删除 builder 是否只是把复杂度搬到另一个文件。
 
-## 阶段 139：下游一致性与脱敏记录
+只有证明“删除会集中复杂度”，才考虑形成更深模块；否则只保留测试拆分，不做生产重构。
 
-状态：`complete`
+### 阶段 187：Context selection policy 的最小实现（条件阶段）
 
-验证 Context 使用新事实、TXT/EPUB 反映修改正文且不泄露内部状态；把费用、工件和 P0/P1/P2 脱敏写入发布验收，临时正文/日志/配置不进 Git。
+状态：`planned`
 
-# 里程碑 R：AI 味判据证据校准
+仅当阶段 186 证明值得深化时执行：
+
+- 将选择/净化/有界输出集中在一个明确测试面；
+- 保留现有 `ContextTool.Execute` 作为适配器；
+- 保持 JSON envelope 兼容；
+- 不改变 ReaderKnown/CharacterKnown、未来信息过滤、8 条上限和预算裁剪语义。
+
+首个红灯必须来自现有 JSON 结构级泄漏或边界回归测试；不以“文件太大”作为理由。
+
+### 阶段 188：Context 全量回归与提交
+
+状态：`planned`
+
+运行：
+
+```bash
+go test ./internal/tools -run 'Context|NovelContext' -count=1 -timeout=5m
+go test ./internal/host ./internal/host/imp -count=1 -timeout=5m
+go test ./... -timeout=5m
+go vet ./...
+git diff --check
+```
+
+若阶段 186 判定“不值得生产重构”，则以测试/文档结论收口，不创建空壳接口。
+
+建议提交信息（仅在确有生产深化时）：
+
+```text
+重构：深化 Context 选择与净化策略
+```
+
+# 候选 3：Import 认知 A/B 完整评测
 
 ## 目标
 
-不安装外部 Skill、不新增第二条去 AI 味管线。使用本项目自有网文最小对与盲评，校准 `assets/references/anti-ai-tone.md` 和 Editor 的语义判据；确定性规则仍只进入现有 `rules`，未经样本证明不新增硬门禁。
+补齐 `establish/believe/learn/reveal_to_reader` 的动作级 precision/recall 与负例统计；不把 Provider 不稳定误判成 Prompt 质量，不把评测 runner 变成运行时框架。
 
-## 阶段 140：校准语料与盲评协议
+### 阶段 189：可断点评测 runner 设计
 
-状态：`complete`
+状态：`planned`
 
-建立 8 组网文最小对：翻案腔、句间同构、句内排比、段落长度、问句、比喻、冒号、段首回指。每组一条应改、一条应保留；样本隐藏来源与预期标签，要求 Judge 只回答“是否应仅因 AI 味而修改”，并引用证据。固定随机顺序和 JSON schema，不把外部研究结论写进 Judge prompt。
+要求：
 
-## 阶段 141：真实盲评重复与人工复核
+- 每条样本独立调用；
+- 每条完成立即落盘；
+- 支持断点续跑；
+- 缺结果必须失败，不得 skip 伪成功；
+- 记录 Provider 错误、超时、Usage；
+- 不保存完整模型响应或凭证；
+- 基线/修订 Prompt 版本指纹明确。
 
-状态：`complete`
+先用 fake model 测试 runner 状态机，不调用 Provider。
 
-使用 `sss / gpt-5.6-sol` 对同一集合至少重复 3 轮，记录每样本 vote/confidence/reason 与费用；再按叙事功能人工复核。模型意见是辅助证据，不能替代 worked-example 标签。
+### 阶段 190：有限稳定通道探针
 
-## 阶段 142：基线误报/漏报矩阵
+状态：`planned`
 
-状态：`complete`
+只跑：
 
-逐条对照当前 `anti-ai-tone.md` 与 `story-deslop`：统计会被现有规则标记但盲评/人工应保留的反例，以及外部候选能发现而当前遗漏的样本。优先验证句内排比、句长/段长、问句、比喻泛化是否误报；验证段首零回指、提示性冒号、理想化职业人格喻体是否有增量。
+```text
+ik03/ik04/ik05/ik07/ik10/ik11/ik12
+baseline/calibrated 各一次
+```
 
-## 阶段 143：最小判据修订
+停止条件：
 
-状态：`complete`
+- 单条超时 180 秒；
+- 连续 2 条 Provider 阻塞；
+- 结果缺失；
+- 结构化自愈超过固定次数。
 
-仅修改有 worked-example 证据的语义资产：把“AI 来源判断”与“一般审美问题”分开；删除或收窄无证据泛化，加入小说体裁例外、目标风格优先、信息守恒。不得复制外部 SKILL 长段文本；若使用具体规则表达，保留来源与 MIT 说明。
+只在至少 6/7 个样本形成有效双侧结果时进入完整评测。
 
-## 阶段 144：Writer/Editor A/B 回归
+### 阶段 191：完整三轮 A/B
 
-状态：`complete`
+状态：`planned`
 
-使用现有 eval variant 或独立短篇真实调用，对基线与修订判据进行至少 3 次 A/B。门禁仍只认确定性事实；模型 Judge 只报告误报、保留叙事功能和审美偏好。确认新判据不会诱导删剧情、机械拆段、删除问句/比喻或统一口语化。
+执行：
 
-## 阶段 145：文档、全量验证与提交
+```text
+12 条样本
+× baseline/calibrated
+× 3 轮顺序变化
+```
 
-状态：`complete`
+指标：
 
-同步 `CONTEXT.md`、AI 味来源与许可证记录、评测报告；运行 assets/rules/eval/全量测试、vet、race、格式与链接检查。建议中文提交：`校准：收窄去 AI 味判据并补充反例`。
+- 各动作 precision/recall；
+- 同 Truth 多动作完整集合准确率；
+- 负例误报；
+- Knowledge ID 复用稳定性；
+- 三轮一致性；
+- Provider 错误率/Usage。
+
+若 Provider 不稳定，阶段保持 `blocked_provider`，不修改生产 Prompt。
+
+### 阶段 192：评测报告与 Go/No-Go
+
+状态：`planned`
+
+只有满足以下条件才允许合入进一步 Prompt 修改：
+
+- `learn/reveal_to_reader` 召回改善；
+- 负例误报不显著增加；
+- `believe` 不退化；
+- 完整动作集合准确率改善；
+- 结果可由脱敏报告复核。
+
+否则保留当前已提交的最小 Prompt 修订，不继续堆规则。
+
+建议独立提交：
+
+```text
+评测：完成导入认知动作 A/B 验证
+```
+
+# 三条路线共同门禁
+
+## 阶段 193：发布候选不回归
+
+状态：`planned`
+
+候选 2/3/4 任一变更都必须继续通过：
+
+```bash
+go test ./... -timeout=5m
+go vet ./...
+go test -race ./internal/tools ./internal/host/imp ./internal/host/sim -timeout=10m
+git diff --check
+```
+
+候选 3 的真实 Provider 失败不能通过修改生产代码规避；候选 4 的测试拆分不能改变测试语义；候选 2 的 Context 深化不能改变 JSON envelope 或知识泄漏边界。
+
+## 阶段 194：文档与路线收口
+
+状态：`planned`
+
+同步：
+
+- `CONTEXT.md`；
+- `docs/architecture.md`；
+- `docs/release-acceptance.md`；
+- `findings.md`；
+- `progress.md`。
+
+最终不保留过期 `in_progress/pending` 描述在当前根工作记忆中；历史过程归档到 `docs/history/plans/`。
 
 ## 明确不做
 
-- 不整体安装 `lieflat-less-ai-tone`
-- 不把 Python 脚本加入运行时或 Docker
-- 不新增第二个 Skill/Service/Writer 后处理流程
-- 不用 AI 检测概率作为目标
-- 不把语义 Judge 变成 Commit 硬门禁
-- 不因单次模型偏好改规则
-- 不复制外部不可核验统计数字作为本项目阈值
-
-# 里程碑 S：真实 Cocreate 五阶段验收
-
-## 目标
-
-使用 `sss / gpt-5.6-sol` 在隔离目录执行冷启动共创，验证模型协议、确定性 Session、用户选择/确认和现有启动主链。只做验收；发现真实 P0/P1 才进入修复，不为测试新建共创框架。
-
-## 阶段 146：验收基线与隔离目录
-
-状态：`complete`
-
-复跑 Session/Host/TUI 代表性测试；创建不含凭证的隔离 OutputDir，加载现有全局 Provider 后只覆盖目录、预算和通知。
-
-## 阶段 147：真实五阶段对话
-
-状态：`complete`
-
-最多 8 轮，按当前阶段提供固定用户回答。记录 stage、ready、Draft 标题完整性和 suggestions 数量，不保存完整模型思考/回复到 Git。阶段只能保持或前进一格；模型跳级由 Session 拒绝。
-
-## 阶段 148：标题授权与最终指令
-
-状态：`complete`
-
-在 title 阶段由用户明确授权模型代选；confirmation 阶段明确确认。要求 `CanStart=true`、`BuildPrompt` 成功、四个独立二级标题齐全、无“待确认”，且创作指令保留题材、主角、冲突、规模、视角、基调和目标平台。
-
-## 阶段 149：现有启动主链
-
-状态：`complete`
-
-用最终 Prompt 调用 `PrepareUserRules → StartPrepared`，只运行到 Foundation 完成并进入 writing 后 Abort；验证 Book/Premise/Outline/UserRules 已落盘，无正式章节、无 PendingCommit，不复制第二套 Foundation 生成器。
-
-## 阶段 150：脱敏记录与提交
-
-状态：`complete`
-
-记录轮次、阶段轨迹、费用、工件和 P0/P1/P2；临时对话、正文、配置和日志不进 Git。运行相关测试、全量/vet/race/格式与链接检查后中文提交。
-
-# 里程碑 T：真实 Import 后续写验收
-
-## 目标
-
-用 `sss / gpt-5.6-sol` 在隔离目录导入一篇自建两章未完小说，先确认切分，再完成分析/综合/发布；验证 imported provenance 和全书投影后，显式接力 Writer 续写第 3 章，确认继承导入事实。发现 P0/P1 时先修，不扩展 Import 管线。
-
-## 阶段 151：自动化基线与自建源文本
-
-状态：`complete`
-
-复跑 Import 端到端、事实零污染、stale Pending、Knowledge/Foreshadow 发布和 continue 接力测试。创建不含第三方内容的两章科幻悬疑源文，明确故事未完，并设置可验证的角色状态、物件、地点、伏笔和作者真相。
-
-## 阶段 152：真实切分与人工确认
-
-状态：`complete`
-
-首次 `AutoConfirm=false`，要求得到两章切分预览且无错误；检查边界/标题后用 `AcceptSegmentation=true` 显式确认。Source/Manifest/Segmentation/Confirmation 必须完整，正式 Store 仍为空。
-
-## 阶段 153：真实分析、综合与正式发布
-
-状态：`complete`
-
-使用 `StoryResolution=open`、`ContinueAfter=false` 完成两章分析、综合和发布。验证 ChapterRecord 1/2 均为 imported、原文哈希一致、Progress/Checkpoint/Hold 正确、无 PendingCommit，Knowledge/Foreshadow/Timeline/Relationship/State 投影可全量重建。
-
-## 阶段 154：下游 Context 一致性
-
-状态：`complete`
-
-调用 `novel_context(chapter=3)`，确认只注入角色/读者可知信息，不泄露隐藏 Truth；当前角色状态、未回收伏笔和第 2 章结尾目标可供 Writer 使用。
-
-## 阶段 155：真实续写第 3 章
-
-状态：`complete`
-
-显式接力现有 Engine，只允许新增第 3 章后暂停。验证 Writer 不重写 1/2 章，不违反导入 Knowledge 边界，推进或回收既有伏笔时复用 ID；ChapterRecord 3 为 generated，三章全量重放通过。
-
-## 阶段 156：导出、脱敏记录与提交
-
-状态：`complete`
-
-验证 TXT/EPUB 含三章且不泄露内部状态；记录阶段、费用、工件和 P0/P1/P2，源文/正文/日志/配置不进 Git。运行全量/vet/race/格式/链接后中文提交。
-
-# 里程碑 U：Import 认知事实提取校准
-
-## 目标
-
-用自建中文小说 worked examples 和 `sss / gpt-5.6-sol` 校准 Import 对 establish/believe/learn/reveal_to_reader 的提取。先跑实际 analysisContract 三轮基线；只有稳定漏报/误报才最小改 Prompt，再做同协议 A/B。禁止用确定性代码从正文猜测认知动作。
-
-## 阶段 157：自建认知动作校准集
-
-状态：`complete`
-
-建立 12 条匿名片段与独立金标，覆盖 establish-only、establish+learn、establish+reveal、三动作、belief、猜测/谎言/不相信/模糊暗示等负例。每条使用稳定 Knowledge ID；样本不泄露标签，金标只比较 knowledge_updates。
-
-## 阶段 158：当前 Import Prompt 三轮基线
-
-状态：`blocked_provider`
-
-每轮改变样本顺序，直接使用当前 import analysisContract 与严格 Schema；本次改为每次单片段调用，避免不同 Truth 的 Knowledge ID 在同一批次互相污染。统计动作级 precision/recall、完整集合准确率、三轮一致性、Token/费用。不得用简化 Judge 替代真实 Import 协议。
-
-前次完整运行受本地代理长连接、模型不一致 Knowledge ID 自愈和 HTTP 502 阻塞，未计入证据；本次每次调用使用独立 5 分钟 context timeout。单批通道曾成功，但随后单片段三轮重跑再次长时间停在本地代理 TCP 连接，无结果文件；已终止，不计入模型证据。Provider 通道稳定后再从本阶段重跑。
-
-最小单批通道验证成功：2 条普通事实约 31 秒，均正确输出 establish，Usage 有记录。完整三轮基线未取得有效结果：一次长时间停在本地代理 TCP 连接；改为每批 2 条后，第 1 轮第 3 批出现模型不一致 Knowledge ID，进入正式未知引用自愈，随后 HTTP 502 并在 5 分钟 context timeout 结束。没有完整结果文件，不计入模型质量证据。上述完整基线未形成有效结果，不据此计算质量指标；随后已通过阶段 159 的定向证据做最小 Prompt 修订，并由阶段 160 记录有限 A/B。
-
-## 阶段 159：最小 Prompt 修订
-
-状态：`complete`
-
-已根据定向真实探针修订 import-analyze Prompt：明确同一 Truth 可在同章按正文顺序输出多个动作，并补充 `establish → learn → reveal_to_reader` 与猜测/不相信/部分兑现负例边界。随后根据负例复验补充：未经确认的说法、未决指控、故意说谎或广播未经证实的指控，不等于作者 Truth 或完整读者揭示。`ik03`、`ik04`、`ik05` 修订后分别补齐预期的 learn/reveal 动作；不复制新规则到 Go，不修改 Schema/DTO/生命周期。
-
-## 阶段 160：同模型 Prompt A/B
-
-状态：`partial_evidence`
-
-完整三轮 A/B 暂未完成，不能计算完整 precision/recall 或一致性。有限证据如下：ik04 baseline 仅 establish，calibrated 输出 establish→learn→reveal_to_reader；ik05 baseline 输出空数组，calibrated 输出 establish→reveal_to_reader；ik07 baseline 与 calibrated 都输出 establish→learn→reveal_to_reader，并都额外输出顾临 believe，因此该误报不是本次修订引入。修订版负例 ik10（猜测）、修正后的 ik11（未经核验的说法）、ik12（明确不相信）均输出空数组。证据支持 learn/reveal 召回改善，且未在三个负例上新增误报，但既有 believe 误报风险仍待完整样本验证；不进入阶段 161。完整 A/B 仍需 Provider 稳定后从阶段 158/160 重跑。
-
-## 阶段 161：真实两章 Import/Context 回归
-
-状态：`partial_evidence`
-
-真实两章 Import 已完成：两条 ChapterRecord 均为 imported/revision=1；Knowledge 投影得到 K001/K002，KnownBy 均只有苏弦，ReaderRevealedAt 分别为 1/2；伏笔投影为 2 条；无 PendingCommit，phase=writing。正式 ChapterRecord 与原文保真结果已通过检查。
-
-第 3 章尚无正式 OutlineEntry（Import 大纲当前只覆盖两章），因此 `novel_context(chapter=3)` 按既有安全策略不注入 `knowledge_boundaries`，但仍提供北侧冷阱/中继器等摘要和伏笔线索，且未泄露全量 Truth。未手工写大纲、未强行续写；完整的“第 3 章大纲存在后，ReaderKnown/CharacterKnown 边界”验证留待后续真实续写或 Architect 扩弧时完成。阶段 162 暂不收口为完整通过。
-
-## 阶段 162：文档、全量验证与提交
-
-状态：`complete`
-
-已保存阶段 161 的脱敏 Import/Context 结果和局限，没有提交完整模型响应、源文、凭证或临时工作区。校准集、assets、Import、全量 go test、vet、关键 race、格式和敏感信息门禁全部通过。阶段 161 因第 3 章尚无正式 OutlineEntry 保持 `partial_evidence`，不把 Context 未注入 knowledge_boundaries 误报为完整角色边界通过。
-
-## 阶段 163：已有大纲后的 Knowledge Context 边界
-
-状态：`complete`
-
-不调用 Provider，复用现有 `novel_context` 测试夹具人为提供第 3 章 OutlineEntry，验证读者已知但当前角色未知的 Truth 可注入、当前角色已知的 Truth 保持 CharacterKnown、当前角色和读者均未知的 Truth 不泄露。该测试只验证代码层净化边界，不冒充 Architect 真实扩弧结果。
-
-## 阶段 164：阶段 161 验收记录收口
-
-状态：`complete`
-
-根据阶段 163 的测试结果更新脱敏验收记录。若代码边界通过但真实 Architect 仍因 Provider 阻塞未验证，则保留该限制，不修改生产逻辑、不伪报真实链路完成。
-
-# 里程碑 V：跨进程 PendingCommit 恢复验收
-
-目标：在不新增生产故障开关的前提下，验证真实磁盘上的 PendingCommit 可由新进程安全收尾，并为后续阶段内故障注入决定是否有必要增加测试专用 seam。
-
-## 阶段 165：跨进程 progress_marked 收尾
-
-状态：`complete`
-
-父测试准备合法 `progress_marked` 密封 PendingCommit，子进程通过真实 `CommitChapterTool.Execute` 收尾；父进程重新打开 Store，断言 checkpoint 已追加、PendingCommit 已清理、Progress 与章节记录不漂移。只验证公开持久化协议，不修改生产代码。
-
-## 阶段 166：多 Stage/事实组合恢复
-
-状态：`complete`
-
-在已有公共恢复矩阵基础上，评估是否需要真实进程级强杀；覆盖 started、state_applied、progress_marked、signal_saved，以及 Knowledge/Foreshadow/imported/rewrite 组合。若现有公共测试已充分证明且没有可安全注入的生产外部 seam，则不新增故障开关，仅补进程级代表性场景。
-
-## 阶段 167：终态与回归收口
-
-状态：`complete`
-
-验证 complete + PendingCommit、密封损坏、Imported provenance 和全量 Projector；同步发布验收记录，执行全量测试、vet、race、格式检查并提交。跨进程代表性恢复、已有四 Stage 矩阵、密封/Imported/Knowledge/Foreshadow 组合和 Race 均通过；未新增生产故障注入开关。
-
-# 里程碑 W：本地拆文方法画像真实验收
-
-目标：使用用户主动提供的自建本地 `.txt/.md/.markdown` 语料，验证现有 `deconstruct` 命令、SimulationProfile、增量指纹、合规抽象边界和 Context 消费；不抓网页、不访问 URL、不安装外部 Skill，不新增 Benchmark DTO/Pipeline。
-
-## 阶段 168：离线命令与增量基线
-
-状态：`complete`
-
-复用现有命令、scanner、runner 和 SimulationProfile 测试，覆盖自建语料目录、支持扩展名、忽略非文本文件、空/非法目录、首次生成、未修改二次运行零模型调用、新增/修改文件增量分析。若已有测试充分，只补验收文档和代表性命令，不重复建设 E2E 框架。
-
-## 阶段 169：真实 Provider 拆文
-
-状态：`complete`
-
-在隔离临时目录用 `sss / gpt-5.6-sol` 对 2—3 篇自建短篇执行 `deconstruct`，记录脱敏的篇数、调用数、Token/费用、画像生成和失败恢复。真实模型失败不得写成合规或质量结论。
-
-## 阶段 170：画像抽象与安全边界
-
-状态：`complete`
-
-检查 SimulationProfile 不包含连续原文、具体作者模仿、原作专名/设定或签名短语；确认只提炼结构、节奏、冲突、信息释放、钩子和情绪方法。若发现问题，只做最小 Prompt/Schema 修订，不新增运行时过滤器。
-
-## 阶段 171：增量真实回归
-
-状态：`complete`
-
-真实画像首次生成后，分别验证未修改二次运行零模型调用、新增一篇只处理新增内容、修改一篇只重处理修改内容；以来源指纹和调用计数为证，不读取完整原文进入版本库。
-
-## 阶段 172：Context 消费与成品隔离
-
-状态：`complete`
-
-验证显式导入 SimulationProfile 后，Writer/Architect 只消费抽象画像、不获得原始语料；画像参与既有预算裁剪；TXT/EPUB 不包含画像或语料内容。未指定画像时 Context 不注入任何画像。
-
-## 阶段 173：文档、全量验证与中文提交
-
-状态：`complete`
-
-W 的真实拆文验收、用量接线修复、增量回归、画像安全扫描、Context/Exporter 回归及最终门禁全部通过。
-
-# 里程碑 X：发布候选稳定化与交付检查
-
-## 阶段 174：版本、干净环境与构建基线
-
-状态：`complete`
-
-干净 HOME 下的帮助、版本和 deconstruct 帮助通过；linux/amd64、linux/arm64、darwin/amd64、darwin/arm64、windows/amd64 的 CGO_DISABLED 构建通过。未修改版本策略。
-
-核对实际版本入口、`--version/version`、干净 HOME 下的帮助/版本/`deconstruct --help`，并执行 linux/amd64、linux/arm64、darwin/amd64、darwin/arm64、windows/amd64 的 CGO_DISABLED 构建。不得修改版本策略或默认配置路径。
-
-## 阶段 175：旧格式与兼容矩阵
-
-状态：`complete`
-
-UserRules v1—v3、ChapterRecord/ProjectFormat 旧版本、PendingCommit legacy/v1/v2、SimulationProfile v1 和未来版本拒绝矩阵通过。
-
-运行旧 UserRules v1—v3、ChapterRecord v1、ProjectFormat 旧版本、PendingCommit v1/legacy、SimulationProfile v1 的兼容测试；未知未来格式必须明确拒绝，不得静默降级。
-
-## 阶段 176：模型入口与预算审计
-
-状态：`complete`
-
-Architect、Writer、Editor、Arbiter、Import、Revision、Cocreate、Deconstruct 的入口均有 UsageTracker 接线；真实拆文缺口已修复为 `simulation` agent。
-
-静态审计并用 fake 模型确认 Architect、Writer、Editor、Arbiter、Import、Revision、Cocreate、Deconstruct 八类入口均经过 UsageTracker；确认真实拆文修复后的 `simulation` agent 和既有 BudgetSentinel 不被绕过。
-
-## 阶段 177：恢复与成品发布矩阵
-
-状态：`complete`
-
-Commit/Rewrite/Knowledge/Foreshadow/Imported provenance/complete/跨进程恢复和 TXT/EPUB 隔离矩阵通过，未新增故障注入开关。
-
-运行 Commit/Rewrite/Knowledge/Foreshadow/Imported provenance/complete/跨进程恢复矩阵，以及 TXT/EPUB 内部状态隔离；不新增故障注入开关或新 Saga Stage。
-
-## 阶段 178：交付文档与变更说明
-
-状态：`complete`
-
-新增 CHANGELOG、发布说明和升级说明，记录 v2 密封、UserRules v4、Imported provenance、本地 deconstruct、Linux/无头边界、扫榜不支持和 Import 校准限制。
-
-新增或更新 `CHANGELOG.md`、`docs/release-notes.md`、`docs/upgrade.md`，记录 PendingCommit v2、UserRules v4、Imported provenance、deconstruct、本地/Linux 边界、扫榜明确不支持和 Import 校准限制。
-
-## 阶段 179：发布候选收口
-
-状态：`complete`
-
-全量测试、vet、关键 race、五目标交叉编译、干净 HOME 帮助/版本、Markdown 链接、敏感信息和临时产物扫描全部通过。X 发布候选文档已齐，当前未创建版本标签。
-
-执行全量测试、vet、race、gofmt、git diff --check、Markdown 链接、敏感信息和临时产物扫描；确认工作区只包含候选记录后，用中文提交。
-
-更新 `docs/release-acceptance.md`、`CONTEXT.md` 和 findings，记录真实费用及限制；执行全量测试、vet、race、格式、敏感信息和临时文件检查后，用中文提交.
+- 不在候选 4 中重构生产代码；
+- 不在候选 2 中创建通用 Context Service/Repository；
+- 不在候选 3 中引入第二套 Import Schema 或运行时评测框架；
+- 不因为 Provider 阻塞伪造模型质量结论；
+- 不新增 Knowledge/Foreshadow 动作；
+- 不创建扫榜、浏览器、Chrome/CDP、数据库或 Web 事实源；
+- 不在 Release Candidate 前混入无关功能。
+
+## 当前下一步
+
+从阶段 180 开始：先建立候选 4 的测试资产归属表，不修改生产代码。
