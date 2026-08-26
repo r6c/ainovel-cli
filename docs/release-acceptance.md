@@ -212,7 +212,7 @@ Provider：`sss / gpt-5.6-sol`；硬预算 `$0.25`，实际费用 `$0.010818`。
 
 `larashero3-dotcom/lieflat-less-ai-tone`（MIT，审查 commit `27d29232f10124db904ca9c0536d0b67cb3b2833`）不整体安装。它与现有 `anti-ai-tone`、`rules` 和 `story-deslop` 重叠，三个 Python 脚本只做语料统计，不是小说运行时执行器。后续仅把白名单最小修改、信息守恒及少数有证据的候选规则纳入本项目网文样本校准；不直接复制 Skill 或新增第二条去 AI 味管线。
 
-### 3.11 本地拆文方法画像真实验收
+### 3.10 本地拆文方法画像真实验收
 
 使用全新隔离目录和三篇完全自建本地语料执行：
 
@@ -233,7 +233,7 @@ ainovel-cli deconstruct <本地语料目录>
 
 本次真实验收的临时语料、配置、日志和画像没有进入 Git。此前生产缺口已修复：拆文调用现在通过既有 `UsageTracker` 归入 `simulation` agent，并接受现有预算哨兵约束。
 
-## 3.10 AI 味判据证据校准
+### 3.11 AI 味判据证据校准
 
 使用 16 条 ainovel-cli 自建匿名中文网文最小对和独立金标，对 `sss / gpt-5.6-sol` 执行三轮顺序变化盲评。原始金标中一条单次人物核心恐惧对照句被三轮一致指出具有明确叙事功能；人工按预先协议修正后，多数票与 16 条金标全部一致。直接 Judge 响应记录 Token 7,724，但 Provider 未返回 Cost，故费用记为 unavailable，不伪报 `$0`。
 
@@ -241,7 +241,7 @@ Writer A/B 复用 `writer_first_chapter`：旧判据与校准判据各运行 3 �
 
 版本化证据位于 [`../evals/anti-ai-tone/`](../evals/anti-ai-tone/)；真实章节与运行日志只保留在 gitignored workspace。外部 `lieflat-less-ai-tone` 未安装、未执行脚本、未作为第二条运行时管线。
 
-### 3.11 真实 Cocreate 五阶段验收
+### 3.12 真实 Cocreate 五阶段验收
 
 使用 `sss / gpt-5.6-sol` 在隔离目录执行冷启动共创。第一次尝试在 customization 阶段因用户脚本未回答“选择或授权模型决定谜底”而持续保持阶段，证明模型没有擅自补关键真相；随后遇 HTTP 502。第二次首轮即遇同类 502。第三次按真实 TUI“失败保留 Session、用户重试”语义完成：一次请求失败后重试成功，6 个有效回合严格为 `core → customization → title → confirmation → ready`。
 
@@ -251,9 +251,9 @@ Writer A/B 复用 `writer_first_chapter`：旧判据与校准判据各运行 3 �
 
 验收同时发现 P1：Cocreate 直接使用流式 thinking 模型，未经过 UsageTracker，因此成功场次持久化 `$0.1018428` 只覆盖后续 UserRules/Foundation，完整共创成本不可追溯，记为 unavailable。现已修复通用流式 Usage 包装并让冷启动/阶段共创统一接入；每轮请求前也复用预算拒绝。修复后一次真实单轮复验记录 `thinking` 821/374 Token、`$0.005382`，MissingUsage=0。临时对话、Draft、日志和配置不入 Git。
 
-### 3.12 真实 Import 后续写验收
+### 3.13 真实 Import 后续写验收
 
-### 3.13 真实 Import 认知事实/Context 回归（阶段 161）
+### 3.14 真实 Import 认知事实/Context 回归（阶段 161）
 
 使用当前修订后的 `import-analyze.md` 与 `sss / gpt-5.6-sol`，在全新隔离目录导入两章自建未完科幻悬疑文本。结果：两条 ChapterRecord 均为 `origin=imported`、`revision=1`，正式发布无 PendingCommit，phase=writing；Knowledge 投影包含两条 Truth，KnownBy 均只有苏弦，ReaderRevealedAt 分别为第 1/2 章，伏笔投影包含两条，原文保持。
 

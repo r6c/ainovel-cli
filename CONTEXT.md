@@ -351,7 +351,7 @@ duplicate_paragraph
 
 Commit 和 Revision Projector 都必须复用同一个 `rules.Lint`，不要建立第二条 Prose Lint 管线。
 
-### 10.1 AI 味语义判据
+### 11.1 AI 味语义判据
 
 `assets/references/anti-ai-tone.md` 是 Writer/Editor 的语义参考，不是文本来源检测器。不得输出 AI 概率，也不得把句长、段长、问句、比喻、句内排比、冒号或“不是 A 而是 B”本身当作 AI 来源证据。
 
