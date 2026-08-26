@@ -3,11 +3,11 @@
 ## 当前会话
 
 - 日期：2026-08-26
-- 基线：`a20fad7 文档：继续归档并收敛稳定工作记忆`
-- 当前里程碑：C2——Context selection policy 二次深化
-- 当前阶段：U2 阶段 211—可断点有限扩展评测（in_progress）
+- 基线：`c8a4212 评测：扩展导入认知动作校准样本`
+- 当前里程碑：U2——Import 认知 A/B 解释与样本扩展
+- 当前阶段：U2 阶段 211/212 保持部分证据，阶段 213/214 已完成；U2 总体保持 `partial_evidence`
 - 阶段 209 已完成：新增 `evals/import-knowledge/explanation.md`，仅基于现有聚合数据解释 A/B 权衡；不从缺失的逐样本结果反推具体错误。
-- 阶段 210 已完成：样本从 12 条扩展到 24 条，新增 12 条完全自建边界样本；`believe` 金标现在要求角色与内容；确定性测试、Import、全量、vet、race 和脱敏检查通过，Provider 扩展评测尚未开始。
+- 阶段 210 已完成：样本从 12 条扩展到 24 条，新增 12 条完全自建边界样本；`believe` 金标现在要求角色与内容；确定性测试、Import、全量、vet、race 和脱敏检查通过。
 - 阶段 205 已完成：新增 `docs/context-policy-decision-matrix.md`，覆盖 Context 输入、候选资格、排除原因、净化、排序/上限、预算裁剪和 Envelope 输出；未修改生产代码。
 - 阶段 206 已完成：临时副本删除实验确认 Knowledge 选择/净化、预算裁剪和 Envelope 装配均不可删除；阶段 207 不做无证据的生产重构，不新增 Context Service/Repository/决策 trace。
 - 本轮不修改生产代码、不调用 Provider、不执行 GoReleaser。
@@ -96,21 +96,25 @@ docs/history/plans/2026-08-pre-release-candidates/
 
 已生成 `evals/import-knowledge/explanation.md`，仅基于现有聚合统计解释 baseline/calibrated 的权衡；没有从缺失的逐样本数据反推具体预测。
 
-### 阶段 210：样本 12→24——in_progress
+### 阶段 210：样本 12→24——complete
 
 新增 12 条完全自建样本，扩展明确 learn、明确 reveal、同 Truth 多动作、未证实转述、belief 和不同题材/视角反例。
 
-### 阶段 211：可断点扩展评测——pending
+### 阶段 211：可断点扩展评测——partial_evidence
 
-复用既有 Runner；每条结果原子落盘，Prompt 身份隔离，错误可续跑，不保存原始响应或凭证。Provider 阻塞达到停止条件即暂停。
+新增样本曾完成 72 次真实调用，但本轮协调器未直接调用已提交 Runner，且逐样本结果已清理；结果只保留有限动作级聚合，不宣称 Runner 接入已完成。
 
-### 阶段 212：合并统计与 Go/No-Go——pending
+### 阶段 212：合并统计与 Go/No-Go——partial_evidence
 
-只有扩大样本后仍出现稳定、可解释收益，才提出下一轮 Prompt 修改；否则保留当前折中版本。
+已形成动作级聚合，但 exact-match、逐样本一致性和新增调用成本不可独立复核；当前仅决定保留 calibrated Prompt，不授权继续修改。
 
-### 阶段 213：U2 文档收口——pending
+### 阶段 213：U2 文档收口——complete
 
-只提交脱敏标签、聚合统计和解释。
+已提交扩展汇总、报告和证据限制；明确新增结果的逐样本 exact-match、顺序、一致性和成本不可独立复核。
+
+### 阶段 214：最终验证——complete
+
+评测资产、Import、全量测试、vet、race、JSON 结构、Markdown 链接和脱敏检查通过。U2 仍因阶段 211/212 的证据保存限制保持 `partial_evidence`。
 
 ## 发布事项
 
@@ -135,6 +139,10 @@ GoReleaser 发布验收独立于本轮：
 | GoReleaser module 安装下载依赖超时 | 未重复无界下载，保留为独立发布门禁 |
 | 历史文件中的旧 Provider 状态可能污染当前导航 | 历史保留在归档，根进度仅保留稳定当前状态 |
 
+## U2 当前收口
+
+阶段 211 曾完成 72 次新增样本真实调用，但一次性协调器未直接使用已提交 Runner，且逐样本结果已清理；当前仅保留动作级聚合，exact-match、逐样本一致性和新增调用成本不可独立复核。阶段 212 因此保持 `partial_evidence`，Go/No-Go 为保留 calibrated Prompt、不继续追加规则。阶段 213/214 文档与门禁已完成。
+
 ## 下一步
 
-先完成 G2 阶段 203—204 的稳定文档导航和归档门禁；随后进入 C2 阶段 205 的 Context 输入/决策/输出矩阵。U2 独立、可暂停，不阻塞发布候选。
+U2 保持部分证据，不继续修改 Prompt；下一独立事项仍为 GoReleaser snapshot 与发行包验收。

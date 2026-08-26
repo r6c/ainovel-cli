@@ -102,6 +102,39 @@ func TestImportKnowledgeRunnerDoesNotReuseResultFromAnotherPrompt(t *testing.T) 
 	}
 }
 
+func TestImportKnowledgeRunnerRunsExpandedSamplesIndependently(t *testing.T) {
+	dir := t.TempDir()
+	samples := []CalibrationSample{
+		{ID: "ik13", Category: "establish_only"},
+		{ID: "ik24", Category: "partial_payoff_negative"},
+	}
+	calls := make([]string, 0, len(samples))
+	got, err := NewImportKnowledgeRunner(dir, samples, ImportKnowledgeRunnerOptions{
+		PromptName: "calibrated", PromptDigest: "sha256:expanded",
+	}).Run(func(sample CalibrationSample) (ImportKnowledgeSampleResult, error) {
+		calls = append(calls, sample.ID)
+		return ImportKnowledgeSampleResult{
+			SampleID: sample.ID,
+			Category: sample.Category,
+			Updates:  []KnowledgeActionResult{{ID: "K-" + sample.ID, Action: "establish"}},
+		}, nil
+	})
+	if err != nil || got.Completed != 2 || got.Failed != 0 || !reflect.DeepEqual(calls, []string{"ik13", "ik24"}) {
+		t.Fatalf("expanded samples summary=%+v calls=%v err=%v", got, calls, err)
+	}
+
+	calls = nil
+	got, err = NewImportKnowledgeRunner(dir, samples, ImportKnowledgeRunnerOptions{
+		PromptName: "calibrated", PromptDigest: "sha256:expanded",
+	}).Run(func(sample CalibrationSample) (ImportKnowledgeSampleResult, error) {
+		calls = append(calls, sample.ID)
+		return ImportKnowledgeSampleResult{SampleID: sample.ID, Category: sample.Category}, nil
+	})
+	if err != nil || got.Completed != 2 || len(calls) != 0 {
+		t.Fatalf("expanded resume summary=%+v calls=%v err=%v", got, calls, err)
+	}
+}
+
 func TestImportKnowledgeRunnerFailsLoudlyForCorruptExistingResult(t *testing.T) {
 	dir := t.TempDir()
 	samples := []CalibrationSample{{ID: "ik01", Category: "establish_only"}}

@@ -11,7 +11,9 @@ reveal_to_reader
 
 - `samples.json`：匿名片段；真实模型只读取此文件。
 - `labels.json`：独立产品金标；不进入模型 Prompt。金标同时记录 `believe` 的角色和内容，避免只校验动作名。
-- `report.md`：三轮 A/B 脱敏统计、Go/No-Go 结论与已知限制；Provider 阻塞仅保留在历史过程记录。
+- `report.md`：原始 12 条样本的三轮 A/B 脱敏统计、Go/No-Go 结论与已知限制。
+- `expanded-report.md`：新增 12 条样本的扩展结果；当前为部分可复核证据，逐样本工件与成本未保留，不能替代完整可复核基线。
+- `expanded-ab-summary.json`：新增结果的脱敏动作级聚合；`status=partial_evidence`，不可复核指标明确为 `null`。
 - `explanation.md`：基于聚合数据的动作级混淆解释、证据边界与下一批样本方向。
 - 后续有效基线产物只保存动作级脱敏结果与 Usage，不保存完整模型响应。
 

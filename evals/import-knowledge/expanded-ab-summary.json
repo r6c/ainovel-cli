@@ -1,0 +1,93 @@
+{
+  "version": 5,
+  "status": "partial_evidence",
+  "evidence_status": "aggregates_recovered_but_raw_per_sample_results_not_retained",
+  "original_samples": 12,
+  "expanded_samples": 12,
+  "total_samples": 24,
+  "new_rounds": 3,
+  "new_arms": 6,
+  "new_valid_results": 72,
+  "new_errors": 0,
+  "new": {
+    "baseline": {
+      "runs": 36,
+      "exact_set": null,
+      "exact_order": null,
+      "tp": 47,
+      "fp": 19,
+      "fn": 1,
+      "precision": 0.7121,
+      "recall": 0.9792,
+      "negative_empty": 7,
+      "by_action": {
+        "establish": {"tp": 23, "fp": 11, "fn": 1},
+        "learn": {"tp": 8, "fp": 2, "fn": 1},
+        "reveal_to_reader": {"tp": 12, "fp": 4, "fn": 0},
+        "believe": {"tp": 3, "fp": 3, "fn": 0}
+      }
+    },
+    "calibrated": {
+      "runs": 36,
+      "exact_set": null,
+      "exact_order": null,
+      "tp": 48,
+      "fp": 18,
+      "fn": 0,
+      "precision": 0.7273,
+      "recall": 1.0,
+      "negative_empty": 9,
+      "by_action": {
+        "establish": {"tp": 24, "fp": 6, "fn": 0},
+        "learn": {"tp": 9, "fp": 1, "fn": 0},
+        "reveal_to_reader": {"tp": 12, "fp": 8, "fn": 0},
+        "believe": {"tp": 3, "fp": 3, "fn": 0}
+      }
+    }
+  },
+  "combined": {
+    "baseline": {
+      "runs": 72,
+      "exact_set": null,
+      "exact_order": null,
+      "tp": 92,
+      "fp": 23,
+      "fn": 13,
+      "precision": 0.8,
+      "recall": 0.8762,
+      "negative_empty": 16,
+      "by_action": {
+        "establish": {"tp": 43, "fp": 12, "fn": 8, "precision": 0.7818, "recall": 0.8431},
+        "learn": {"tp": 15, "fp": 2, "fn": 6, "precision": 0.8824, "recall": 0.7143},
+        "reveal_to_reader": {"tp": 27, "fp": 4, "fn": 0, "precision": 0.871, "recall": 1.0},
+        "believe": {"tp": 6, "fp": 6, "fn": 0, "precision": 0.5, "recall": 1.0}
+      }
+    },
+    "calibrated": {
+      "runs": 72,
+      "exact_set": null,
+      "exact_order": null,
+      "tp": 97,
+      "fp": 27,
+      "fn": 8,
+      "precision": 0.7823,
+      "recall": 0.9238,
+      "negative_empty": 18,
+      "by_action": {
+        "establish": {"tp": 43, "fp": 6, "fn": 8, "precision": 0.8776, "recall": 0.8431},
+        "learn": {"tp": 21, "fp": 1, "fn": 0, "precision": 0.9545, "recall": 1.0},
+        "reveal_to_reader": {"tp": 27, "fp": 14, "fn": 0, "precision": 0.6585, "recall": 1.0},
+        "believe": {"tp": 6, "fp": 6, "fn": 0, "precision": 0.5, "recall": 1.0}
+      }
+    }
+  },
+  "usage": "unavailable: temporary probe did not use UsageTracker; zero values are not cost claims",
+  "decision": "retain_current_calibrated_prompt_no_further_revision",
+  "limitations": [
+    "新增评测逐样本结果已清理，只保留动作级聚合；exact-set/order 与逐样本一致性不可独立复核",
+    "真实协调器未直接调用已提交 ImportKnowledgeRunner；Runner 的离线契约另有 fake 测试覆盖",
+    "临时探针未接入 UsageTracker，新增 72 条调用费用不可从本次工件追溯",
+    "金标为本项目自建，结果受模型随机性影响",
+    "Knowledge ID 命名差异不计为错误"
+  ]
+}

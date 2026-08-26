@@ -2,9 +2,9 @@
 
 ## 当前状态
 
-- 总体状态：`planned`
-- 当前基线：`a20fad7 文档：继续归档并收敛稳定工作记忆`
-- 工作区：C2 已完成；当前无未提交生产代码变更，本轮不调用 Provider、不执行 GoReleaser。
+- 总体状态：`partial_evidence`
+- 当前基线：`c8a4212 评测：扩展导入认知动作校准样本`
+- 工作区：U2 阶段 211—214 有未提交的评测记录与测试变更；无未提交生产代码变更。本轮真实扩展结果为部分可复核证据，不执行 GoReleaser。
 - 已完成主线：领域事实、Commit Saga、Import、Context、Linux/无头、真实 Headless/Cocreate/Revision/Import/Deconstruct、测试资产整理。
 - 当前发布事项：GoReleaser snapshot 尚未验收，未创建版本标签。
 
@@ -218,7 +218,9 @@ baseline/calibrated × 3 轮
 
 ## 阶段 211：可断点有限扩展评测
 
-状态：`in_progress`
+状态：`partial_evidence`
+
+曾完成 72 次新增样本真实调用，但本轮实际协调器未直接调用已提交 Runner，且逐样本工件已清理；因此只保留聚合动作证据，不宣称可断点 Runner 接入已经验收。
 
 使用既有 Runner，执行新增 12 条的：
 
@@ -238,7 +240,9 @@ baseline/calibrated × 3 轮
 
 ## 阶段 212：合并统计与 Go/No-Go
 
-状态：`planned`
+状态：`partial_evidence`
+
+已形成新增样本与原基线的动作级聚合，但 exact-match、逐样本一致性和新增调用成本因工件清理不可独立复核；当前 Go/No-Go 仅为暂保留 calibrated，不授权继续改 Prompt。
 
 将新增 12 条与原 12 条分别统计并合并，报告：
 
@@ -254,7 +258,7 @@ baseline/calibrated × 3 轮
 
 ## 阶段 213：U2 文档收口
 
-状态：`planned`
+状态：`complete`
 
 更新：
 
@@ -309,4 +313,4 @@ G2：稳定工作记忆归档
 → 再决定 v0.1.0-rc.1
 ```
 
-当前入口：U2 阶段 210——样本 12→24。阶段 209 已完成；本轮只扩展自建样本，不调用 Provider。
+当前入口：U2 扩展评测已收口为部分可复核证据。阶段 211/212 保持 `partial_evidence`，不继续修改 Prompt；下一独立事项仍为 GoReleaser snapshot。
