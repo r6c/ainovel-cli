@@ -2,9 +2,9 @@
 
 ## 当前状态
 
-- 总体状态：`complete`
-- 当前基线：`45de770 修复：使导入分析提示词缓存失效`
-- 工作区：G2 文档导航核对中；本轮不修改生产代码、不调用 Provider。
+- 总体状态：`planned`
+- 当前基线：`a20fad7 文档：继续归档并收敛稳定工作记忆`
+- 工作区：C2 已完成；当前无未提交生产代码变更，本轮不调用 Provider、不执行 GoReleaser。
 - 已完成主线：领域事实、Commit Saga、Import、Context、Linux/无头、真实 Headless/Cocreate/Revision/Import/Deconstruct、测试资产整理。
 - 当前发布事项：GoReleaser snapshot 尚未验收，未创建版本标签。
 
@@ -99,7 +99,7 @@ Markdown 相对链接有效
 
 ## 阶段 205：输入/决策/输出矩阵
 
-状态：`planned`
+状态：`complete`
 
 基于已拆分的 Context 测试资产，补充决策矩阵：
 
@@ -117,7 +117,7 @@ Markdown 相对链接有效
 
 ## 阶段 206：删除与决策追踪测试
 
-状态：`planned`
+状态：`complete`
 
 通过 deletion test 和行为 trace 判断当前策略是否仍有真实深化空间：
 
@@ -131,7 +131,7 @@ Markdown 相对链接有效
 
 ## 阶段 207：条件性策略深化与收口
 
-状态：`planned`
+状态：`complete`
 
 仅当阶段 206 证明值得时，才在现有 `internal/tools` 包内做小范围深化：
 
@@ -145,7 +145,7 @@ Markdown 相对链接有效
 
 ## 阶段 208：Context 二次深化回归
 
-状态：`planned`
+状态：`complete`
 
 运行：
 
@@ -305,4 +305,4 @@ G2：稳定工作记忆归档
 → 再决定 v0.1.0-rc.1
 ```
 
-当前入口：C2 阶段 205——Context 输入/决策/输出矩阵。
+当前入口：U2 阶段 209——解释已有 Import 认知 A/B。

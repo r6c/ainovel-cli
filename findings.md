@@ -2,7 +2,7 @@
 
 ## 当前基线
 
-- Git 基线：`45de770 修复：使导入分析提示词缓存失效`
+- Git 基线：`a20fad7 文档：继续归档并收敛稳定工作记忆`
 - 当前工作区：仅有本轮规划文件和历史归档变更；未修改生产代码、测试代码或发布配置。
 - 项目定位：本地文件系统驱动、可恢复、可审计的 AI 小说创作运行时。
 - 核心边界：模型负责开放语义；代码负责状态、约束、事务、恢复和验证。
@@ -158,6 +158,18 @@ PendingCommit
 - 归档目录未发现 Provider 凭证、私钥或敏感认证内容。
 
 阶段 204 归档门禁完成后，G2 收口，不修改生产代码。
+
+## C2 阶段 205—208 收口
+
+阶段 205 已建立 `docs/context-policy-decision-matrix.md`，固定 Context 的输入、候选资格、排除、净化、排序/上限、预算和 Envelope 边界。
+
+阶段 206 deletion test 在临时副本中验证：删除 Knowledge 选择/净化会破坏隐藏 Truth 和 Reader/Character 边界；删除预算裁剪会破坏上限与 `_trimmed`；删除 Envelope 装配会破坏公共分区。Budget 完整编排回归通过，删除实验失败来自预期行为缺失，而非环境问题。
+
+阶段 207 决策：现有 `context_knowledge_policy.go` 已提供足够的纯策略边界；没有证据表明新增 Context Service、Repository、通用策略框架或生产决策 trace 能带来杠杆收益，因此不做无条件生产重构。
+
+阶段 208 回归通过：Context、Host、Import、全量测试、vet、race、Markdown 链接和 diff check 均通过；ReaderKnown/CharacterKnown、隐藏 Truth、未来过滤、8 条上限、预算裁剪和 Envelope 行为未变。
+
+C2 收口后，下一项按独立路线进入 U2 阶段 209；U2 仍不阻塞 GoReleaser 发布验收。
 
 ## 历史说明
 
