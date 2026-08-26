@@ -935,19 +935,19 @@ git diff --check
 
 前次完整运行受本地代理长连接、模型不一致 Knowledge ID 自愈和 HTTP 502 阻塞，未计入证据；本次每次调用使用独立 5 分钟 context timeout。单批通道曾成功，但随后单片段三轮重跑再次长时间停在本地代理 TCP 连接，无结果文件；已终止，不计入模型证据。Provider 通道稳定后再从本阶段重跑。
 
-最小单批通道验证成功：2 条普通事实约 31 秒，均正确输出 establish，Usage 有记录。完整三轮基线未取得有效结果：一次长时间停在本地代理 TCP 连接；改为每批 2 条后，第 1 轮第 3 批出现模型不一致 Knowledge ID，进入正式未知引用自愈，随后 HTTP 502 并在 5 分钟 context timeout 结束。没有完整结果文件，不计入模型质量证据。保持当前 Prompt，不进入阶段 159/160；Provider 通道稳定后从本阶段重跑。
+最小单批通道验证成功：2 条普通事实约 31 秒，均正确输出 establish，Usage 有记录。完整三轮基线未取得有效结果：一次长时间停在本地代理 TCP 连接；改为每批 2 条后，第 1 轮第 3 批出现模型不一致 Knowledge ID，进入正式未知引用自愈，随后 HTTP 502 并在 5 分钟 context timeout 结束。没有完整结果文件，不计入模型质量证据。上述完整基线未形成有效结果，不据此计算质量指标；随后已通过阶段 159 的定向证据做最小 Prompt 修订，并由阶段 160 记录有限 A/B。
 
 ## 阶段 159：最小 Prompt 修订
 
-状态：`partial_prompt_revision`
+状态：`complete`
 
-已根据定向真实探针修订 import-analyze Prompt：明确同一 Truth 可在同章按正文顺序输出多个动作，并补充 `establish → learn → reveal_to_reader` 与猜测/不相信/部分兑现负例边界。`ik03` 修订后成功输出完整三动作；完整基线与 A/B 尚未完成，不把局部探针当作统计证据。不复制新规则到 Go，不修改 Schema/DTO/生命周期。
+已根据定向真实探针修订 import-analyze Prompt：明确同一 Truth 可在同章按正文顺序输出多个动作，并补充 `establish → learn → reveal_to_reader` 与猜测/不相信/部分兑现负例边界。随后根据负例复验补充：未经确认的说法、未决指控、故意说谎或广播未经证实的指控，不等于作者 Truth 或完整读者揭示。`ik03`、`ik04`、`ik05` 修订后分别补齐预期的 learn/reveal 动作；不复制新规则到 Go，不修改 Schema/DTO/生命周期。
 
 ## 阶段 160：同模型 Prompt A/B
 
 状态：`partial_evidence`
 
-完整三轮 A/B 暂未完成，不能计算完整 precision/recall 或一致性。已取得三条有效单样本对照/修订证据：ik04 baseline 仅 establish，calibrated 输出 establish→learn→reveal_to_reader；ik05 calibrated 输出 establish→reveal_to_reader（baseline 旧结果此前超时，无有效对照）；ik07 calibrated 输出三动作但额外误报顾临 believe。证据支持召回改善，也保留误报风险，不能进入阶段 161。完整 A/B 仍需 Provider 稳定后从阶段 158/160 重跑。
+完整三轮 A/B 暂未完成，不能计算完整 precision/recall 或一致性。有限证据如下：ik04 baseline 仅 establish，calibrated 输出 establish→learn→reveal_to_reader；ik05 baseline 输出空数组，calibrated 输出 establish→reveal_to_reader；ik07 baseline 与 calibrated 都输出 establish→learn→reveal_to_reader，并都额外输出顾临 believe，因此该误报不是本次修订引入。修订版负例 ik10（猜测）、修正后的 ik11（未经核验的说法）、ik12（明确不相信）均输出空数组。证据支持 learn/reveal 召回改善，且未在三个负例上新增误报，但既有 believe 误报风险仍待完整样本验证；不进入阶段 161。完整 A/B 仍需 Provider 稳定后从阶段 158/160 重跑。
 
 ## 阶段 161：真实两章 Import/Context 回归
 

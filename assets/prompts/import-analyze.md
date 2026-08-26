@@ -23,7 +23,7 @@
 
 `establish → learn → reveal_to_reader`
 
-其中：角色必须明确验证并接受 Truth 才能输出 `learn`；正文必须完整告诉读者此前隐藏的 Truth 才能输出 `reveal_to_reader`。听见但不相信、猜测、怀疑、故意说谎不等于 `learn`；模糊暗示或部分兑现不等于 `reveal_to_reader`。同一章没有实际发生的动作不要补写。
+其中：角色必须明确验证并接受 Truth 才能输出 `learn`；正文必须完整告诉读者此前隐藏的 Truth 才能输出 `reveal_to_reader`。未经确认的说法不等于客观 Truth，未决指控不等于作者事实；角色故意说谎、广播未经证实的指控或角色明确不相信时，不要据此输出 `establish` 或 `reveal_to_reader`。听见但不相信、猜测、怀疑、故意说谎不等于 `learn`；模糊暗示或部分兑现不等于 `reveal_to_reader`。同一章没有实际发生的动作不要补写。
 
 ## 纪律
 

@@ -1,14 +1,14 @@
 # Import Knowledge 校准阶段报告
 
 日期：2026-08-26
-状态：阶段 159 `partial_prompt_revision`
+状态：阶段 160 `partial_evidence`
 
 ## 已完成
 
 - 建立 12 条完全自建中文小说片段。
 - 建立独立动作金标，覆盖 establish-only、establish+learn、establish+reveal、三动作、belief，以及猜测/谎言/明确不相信负例。
 - 通过确定性数据契约测试。
-- 确认真实测试 seam 为当前 Import `analysisContract + llmcontract.Execute`，没有新增 Judge Schema，也没有修改生产 Prompt。
+- 确认真实测试 seam 为当前 Import `analysisContract + llmcontract.Execute`，没有新增 Judge Schema；阶段 159 仅对 `import-analyze.md` 做了最小语义修订，未修改 Go 生产代码。
 
 ## Provider 通道验证
 
@@ -42,23 +42,26 @@
 
 据此只做了最小 Prompt 修订：说明同一 Truth 可在同章按正文顺序输出多个动作，并补充 `establish → learn → reveal_to_reader` 示例，以及“听见但不相信、猜测、部分兑现不等于对应动作”的负例边界。
 
-修订后 `ik03` 单次探针成功输出：
+修订后定向证据：
 
 ```text
-establish → learn(苏弦) → reveal_to_reader
+ik03：establish → learn(苏弦) → reveal_to_reader
+ik04：establish → learn(林澈) → reveal_to_reader
+ik05：establish → reveal_to_reader
+ik07：establish → learn(苏弦) → reveal_to_reader，并额外输出顾临 believe
 ```
 
-该结果支持修订方向，但不是完整统计证据。`ik05/ik07` 修订后探针受 Provider 长连接和宿主 120 秒限制未取得结果；完整三轮基线和 Prompt A/B 仍未完成。
+`ik07` 的 baseline 也输出同一个额外 `believe(顾临)`，因此该误报不是本次 Prompt 修订引入的回归。负例复验结果：`ik10`、修正后的 `ik11`、`ik12` 均输出空数组。修订方向改善了 learn/reveal 召回，也暴露了既有 believe 误报风险；完整三轮基线和 Prompt A/B 仍未完成。
 
 ## 当前决策
 
 - 阶段 157：`complete`。
 - 阶段 158：`blocked_provider`。
-- 阶段 159/160 不启动。
-- Provider 通道稳定后，从阶段 158 重新执行三轮基线。
-- 在取得有效基线前，不根据单批结果推断 learn/reveal 漏报，也不加入 worked examples 到生产 Prompt。
+- 阶段 159：`partial_prompt_revision`，已完成有证据的最小 Prompt 修订，但不宣称统计改善。
+- 阶段 160：`partial_evidence`，已完成有限 A/B 与负例探针，尚未完成完整三轮统计。
+- Provider 通道稳定后，从阶段 158/160 继续完整 baseline/A-B；在此之前不进入阶段 161。
 - 临时 live runner、结果文件、日志和一次性进程均已删除。
 
 ## 许可证与来源
 
-片段均为本项目自建，不含第三方文本。没有安装外部 Skill、没有运行外部脚本、没有复制外部代码或 Prompt。
+片段均为本项目自建，不含第三方文本。没有安装外部 Skill、没有运行外部脚本、没有复制外部代码或 Prompt。临时 runner、结果文件和日志已在每次探针完成后删除；版本库只保留脱敏样本、标签、报告和阶段记录。

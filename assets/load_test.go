@@ -92,6 +92,8 @@ func TestImportPromptExplainsKnowledgeMultiActionExtraction(t *testing.T) {
 		"部分兑现",
 		"不等于 `learn`",
 		"不等于 `reveal_to_reader`",
+		"未经确认的说法不等于客观 Truth",
+		"未决指控不等于作者事实",
 	} {
 		if !strings.Contains(prompt, phrase) {
 			t.Fatalf("导入分析提示缺少认知动作多动作边界 %q", phrase)

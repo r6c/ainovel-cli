@@ -3,15 +3,17 @@
 ## 当前会话
 
 - 日期：2026-08-26
-- 基线：`3fddb1e 修复：保护导入与用户正文不被自动返工覆盖`
+- 基线：`3dc0348 校准：补充导入认知多动作提取边界`
 - 当前里程碑：U——Import 认知事实提取校准
-- 当前阶段：阶段 160——小型 Prompt A/B（partial）
+- 当前阶段：阶段 160——小型 Prompt A/B（partial_evidence）
 
-定向真实探针：旧 Prompt 下 ik03/ik04 漏报 learn，ik05 漏报 reveal_to_reader；ik07 输出三动作但额外出现 believe。已加入最小多动作 worked example 与负例边界。ik03 修订后成功输出 establish→learn→reveal_to_reader；ik05/ik07 修订探针因 Provider 长连接/宿主 120 秒限制未取得结果。完整三轮基线与 A/B 未完成，不计作统计证据。
+定向真实探针：旧 Prompt 下 ik03/ik04 漏报 learn，ik05 漏报 reveal_to_reader；ik07 输出三动作但额外出现 believe。修订 Prompt 后 ik03 成功输出 establish→learn→reveal_to_reader；ik04 输出 establish→learn→reveal_to_reader；ik05 输出 establish→reveal_to_reader；ik07 输出 establish→learn→reveal_to_reader，但额外输出顾临 believe。baseline ik07 也有同样的 believe，因此不是本次修订引入。
 
-小型 A/B 已取得一条有效对照：baseline ik04 仅输出 establish；修订 Prompt 的 calibrated ik04 输出 establish→learn(林澈)→reveal_to_reader，Usage 分别为 2383/2676 tokens。随后 calibrated ik05 正确输出 establish→reveal_to_reader；calibrated ik07 输出 establish→learn(苏弦)→reveal_to_reader，但额外误报顾临 believe。证据支持 learn/reveal 召回改善，也保留 belief 误报风险；完整 A/B 统计尚未完成，不进入阶段 161。
+负例复验：ik10（猜测）、修正后的 ik11（未经核验的说法）、ik12（明确不相信）在修订 Prompt 下均输出空数组。ik11 原始文本中的“故意撒谎”本身是客观事件，原金标过窄，已改为真正的未经核验说法。
 
-本次重跑改为每次单片段调用，三轮共 36 次真实 Import 严格协议请求，每次独立 5 分钟 context timeout；不修改生产 Prompt，结果只保存动作级脱敏数据和 Usage。
+有效小型 A/B：baseline ik04 仅输出 establish，calibrated ik04 输出 establish→learn(林澈)→reveal_to_reader；baseline/calibrated ik07 均输出 establish→learn(苏弦)→reveal_to_reader 并额外输出顾临 believe。完整三轮基线与 A/B 尚未完成，不能计算完整 precision/recall 或一致性，不进入阶段 161。
+
+本次采用每次单片段调用和独立超时，结果只保存动作级脱敏数据和 Usage；Provider 长连接/HTTP 502 的无效运行不计入模型质量证据。
 
 阶段 158 首次基线未产出有效结果：人工复核发现 ik09 金标要求 believe 却未建立同 ID Truth，按正式领域规则该样本非法；已终止未完成进程、删除无效结果，修正为“真实动机 establish+reader reveal，许澄持有相反稳定 belief”。不把该试跑计入模型证据。
 
