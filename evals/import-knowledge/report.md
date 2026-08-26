@@ -1,7 +1,7 @@
 # Import Knowledge 校准阶段报告
 
 日期：2026-08-26
-状态：阶段 158 `blocked_provider`
+状态：阶段 159 `partial_prompt_revision`
 
 ## 已完成
 
@@ -30,6 +30,25 @@
 ## 追加通道复核（2026-08-26）
 
 将完整三轮改为每次单片段、每次独立 5 分钟 context timeout，以排除跨样本 Knowledge ID 污染。该运行仍在本地代理 TCP 连接上长时间无输出，未生成结果文件，已终止；不计入模型质量证据。当前不修改 Prompt，继续等待 Provider 通道稳定。
+
+## 定向 Prompt 修订证据
+
+旧 Prompt 下的定向探针显示：
+
+- `ik03`：正文明确角色验证并接受 Truth，但只输出 `establish`；
+- `ik04`：正文明确角色复核数据并接受结论，但只输出 `establish`；
+- `ik05`：正文完整向读者揭示此前隐藏 Truth，但输出空数组；
+- `ik07`：输出 `establish + learn + reveal_to_reader`，但额外生成了 `believe`，需要继续复核误报边界。
+
+据此只做了最小 Prompt 修订：说明同一 Truth 可在同章按正文顺序输出多个动作，并补充 `establish → learn → reveal_to_reader` 示例，以及“听见但不相信、猜测、部分兑现不等于对应动作”的负例边界。
+
+修订后 `ik03` 单次探针成功输出：
+
+```text
+establish → learn(苏弦) → reveal_to_reader
+```
+
+该结果支持修订方向，但不是完整统计证据。`ik05/ik07` 修订后探针受 Provider 长连接和宿主 120 秒限制未取得结果；完整三轮基线和 Prompt A/B 仍未完成。
 
 ## 当前决策
 

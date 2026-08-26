@@ -78,6 +78,27 @@ func TestKnowledgePromptsDescribeTruthAndLearningBoundaries(t *testing.T) {
 	}
 }
 
+func TestImportPromptExplainsKnowledgeMultiActionExtraction(t *testing.T) {
+	prompt := mustRead(promptsFS, "prompts/import-analyze.md")
+	for _, phrase := range []string{
+		"同一客观 Truth",
+		"多个 `knowledge_updates`",
+		"正文发生顺序",
+		"establish → learn → reveal_to_reader",
+		"明确验证并接受",
+		"完整答案告诉读者",
+		"听见但不相信",
+		"猜测",
+		"部分兑现",
+		"不等于 `learn`",
+		"不等于 `reveal_to_reader`",
+	} {
+		if !strings.Contains(prompt, phrase) {
+			t.Fatalf("导入分析提示缺少认知动作多动作边界 %q", phrase)
+		}
+	}
+}
+
 func TestAntiAIToneReferenceUsesCalibratedNovelBoundaries(t *testing.T) {
 	ref := mustRead(referencesFS, "references/anti-ai-tone.md")
 	for _, phrase := range []string{

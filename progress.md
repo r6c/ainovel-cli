@@ -5,7 +5,9 @@
 - 日期：2026-08-26
 - 基线：`3fddb1e 修复：保护导入与用户正文不被自动返工覆盖`
 - 当前里程碑：U——Import 认知事实提取校准
-- 当前阶段：阶段 158——当前 Import Prompt 三轮基线（blocked_provider）
+- 当前阶段：阶段 159——最小 Prompt 修订（partial_prompt_revision）
+
+定向真实探针：旧 Prompt 下 ik03/ik04 漏报 learn，ik05 漏报 reveal_to_reader；ik07 输出三动作但额外出现 believe。已加入最小多动作 worked example 与负例边界。ik03 修订后成功输出 establish→learn→reveal_to_reader；ik05/ik07 修订探针因 Provider 长连接/宿主 120 秒限制未取得结果。完整三轮基线与 A/B 未完成，不计作统计证据。
 
 本次重跑改为每次单片段调用，三轮共 36 次真实 Import 严格协议请求，每次独立 5 分钟 context timeout；不修改生产 Prompt，结果只保存动作级脱敏数据和 Usage。
 

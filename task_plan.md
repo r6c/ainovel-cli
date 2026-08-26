@@ -939,9 +939,9 @@ git diff --check
 
 ## 阶段 159：最小 Prompt 修订
 
-状态：`pending`
+状态：`partial_prompt_revision`
 
-仅在基线证明稳定问题后修改 import-analyze Prompt。优先用少量正反 worked examples 说明同一 ID 可在同章顺序输出 establish+learn+reveal；不复制新规则到 Go，不修改 Schema/DTO/生命周期。
+已根据定向真实探针修订 import-analyze Prompt：明确同一 Truth 可在同章按正文顺序输出多个动作，并补充 `establish → learn → reveal_to_reader` 与猜测/不相信/部分兑现负例边界。`ik03` 修订后成功输出完整三动作；完整基线与 A/B 尚未完成，不把局部探针当作统计证据。不复制新规则到 Go，不修改 Schema/DTO/生命周期。
 
 ## 阶段 160：同模型 Prompt A/B
 

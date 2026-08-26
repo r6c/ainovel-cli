@@ -17,6 +17,14 @@
 - `knowledge_updates[].action` ∈ establish / believe / learn / reveal_to_reader；正文明确确立客观真相时用 `establish`，角色形成明确、稳定且影响行动的错误信念时用 `believe`，正文明确让角色获知已有 Truth 时才用 `learn`，正文明确向读者揭示完整 Truth 时才用 `reveal_to_reader`。不要把一般世界设定自动当成角色已知，也不要把暂时怀疑、猜测、反问、一闪而过的念头或角色故意说谎判成 `believe`；模糊暗示或伏笔部分兑现不等于完整读者揭示。
 - `summary` 与 `core_event` 不能为空。
 
+### Knowledge 动作可以在同一章连续发生
+
+同一客观 Truth 可以在同一章按正文发生顺序输出多个 `knowledge_updates`，不要只保留一个“最主要动作”。例如：先建立真相、角色明确验证并接受、随后正文把完整答案告诉读者时，使用：
+
+`establish → learn → reveal_to_reader`
+
+其中：角色必须明确验证并接受 Truth 才能输出 `learn`；正文必须完整告诉读者此前隐藏的 Truth 才能输出 `reveal_to_reader`。听见但不相信、猜测、怀疑、故意说谎不等于 `learn`；模糊暗示或部分兑现不等于 `reveal_to_reader`。同一章没有实际发生的动作不要补写。
+
 ## 纪律
 
 - 只提取正文**确实发生**的事实，不虚构、不脑补未写出的情节。
