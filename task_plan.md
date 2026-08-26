@@ -962,3 +962,15 @@ git diff --check
 状态：`complete`
 
 已保存阶段 161 的脱敏 Import/Context 结果和局限，没有提交完整模型响应、源文、凭证或临时工作区。校准集、assets、Import、全量 go test、vet、关键 race、格式和敏感信息门禁全部通过。阶段 161 因第 3 章尚无正式 OutlineEntry 保持 `partial_evidence`，不把 Context 未注入 knowledge_boundaries 误报为完整角色边界通过。
+
+## 阶段 163：已有大纲后的 Knowledge Context 边界
+
+状态：`complete`
+
+不调用 Provider，复用现有 `novel_context` 测试夹具人为提供第 3 章 OutlineEntry，验证读者已知但当前角色未知的 Truth 可注入、当前角色已知的 Truth 保持 CharacterKnown、当前角色和读者均未知的 Truth 不泄露。该测试只验证代码层净化边界，不冒充 Architect 真实扩弧结果。
+
+## 阶段 164：阶段 161 验收记录收口
+
+状态：`complete`
+
+根据阶段 163 的测试结果更新脱敏验收记录。若代码边界通过但真实 Architect 仍因 Provider 阻塞未验证，则保留该限制，不修改生产逻辑、不伪报真实链路完成。

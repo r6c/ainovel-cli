@@ -287,4 +287,6 @@ P2：最终指令明确“全文约 1500 字”，Normalizer 按现有保守语�
 
 阶段 158 当前为 `blocked_provider`。使用 `sss / gpt-5.6-sol` 的单批两条通道验证成功（约 31 秒，普通事实均正确提取为 establish，Usage 有记录），但完整质量基线没有产出有效结果：一次长时间停在本地代理 TCP 连接；改为每批两条后，第 1 轮第 3 批出现不一致 Knowledge ID，正式 Import 校验进入未知引用自愈，随后遇到 HTTP 502，并在 5 分钟 context timeout 结束。未生成完整结果文件，因此不计入 precision/recall、漏报/误报或 Prompt 质量证据。
 
-在有效三轮基线取得前：不修改 `assets/prompts/import-analyze.md`，不进入 Prompt A/B，不根据单批结果推断 `learn/reveal_to_reader` 漏报。Provider 通道稳定后从阶段 158 重新执行；临时 live runner、结果、日志和一次性进程均已删除。
+完整三轮基线仍未取得，因此不能计算完整 precision/recall 或一致性；阶段 159 已基于定向探针完成最小 Prompt 修订，但不把有限结果包装成完整 A/B。Provider 通道稳定后可从阶段 158/160 继续，临时 live runner、结果、日志和一次性进程均已删除。
+
+阶段 163/164 代码层替代验证已完成：在现有 `novel_context` 测试夹具中提供第 3 章 OutlineEntry，确认 ReaderKnown 但当前角色未知的 Truth 可注入，苏弦已知的 Truth 保留 KnownBy，顾临独知且读者未知的 Truth 不泄露。该测试不替代真实 Architect 扩弧；真实扩弧此前两次均在 Provider 请求处阻塞，未生成第 3 章大纲。
