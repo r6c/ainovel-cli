@@ -5,8 +5,9 @@
 - 日期：2026-08-26
 - 基线：`a20fad7 文档：继续归档并收敛稳定工作记忆`
 - 当前里程碑：C2——Context selection policy 二次深化
-- 当前阶段：U2 阶段 210—样本 12→24（in_progress）
+- 当前阶段：U2 阶段 211—可断点有限扩展评测（in_progress）
 - 阶段 209 已完成：新增 `evals/import-knowledge/explanation.md`，仅基于现有聚合数据解释 A/B 权衡；不从缺失的逐样本结果反推具体错误。
+- 阶段 210 已完成：样本从 12 条扩展到 24 条，新增 12 条完全自建边界样本；`believe` 金标现在要求角色与内容；确定性测试、Import、全量、vet、race 和脱敏检查通过，Provider 扩展评测尚未开始。
 - 阶段 205 已完成：新增 `docs/context-policy-decision-matrix.md`，覆盖 Context 输入、候选资格、排除原因、净化、排序/上限、预算裁剪和 Envelope 输出；未修改生产代码。
 - 阶段 206 已完成：临时副本删除实验确认 Knowledge 选择/净化、预算裁剪和 Envelope 装配均不可删除；阶段 207 不做无证据的生产重构，不新增 Context Service/Repository/决策 trace。
 - 本轮不修改生产代码、不调用 Provider、不执行 GoReleaser。

@@ -27,6 +27,7 @@ type importKnowledgeLabels struct {
 			ID        string `json:"id"`
 			Action    string `json:"action"`
 			Character string `json:"character,omitempty"`
+			Belief    string `json:"belief,omitempty"`
 		} `json:"updates"`
 	} `json:"labels"`
 }
@@ -37,7 +38,7 @@ func TestImportKnowledgeCalibrationCorpusIsAnonymousAndCoversActionBoundaries(t 
 	readImportKnowledgeJSON(t, filepath.Join(root, "samples.json"), &samples)
 	var labels importKnowledgeLabels
 	readImportKnowledgeJSON(t, filepath.Join(root, "labels.json"), &labels)
-	if samples.Version != 1 || labels.Version != 1 || len(samples.Samples) != 12 || len(labels.Labels) != 12 {
+	if samples.Version != 1 || labels.Version != 1 || len(samples.Samples) != 24 || len(labels.Labels) != 24 {
 		t.Fatalf("corpus shape samples=%d labels=%d versions=%d/%d", len(samples.Samples), len(labels.Labels), samples.Version, labels.Version)
 	}
 	byID := make(map[string]string, len(samples.Samples))
@@ -67,12 +68,16 @@ func TestImportKnowledgeCalibrationCorpusIsAnonymousAndCoversActionBoundaries(t 
 			seen[update.Action] = true
 			switch update.Action {
 			case "establish", "reveal_to_reader":
-				if update.Character != "" {
-					t.Fatalf("label %s action %s must not carry character", label.ID, update.Action)
+				if update.Character != "" || update.Belief != "" {
+					t.Fatalf("label %s action %s must not carry character/belief", label.ID, update.Action)
 				}
-			case "learn", "believe":
-				if update.Character == "" {
-					t.Fatalf("label %s action %s requires character", label.ID, update.Action)
+			case "learn":
+				if update.Character == "" || update.Belief != "" {
+					t.Fatalf("label %s action %s requires character and no belief", label.ID, update.Action)
+				}
+			case "believe":
+				if update.Character == "" || strings.TrimSpace(update.Belief) == "" {
+					t.Fatalf("label %s action %s requires character and belief", label.ID, update.Action)
 				}
 			default:
 				t.Fatalf("label %s invalid action %q", label.ID, update.Action)
@@ -80,9 +85,10 @@ func TestImportKnowledgeCalibrationCorpusIsAnonymousAndCoversActionBoundaries(t 
 		}
 	}
 	want := map[string]int{
-		"establish_only": 2, "establish_learn": 2, "establish_reveal": 2,
-		"establish_learn_reveal": 2, "establish_learn_reveal_belief": 1,
-		"guess_negative": 1, "lie_negative": 1, "disbelief_negative": 1,
+		"establish_only": 4, "establish_learn": 4, "establish_reveal": 4,
+		"establish_learn_reveal": 3, "establish_learn_reveal_belief": 2,
+		"guess_negative": 2, "lie_negative": 2, "disbelief_negative": 2,
+		"partial_payoff_negative": 1,
 	}
 	if len(categories) != len(want) {
 		t.Fatalf("categories=%v want=%v", categories, want)

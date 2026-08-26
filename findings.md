@@ -102,6 +102,14 @@ Provider 错误：0
 
 不使用第三方小说原文，不保存完整模型响应或 Provider 凭证。
 
+## U2 阶段 209—210 进度
+
+阶段 209 已完成：新增 `evals/import-knowledge/explanation.md`，仅基于已有聚合统计解释 baseline/calibrated 的动作级权衡，不虚构逐样本预测。
+
+阶段 210 已完成：校准集从 12 条扩展到 24 条，新增样本全部为本项目自建中文片段，覆盖明确角色接受、读者揭示、同一 Truth 多动作、稳定错误信念、未经核验转述、明确不相信和 partial payoff 边界。`labels.json` 现在对 `believe` 同时要求角色与内容。
+
+阶段 211 尚未开始真实 Provider 扩展评测；扩展样本仅通过确定性数据契约和仓库门禁，不能宣称已完成 A/B。
+
 ## GoReleaser 环境记录
 
 本轮规划前尝试固定 GoReleaser v2.17.1：

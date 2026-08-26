@@ -9,9 +9,21 @@
     {"id":"ik06","category":"establish_reveal","updates":[{"id":"K-empty-pod","action":"establish"},{"id":"K-empty-pod","action":"reveal_to_reader"}]},
     {"id":"ik07","category":"establish_learn_reveal","updates":[{"id":"K-signal-truth","action":"establish"},{"id":"K-signal-truth","action":"learn","character":"苏弦"},{"id":"K-signal-truth","action":"reveal_to_reader"}]},
     {"id":"ik08","category":"establish_learn_reveal","updates":[{"id":"K-brother-identity","action":"establish"},{"id":"K-brother-identity","action":"learn","character":"林墨"},{"id":"K-brother-identity","action":"reveal_to_reader"}]},
-    {"id":"ik09","category":"establish_learn_reveal_belief","updates":[{"id":"K-door-motive","action":"establish"},{"id":"K-door-motive","action":"believe","character":"许澄"},{"id":"K-door-motive","action":"reveal_to_reader"}]},
+    {"id":"ik09","category":"establish_learn_reveal_belief","updates":[{"id":"K-door-motive","action":"establish"},{"id":"K-door-motive","action":"believe","character":"许澄","belief":"守门人为了独吞赏金"},{"id":"K-door-motive","action":"reveal_to_reader"}]},
     {"id":"ik10","category":"guess_negative","updates":[]},
     {"id":"ik11","category":"lie_negative","updates":[]},
-    {"id":"ik12","category":"disbelief_negative","updates":[]}
+    {"id":"ik12","category":"disbelief_negative","updates":[]},
+    {"id":"ik13","category":"establish_only","updates":[{"id":"K-tide-window","action":"establish"}]},
+    {"id":"ik14","category":"establish_only","updates":[{"id":"K-glass-frequency","action":"establish"}]},
+    {"id":"ik15","category":"establish_learn","updates":[{"id":"K-old-map","action":"establish"},{"id":"K-old-map","action":"learn","character":"秦遥"}]},
+    {"id":"ik16","category":"establish_learn","updates":[{"id":"K-ferry-light","action":"establish"},{"id":"K-ferry-light","action":"learn","character":"顾沉"}]},
+    {"id":"ik17","category":"establish_reveal","updates":[{"id":"K-sealed-letter","action":"establish"},{"id":"K-sealed-letter","action":"reveal_to_reader"}]},
+    {"id":"ik18","category":"establish_reveal","updates":[{"id":"K-false-alarm","action":"establish"},{"id":"K-false-alarm","action":"reveal_to_reader"}]},
+    {"id":"ik19","category":"establish_learn_reveal","updates":[{"id":"K-ice-signal","action":"establish"},{"id":"K-ice-signal","action":"learn","character":"沈岚"},{"id":"K-ice-signal","action":"reveal_to_reader"}]},
+    {"id":"ik20","category":"establish_learn_reveal_belief","updates":[{"id":"K-guard-motive","action":"establish"},{"id":"K-guard-motive","action":"believe","character":"许澄","belief":"守门人只是为了独吞赏金"},{"id":"K-guard-motive","action":"reveal_to_reader"}]},
+    {"id":"ik21","category":"guess_negative","updates":[]},
+    {"id":"ik22","category":"lie_negative","updates":[]},
+    {"id":"ik23","category":"disbelief_negative","updates":[]},
+    {"id":"ik24","category":"partial_payoff_negative","updates":[]}
   ]
 }
