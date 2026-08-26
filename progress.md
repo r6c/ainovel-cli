@@ -4,13 +4,13 @@
 
 - 日期：2026-08-26
 - 基线：`c8a4212 评测：扩展导入认知动作校准样本`
-- 当前里程碑：U2——Import 认知 A/B 解释与样本扩展
-- 当前阶段：U2 阶段 211/212 保持部分证据，阶段 213/214 已完成；U2 总体保持 `partial_evidence`
+- 当前里程碑：发布候选产物验收
+- 当前阶段：GoReleaser v2.17.1 Snapshot 已完成，六平台产物已验收，发布记录收口中
 - 阶段 209 已完成：新增 `evals/import-knowledge/explanation.md`，仅基于现有聚合数据解释 A/B 权衡；不从缺失的逐样本结果反推具体错误。
 - 阶段 210 已完成：样本从 12 条扩展到 24 条，新增 12 条完全自建边界样本；`believe` 金标现在要求角色与内容；确定性测试、Import、全量、vet、race 和脱敏检查通过。
 - 阶段 205 已完成：新增 `docs/context-policy-decision-matrix.md`，覆盖 Context 输入、候选资格、排除原因、净化、排序/上限、预算裁剪和 Envelope 输出；未修改生产代码。
 - 阶段 206 已完成：临时副本删除实验确认 Knowledge 选择/净化、预算裁剪和 Envelope 装配均不可删除；阶段 207 不做无证据的生产重构，不新增 Context Service/Repository/决策 trace。
-- 本轮不修改生产代码、不调用 Provider、不执行 GoReleaser。
+- 本轮不调用 Provider、不创建 Tag/Release；GoReleaser Snapshot 已完成，主工作区仍需最终门禁。
 - 阶段 203 已完成：稳定文档相对链接全部可解析；发布验收清单编号已整理为 3.1—3.14；CONTEXT.md 的 AI 味语义判据小节编号已修正为 11.1。
 
 ## 已完成主线摘要
@@ -37,7 +37,7 @@ docs/history/plans/2026-08-pre-release-candidates/
 
 - Import 认知动作三轮 baseline/calibrated A/B 已完成 36/36 有效结果；calibrated 提升 `learn` recall，但整体 precision、`reveal_to_reader` precision 和动作集合完全匹配下降，因此当前 Prompt 作为折中版本保留，不继续堆规则。
 - 真实 Architect 扩弧后的第 3 章 Context 端到端验收仍未完成；代码层 ReaderKnown/CharacterKnown 边界已有确定性测试。
-- GoReleaser snapshot 尚未完成，未创建版本标签或 GitHub Release。
+- GoReleaser v2.17.1 Snapshot 已完成，六平台归档、checksum、版本注入和包内容已验收；未创建版本标签或 GitHub Release。
 - Release workflow 的 AI 发布说明生成仍是可选发布治理议题，不属于主程序运行时依赖。
 
 ## 本轮 G2 计划
@@ -50,7 +50,7 @@ docs/history/plans/2026-08-pre-release-candidates/
 docs/history/plans/2026-08-pre-release-candidates/
 ```
 
-### 阶段 202：精简稳定工作记忆——in_progress
+### 阶段 202：精简稳定工作记忆——complete
 
 根目录文件将只保留当前稳定事实、当前路线、已知限制和下一步入口；完整过程继续留在日期归档中。
 

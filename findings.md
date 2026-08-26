@@ -110,6 +110,29 @@ Provider 错误：0
 
 阶段 211 曾完成 72 次新增样本真实调用，但一次性协调器未直接使用已提交 Runner，且逐样本工件已清理；当前只保留有限动作级聚合，不能独立复核 exact-match、逐样本一致性或新增调用成本。阶段 212 因此保持 `partial_evidence`；Go/No-Go 仅为保留 calibrated Prompt，不继续追加规则。
 
+## GoReleaser Snapshot 验收（2026-08-27）
+
+使用固定版本容器 `goreleaser/goreleaser:v2.17.1`，在带完整 Git 元数据的临时副本中执行：
+
+```text
+goreleaser check：通过
+goreleaser release --snapshot --clean：通过
+```
+
+生成并验收六个平台归档：
+
+```text
+Darwin arm64 / amd64
+Linux arm64 / amd64
+Windows arm64 / amd64
+```
+
+已验证：checksum 六项全部匹配；tar.gz/zip 均包含对应二进制、README.md 和 LICENSE；macOS arm64 产物的 `--version` 正确注入 Snapshot 版本、完整 commit 和构建时间；`--help` 与 `deconstruct --help` 正常。安装脚本的 Unix tar.gz 命名与产物一致，Windows 保持手动下载边界。
+
+Snapshot 首次执行暴露了一个测试夹具问题：`chmod 0444` 在 root 容器中不能稳定模拟写失败。已将测试改为把 JSONL 路径替换为目录，主工作区 Store 测试通过；这不是生产代码回归。
+
+产物留在系统临时目录，不进入 Git。未创建标签、未发布远端。
+
 ## GoReleaser 环境记录
 
 本轮规划前尝试固定 GoReleaser v2.17.1：

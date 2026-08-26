@@ -3,10 +3,10 @@
 ## 当前状态
 
 - 总体状态：`partial_evidence`
-- 当前基线：`c8a4212 评测：扩展导入认知动作校准样本`
+- 当前基线：`a051f11 测试：修正跨平台检查点写入失败夹具`
 - 工作区：U2 阶段 211—214 有未提交的评测记录与测试变更；无未提交生产代码变更。本轮真实扩展结果为部分可复核证据，不执行 GoReleaser。
 - 已完成主线：领域事实、Commit Saga、Import、Context、Linux/无头、真实 Headless/Cocreate/Revision/Import/Deconstruct、测试资产整理。
-- 当前发布事项：GoReleaser snapshot 尚未验收，未创建版本标签。
+- 当前发布事项：GoReleaser v2.17.1 Snapshot 已验收，六平台产物、checksum、包内容、版本注入和安装包命名已核对；未创建版本标签或远端 Release。
 
 ## 稳定架构边界
 
@@ -313,4 +313,4 @@ G2：稳定工作记忆归档
 → 再决定 v0.1.0-rc.1
 ```
 
-当前入口：U2 扩展评测已收口为部分可复核证据。阶段 211/212 保持 `partial_evidence`，不继续修改 Prompt；下一独立事项仍为 GoReleaser snapshot。
+当前入口：GoReleaser v2.17.1 snapshot 已完成；下一步仅需发布记录收口和最终主工作区门禁，然后再决定是否创建 `v0.1.0-rc.1`。
