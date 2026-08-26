@@ -2,10 +2,16 @@
 
 ## 当前会话
 
-- 日期：2026-08-25
-- 基线：`ade8108 测试：加固 Linux 与无头环境兼容性`
-- 当前里程碑：T——真实 Import 后续写验收（complete）
-- 当前阶段：无活动阶段
+- 日期：2026-08-26
+- 基线：`3fddb1e 修复：保护导入与用户正文不被自动返工覆盖`
+- 当前里程碑：U——Import 认知事实提取校准
+- 当前阶段：阶段 158——当前 Import Prompt 三轮基线（blocked_provider）
+
+阶段 158 首次基线未产出有效结果：人工复核发现 ik09 金标要求 believe 却未建立同 ID Truth，按正式领域规则该样本非法；已终止未完成进程、删除无效结果，修正为“真实动机 establish+reader reveal，许澄持有相反稳定 belief”。不把该试跑计入模型证据。
+
+临时包内 live runner 首次编译因 helper `itoa` 与现有 `synthesize_test.go` 同名失败，尚未调用模型或产生费用；改用 `strconv.Itoa` 内联并删除本地 helper，不重复占用包级名字。
+
+阶段 157 采用 12 条完全自建片段和独立金标，覆盖 establish-only、establish+learn、establish+reveal、三动作、belief 及猜测/谎言/不相信负例。语义约定：reveal 只用于此前隐藏 Truth 的完整揭晓，不机械伴随普通 establish。测试 seam 固定为真实 Import `analysisContract + llmcontract.Execute`，不使用简化 Judge。
 
 真实第 3 章续写完成：导入 Hold 经 Resume 消费，切换 review 后只授权第 3 章；Architect 把 2 章分层大纲扩为 10 章，Writer/Editor 完成第 3 章并停在 3/10。ChapterRecord 3 为 generated、无 PendingCommit、全量重放通过，总费用 `$0.5680684`。
 
@@ -74,7 +80,7 @@ P2：目标约 1200 字但实际 2092 字；正文残留 6 个 `**` 且 Lint 已
 
 按 O1→O2→O3 独立切片收敛真实验收 P2。公共接缝已确认：`headless.Run`、`CommitChapterTool.Execute`、`UserRules → Context/Contract → Commit`。首轮只处理完结态 Headless。
 
-O3 Normalizer 首个字段切片通过后，`userrules` 全包暴露旧 strict JSON 夹具缺少新必填 `chapter_target_chars`；scripted model 重复最后一条无效响应，产生大量反馈日志。未原样重跑，改为先定位并同步旧夹具为空值 0，再分组验证。一次对 `novel_context_test.go` 单文件路径使用 `search_files` 返回 `ENOTDIR`，未重复该方式，改用直接读取。O3 Prompt 契约首次编辑漏掉循环闭合大括号，测试语法失败未当作行为红灯；先修正测试结构再重跑。真实 O 回归完成后，检查脚本先猜错 ChapterRecord 文件名/JSON 外形（实际 `000001.json`，violations 外层对象），未据此判失败；后续按真实工件复查。一次 ChapterRecord API 搜索正则括号未闭合，改用字面搜索。初次读取错误猜测文件名为 `headless.go/headless_test.go`，实际为 `run.go/run_test.go`；未修改文件，已改用真实路径。首次 O1 测试又猜测了不存在的 `DraftStore.SaveChapterText`，编译失败未当作产品红灯；已转为读取真实 DraftStore API。修正后测试目录又因缺 `meta/format.json` 进入合法迁移门禁，仍未视为产品红灯；夹具已补当前格式版本。O1 首轮绿灯后真实目录字段比较发现 Progress/费用/Token 不变，但 `Host.Close()` 会刷新 `usage.updated_at`；因此终态判断前移到 Host 构造前，并由非空 Usage 工件测试锁定。
+O3 Normalizer 首个字段切片通过后，`userrules` 全包暴露旧 strict JSON 夹具缺少新必填 `chapter_target_chars`；scripted model 重复最后一条无效响应，产生大量反馈日志。未原样重跑，改为先定位并同步旧夹具为空值 0，再分组验证。一次对 `novel_context_test.go` 单文件路径使用 `search_files` 返回 `ENOTDIR`，未重复该方式，改用直接读取。阶段 158 首次基线未产出有效结果：人工复核发现 ik09 金标要求 believe 却未建立同 ID Truth，按正式领域规则该样本非法；已终止未完成进程、删除无效结果，修正为“真实动机 establish+reader reveal，许澄持有相反稳定 belief”。不把该试跑计入模型证据。一次批量编辑把测试路径误写到不存在的项目目录，未修改目标文件；随后使用真实路径修正。O3 Prompt 契约首次编辑漏掉循环闭合大括号，测试语法失败未当作行为红灯；先修正测试结构再重跑。真实 O 回归完成后，检查脚本先猜错 ChapterRecord 文件名/JSON 外形（实际 `000001.json`，violations 外层对象），未据此判失败；后续按真实工件复查。一次 ChapterRecord API 搜索正则括号未闭合，改用字面搜索。初次读取错误猜测文件名为 `headless.go/headless_test.go`，实际为 `run.go/run_test.go`；未修改文件，已改用真实路径。首次 O1 测试又猜测了不存在的 `DraftStore.SaveChapterText`，编译失败未当作产品红灯；已转为读取真实 DraftStore API。修正后测试目录又因缺 `meta/format.json` 进入合法迁移门禁，仍未视为产品红灯；夹具已补当前格式版本。O1 首轮绿灯后真实目录字段比较发现 Progress/费用/Token 不变，但 `Host.Close()` 会刷新 `usage.updated_at`；因此终态判断前移到 Host 构造前，并由非空 Usage 工件测试锁定。
 
 ## 阶段 123 完成
 

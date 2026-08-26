@@ -2,10 +2,10 @@
 
 ## 当前状态
 
-- 总体状态：`complete`
-- 当前里程碑：T——真实 Import 后续写验收（complete）
-- 当前阶段：无活动阶段
-- 基线提交：`3a6b457 修复：记录共创流式用量并纳入预算`
+- 总体状态：`blocked_provider`
+- 当前里程碑：U——Import 认知事实提取校准
+- 当前阶段：阶段 158——当前 Import Prompt 三轮基线（blocked_provider）
+- 基线提交：`3fddb1e 修复：保护导入与用户正文不被自动返工覆盖`
 - 完整历史：[`docs/history/plans/2026-08-domain-saga-evolution/`](docs/history/plans/2026-08-domain-saga-evolution/)
 
 ## 已完成里程碑
@@ -37,7 +37,7 @@
 | P1 | 真实外部正文 Revision 验收 | `4fd8d15` |
 | R | AI 味判据证据校准 | `8d14f9f` |
 | S | 真实 Cocreate 五阶段验收与流式用量修复 | `3a6b457` |
-| T | 真实 Import 后续写验收与原文写权限修复 | 本次提交 |
+| T | 真实 Import 后续写验收与原文写权限修复 | `3fddb1e` |
 
 ## 稳定架构边界
 
@@ -914,3 +914,47 @@ git diff --check
 状态：`complete`
 
 验证 TXT/EPUB 含三章且不泄露内部状态；记录阶段、费用、工件和 P0/P1/P2，源文/正文/日志/配置不进 Git。运行全量/vet/race/格式/链接后中文提交。
+
+# 里程碑 U：Import 认知事实提取校准
+
+## 目标
+
+用自建中文小说 worked examples 和 `sss / gpt-5.6-sol` 校准 Import 对 establish/believe/learn/reveal_to_reader 的提取。先跑实际 analysisContract 三轮基线；只有稳定漏报/误报才最小改 Prompt，再做同协议 A/B。禁止用确定性代码从正文猜测认知动作。
+
+## 阶段 157：自建认知动作校准集
+
+状态：`complete`
+
+建立 12 条匿名片段与独立金标，覆盖 establish-only、establish+learn、establish+reveal、三动作、belief、猜测/谎言/不相信/模糊暗示等负例。每条使用稳定 Knowledge ID；样本不泄露标签，金标只比较 knowledge_updates。
+
+## 阶段 158：当前 Import Prompt 三轮基线
+
+状态：`blocked_provider`
+
+每轮改变样本批次顺序，直接使用当前 import analysisContract 与严格 Schema；统计动作级 precision/recall、完整集合准确率、三轮一致性、Token/费用。不得用简化 Judge 替代真实 Import 协议。
+
+最小单批通道验证成功：2 条普通事实约 31 秒，均正确输出 establish，Usage 有记录。完整三轮基线未取得有效结果：一次长时间停在本地代理 TCP 连接；改为每批 2 条后，第 1 轮第 3 批出现模型不一致 Knowledge ID，进入正式未知引用自愈，随后 HTTP 502 并在 5 分钟 context timeout 结束。没有完整结果文件，不计入模型质量证据。保持当前 Prompt，不进入阶段 159/160；Provider 通道稳定后从本阶段重跑。
+
+## 阶段 159：最小 Prompt 修订
+
+状态：`pending`
+
+仅在基线证明稳定问题后修改 import-analyze Prompt。优先用少量正反 worked examples 说明同一 ID 可在同章顺序输出 establish+learn+reveal；不复制新规则到 Go，不修改 Schema/DTO/生命周期。
+
+## 阶段 160：同模型 Prompt A/B
+
+状态：`pending`
+
+Baseline 与 calibrated 各三轮，使用相同样本、模型、严格契约和顺序变体。成功条件：learn/reveal 召回提高，猜测/暗示/谎言误报不增加，belief 不退化，完整动作集合准确率与一致性提高。
+
+## 阶段 161：真实两章 Import/Context 回归
+
+状态：`pending`
+
+复用自建两章源文，要求求救信标 Truth 的 EstablishedAt/苏弦 KnownBy/ReaderRevealedAt 正确，顾临未知；第3章大纲存在后 Context 显示 reader known 与苏弦 known，不泄露其它隐藏 Truth。无需再续写整章，除非 Context 结果不明确。
+
+## 阶段 162：文档、全量验证与提交
+
+状态：`pending`
+
+保存脱敏数据、指标和局限，不提交完整模型响应/源文/凭证。运行 Import/Context/assets/eval、全量/vet/race/格式/链接/敏感信息门禁后中文提交。

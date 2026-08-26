@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "labels": [
+    {"id":"ik01","category":"establish_only","updates":[{"id":"K-vent-cycle","action":"establish"}]},
+    {"id":"ik02","category":"establish_only","updates":[{"id":"K-blue-alloy","action":"establish"}]},
+    {"id":"ik03","category":"establish_learn","updates":[{"id":"K-red-beacon","action":"establish"},{"id":"K-red-beacon","action":"learn","character":"苏弦"}]},
+    {"id":"ik04","category":"establish_learn","updates":[{"id":"K-water-source","action":"establish"},{"id":"K-water-source","action":"learn","character":"林澈"}]},
+    {"id":"ik05","category":"establish_reveal","updates":[{"id":"K-captain-order","action":"establish"},{"id":"K-captain-order","action":"reveal_to_reader"}]},
+    {"id":"ik06","category":"establish_reveal","updates":[{"id":"K-empty-pod","action":"establish"},{"id":"K-empty-pod","action":"reveal_to_reader"}]},
+    {"id":"ik07","category":"establish_learn_reveal","updates":[{"id":"K-signal-truth","action":"establish"},{"id":"K-signal-truth","action":"learn","character":"苏弦"},{"id":"K-signal-truth","action":"reveal_to_reader"}]},
+    {"id":"ik08","category":"establish_learn_reveal","updates":[{"id":"K-brother-identity","action":"establish"},{"id":"K-brother-identity","action":"learn","character":"林墨"},{"id":"K-brother-identity","action":"reveal_to_reader"}]},
+    {"id":"ik09","category":"establish_learn_reveal_belief","updates":[{"id":"K-door-motive","action":"establish"},{"id":"K-door-motive","action":"believe","character":"许澄"},{"id":"K-door-motive","action":"reveal_to_reader"}]},
+    {"id":"ik10","category":"guess_negative","updates":[]},
+    {"id":"ik11","category":"lie_negative","updates":[]},
+    {"id":"ik12","category":"disbelief_negative","updates":[]}
+  ]
+}

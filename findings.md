@@ -274,3 +274,11 @@ P2：最终指令明确“全文约 1500 字”，Normalizer 按现有保守语�
 - 2026-08-25 全项目复审发现阻塞恢复窗口：最后一章 `MarkComplete` 早于 PendingCommit 进入 `progress_marked/signal_saved` 并清理；Headless 完结快路径若只看 `phase=complete`，可能跳过仍需收尾的 PendingCommit。下一计划必须先让终态判定同时证明无 PendingCommit，再谈新的真实协同验收。
 - 本轮架构审查尝试读取 `docs/adr/`，目录不存在；结论为当前无 ADR 可核对，不将其视为产品错误，也不再重复访问。
 - Cocreate、PendingCommit 中间 Stage 强杀、Revision、Import 后续写和 Deconstruct 文学效果仍未做真实模型验证。
+
+## 里程碑 U：Import 认知事实提取校准（2026-08-26）
+
+阶段 157 已完成：建立 12 条完全自建中文片段和独立金标，覆盖 establish-only、establish+learn、establish+reveal、三动作、belief，以及猜测/谎言/明确不相信负例。确定性数据契约通过。语义约定是：`establish` 建立作者层 Truth；`reveal_to_reader` 仅用于此前隐藏 Truth 的完整揭晓，不机械伴随普通世界设定。
+
+阶段 158 当前为 `blocked_provider`。使用 `sss / gpt-5.6-sol` 的单批两条通道验证成功（约 31 秒，普通事实均正确提取为 establish，Usage 有记录），但完整质量基线没有产出有效结果：一次长时间停在本地代理 TCP 连接；改为每批两条后，第 1 轮第 3 批出现不一致 Knowledge ID，正式 Import 校验进入未知引用自愈，随后遇到 HTTP 502，并在 5 分钟 context timeout 结束。未生成完整结果文件，因此不计入 precision/recall、漏报/误报或 Prompt 质量证据。
+
+在有效三轮基线取得前：不修改 `assets/prompts/import-analyze.md`，不进入 Prompt A/B，不根据单批结果推断 `learn/reveal_to_reader` 漏报。Provider 通道稳定后从阶段 158 重新执行；临时 live runner、结果、日志和一次性进程均已删除。
