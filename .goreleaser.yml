@@ -1,6 +1,10 @@
 # yaml-language-server: $schema=https://goreleaser.com/static/schema.json
 version: 2
 
+git:
+  # 正式标签可能与 RC 标签指向同一提交；按创建时间选择最新标签。
+  tag_sort: -creatordate
+
 before:
   hooks:
     - go mod tidy

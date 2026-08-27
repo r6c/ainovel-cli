@@ -339,7 +339,7 @@ func TestRunWithoutPromptOrRecoverableSessionFailsCleanlyAndExportsDiagnostics(t
 	var stdout, stderr bytes.Buffer
 
 	err := Run(cfg, assets.Bundle{}, Options{Stdout: &stdout, Stderr: &stderr})
-	if err == nil || !strings.Contains(err.Error(), "需要 --prompt") || !strings.Contains(err.Error(), dir) {
+	if err == nil || !strings.Contains(err.Error(), "需要 --prompt") || !strings.Contains(err.Error(), "输出目录") {
 		t.Fatalf("empty headless workspace should return actionable error, got %v", err)
 	}
 	if stdout.Len() != 0 {
