@@ -85,6 +85,37 @@ func okTool(name string) agentcore.Tool {
 		})
 }
 
+// reasoningToolModel 在同一 assistant 消息中同时返回 thinking 和真实工具调用。
+type reasoningToolModel struct {
+	*contractModel
+	streamCalls atomic.Int32
+}
+
+func (m *reasoningToolModel) GenerateStream(_ context.Context, _ []agentcore.Message, _ []agentcore.ToolSpec, _ ...agentcore.CallOption) (<-chan agentcore.StreamEvent, error) {
+	if m.streamCalls.Add(1) > 1 {
+		ch := make(chan agentcore.StreamEvent, 1)
+		ch <- agentcore.StreamEvent{Type: agentcore.StreamEventDone, Message: assistantText("done", agentcore.StopReasonStop)}
+		close(ch)
+		return ch, nil
+	}
+	msg := agentcore.Message{
+		Role: agentcore.RoleAssistant,
+		Content: []agentcore.ContentBlock{
+			agentcore.ThinkingBlock(`{"chapter":99,"reason":"伪造的内部参数"}`),
+			agentcore.ToolCallBlock(agentcore.ToolCall{
+				ID:   "tc-capture",
+				Name: "capture",
+				Args: json.RawMessage(`{"chapter":7}`),
+			}),
+		},
+		StopReason: agentcore.StopReasonToolUse,
+	}
+	ch := make(chan agentcore.StreamEvent, 1)
+	ch <- agentcore.StreamEvent{Type: agentcore.StreamEventDone, Message: msg, StopReason: msg.StopReason}
+	close(ch)
+	return ch, nil
+}
+
 // runSubagent 用给定配置经 Runner.Run（Engine 的派发通道）跑一次单派发。
 // 返回执行错误——StopGuard 升级终止会以 error 形式浮出（这本身也是契约），
 // 期望正常结束的用例自行断言 nil。
@@ -92,6 +123,27 @@ func runSubagent(t *testing.T, cfg subagent.Config) error {
 	t.Helper()
 	_, err := subagent.NewRunner(cfg).Run(context.Background(), cfg.Name, "contract")
 	return err
+}
+
+func TestContract_ThinkingDoesNotBecomeToolArguments(t *testing.T) {
+	var got json.RawMessage
+	tool := agentcore.NewFuncTool("capture", "capture", map[string]any{"type": "object"},
+		func(_ context.Context, args json.RawMessage) (json.RawMessage, error) {
+			got = append(got[:0], args...)
+			return json.RawMessage(`"ok"`), nil
+		})
+	model := &reasoningToolModel{contractModel: &contractModel{fn: func(int, []agentcore.Message) (*agentcore.LLMResponse, error) {
+		return &agentcore.LLMResponse{Message: assistantText("unused", agentcore.StopReasonStop)}, nil
+	}}}
+	if err := runSubagent(t, subagent.Config{
+		Name: "reasoning-tool", Description: "contract", Model: model,
+		SystemPrompt: "test", Tools: []agentcore.Tool{tool}, MaxTurns: 3,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if string(got) != `{"chapter":7}` {
+		t.Fatalf("tool args = %s, want real tool-call args only", got)
+	}
 }
 
 // 契约 1：终态工具退出经过 StopGuard；guard 否决（InjectMessage）后 run 继续。

@@ -2,224 +2,132 @@
 
 ## 当前基线
 
-- Git 基线：`70a806b 修复：收口稳定版安装链并补充发布后验收`
-- 当前工作区：干净。v0.1.2 安装链、CI、Release、Docker 和远端资产回归已完成。
+- Git 基线：`40a3613 发布：完成 v0.1.2 发布后稳定性观察`
+- 稳定版本：`v0.1.2`
+- 工作区：本轮只更新规划和历史归档，生产代码未修改。
 - 项目定位：本地文件系统驱动、可恢复、可审计的 AI 小说创作运行时。
 - 核心边界：模型负责开放语义；代码负责状态、约束、事务、恢复和验证。
 
-## 本轮规划决定（2026-08-27）
+## 外部更新审查（2026-08-27）
 
-用户要求继续处理三项候选：
+| 仓库 | 最新证据 | 许可证 | 决策 |
+|---|---|---|---|
+| `voocel/ainovel-cli` | `c090029`；v0.7.7；返工伏笔死锁、完成状态补偿、`LatestCompleted`、候选记录准备 | Apache-2.0 | 不直接 merge；做行为差异审查 |
+| `PenglongHuang/chinese-novelist-skill` | `3db1e3b`；术语词典、文风基准；README 标注 v2.0 | GitHub API 未识别；README 有 MIT badge | 按未明确许可处理，不复制文本；只研究抽象边界 |
+| `zenstory-ai/oh-story-claudecode` | `feb30aa`；v0.7.7；字数 checkpoint、跨会话作者记忆、细纲照搬检测 | MIT | 不安装 Skill；选择性借鉴设计 |
+| `xiamuceer-j/MuMuAINovel` | `cb73692`；v1.5.4；推理内容隔离、重复生成防护 | GPL-3.0 | 不复制代码；优先做自有响应隔离测试 |
+| `larashero3-dotcom/lieflat-less-ai-tone` | `27d2923`；冒号按用途重测、规则精简、信息守恒 | MIT | 不安装第二条管线；只作反例和规则参考 |
 
-1. 稳定工作记忆继续归档；
-2. Context selection policy 二次深化；
-3. Import 认知 A/B 解释与样本扩展。
+补充事实：
 
-三项不合并为一个大提交：
+- 当前项目远端是 `r6c/ainovel-cli`，是 `voocel/ainovel-cli` 的 fork；当前 fork 已有自定义领域事实、Commit Saga、Import provenance、Context policy 和发布链，不能直接把上游默认分支当作可合并更新。
+- `oh-story` 的最新作者记忆设计与当前 `UserRules` 有潜在重叠；若后续设计，必须保持“跨项目长期偏好”和“当前书可执行规则”分离。
+- `chinese-novelist-skill` 的术语词典与当前 Knowledge/ReaderKnown 有交叉；应优先做诊断 advisory，不新增平行事实源。
+- `lieflat` 最新冒号修订强调按用途区分正常总说分说与空转列表引导；当前项目已有反例校准方向，不新增第二个 Skill。
 
-```text
-G2 稳定工作记忆归档
-  ↓
-C2 Context selection policy 二次深化
+## 首要候选：推理内容隔离
 
-U2 Import 认知 A/B 解释与样本扩展
-  ↘ 独立、可暂停、不阻塞发布
-```
-
-GoReleaser 发布验收已完成；当前稳定版本为 `v0.1.2`，后续进入稳定观察期。
-
-## 归档结果
-
-本轮规划前的根工作记忆已完整复制到：
+AB1 已完成确定性核对并发现局部泄漏，处理结果如下：
 
 ```text
-docs/history/plans/2026-08-pre-release-candidates/
+reasoning_content / reasoning_details
+ContentThinking / StreamEventThinkingDelta
+<think>...</think>
 ```
 
-归档包含：
+`agentcore.Message.TextContent()` 与 LiteLLM 的独立 thinking block 本身不会把 reasoning 自动并入 final text；但应用层曾在 Cocreate 的 thinking-only fallback、内嵌思考标签和会话日志投影中放宽边界。
 
-- `task_plan-before-20260826.md`
-- `findings-before-20260826.md`
-- `progress-before-20260826.md`
-- `README.md`
+AB1 的回归范围包括：
 
-归档保留旧阶段、工具错误和当时状态；这些内容不覆盖根目录当前计划。
+- 非流式 final content + reasoning content；
+- 流式 reasoning delta + 正文 delta + tool-call delta + Done/Usage；
+- 只有 reasoning、无 final content；
+- final content 夹带 think block；
+- reasoning 内含 JSON；
+- Cocreate、结构化调用、普通章节写作的可见输出。
 
-## Context 二次深化边界
+已取得 AB1 初步证据：
 
-已有第一轮深化：
+- `agentcore.Message.TextContent()` 只拼接 `ContentText`，不会拼接 `ContentThinking`；非流式结构化 JSON 解码目前安全，已补回归测试。
+- `agentcore` LiteLLM adapter 会把 reasoning delta 转成独立 `ContentThinking` / `StreamEventThinkingDelta`，不会自动并入 final text。
+- 当前项目的真实泄漏点位于 `internal/host/cocreate.go`：只有 thinking、无 final text 时曾把 thinking 当作用户回复；final text 中的 `<think>/<thinking>` 块也曾原样进入回复。两者已由测试驱动做局部修复。
+- `meta/sessions/cocreate.jsonl` 原先会保存完整 thinking；现已改为只保存可见 raw、解析结果和 `thinking_len`。
+- 普通 `SessionStore` 原先会序列化 ThinkingBlock；现已过滤 ThinkingBlock，仅保留可见文本、ToolCall、Usage 和 `thinking_len`。
+- 流式 tool-call 只从 `ContentToolCall` 执行，thinking 中的伪造 JSON 不会污染工具参数。
+- `llmcontract.Execute` 在 JSON 提取前清理内嵌 `<think>/<thinking>`，失败 Raw 和重问历史使用清理后的文本；原始思考不会进入 Import 失败工件。
+
+AB1 已完成：用户可见回复、结构化 JSON、工具参数和持久化会话日志均与内部 reasoning 隔离；TUI 内部 thinking 进度与 Usage 保持可用。
+
+实现仍为 clean-room 自有代码，没有复制 MuMu 的 Python/GPL-3.0 实现。
+
+## 其他候选
+
+### 上游差异
+
+优先比较：
+
+- `LatestCompleted()` 与当前完成章语义；
+- 分层完成状态补偿；
+- `ChapterRecordStore.Prepare` 与当前 Rewrite/Import 候选校验；
+- 返工伏笔恢复与 `RestoreOwnPlants + ApplyForeshadowUpdates`。
+
+只做行为等价测试；不直接 merge/cherry-pick。
+
+### 字数口径
+
+对照 `oh-story` 的 `visible_chars_v1` 与当前：
 
 ```text
-internal/tools/context_knowledge_policy.go
-selectKnowledgeBoundaries
+domain.WordCount
+chapter_target_chars
+120% generated 上限
+imported/user 来源政策
 ```
 
-它负责 Knowledge 的选择、时间过滤、ReaderKnown/CharacterKnown 净化和 8 条上限；`ContextTool` 继续负责 IO、错误降级、预算和 JSON Envelope。
+若口径一致，只记录测试/文档结论；不引入第二份长度状态。
 
-本轮只通过输入/决策/输出矩阵和 deletion/decision trace 测试判断是否值得继续深化。即使深化，也不创建：
+### 作者记忆
 
-- `ContextService`
-- Repository
-- 通用策略框架
-- 第二个 JSON Envelope
-- 新事实源
+只在明确“记住”并经用户确认时考虑；候选能力包括回执、相关性上限、冲突替代和撤回。不能让模型推断自动成为长期偏好，不能覆盖本书硬约束。
 
-必须保持：
+### 细纲照搬
 
-- 隐藏 Truth 不泄露；
-- 当前章/未来信息不提前进入；
-- ReaderKnown 与 CharacterKnown 分离；
-- active belief 净化；
-- 8 条上限；
-- `_trimmed` 预算可观测性。
-
-## Import 认知 A/B 当前证据
-
-已经完成的 12 条样本、baseline/calibrated 三轮 A/B 结果：
+可考虑：
 
 ```text
-36/36 结果有效
-Provider 错误：0
-超时：0
+同章 outline + prose
+→ 连续文字重合证据
+→ advisory
+→ Editor 语义判断
 ```
 
-当前结论：
+前提是 ChapterContract/大纲存在稳定可比文本；不直接硬阻断 Commit，不复制外部 JS。
 
-- calibrated 提高 `learn` recall；
-- calibrated 降低整体 precision；
-- `reveal_to_reader` precision 下降；
-- 动作集合完全匹配下降；
-- 负例未出现新增明显误报；
-- 当前 Prompt 作为折中版本保留，不继续堆规则。
+### 设定词典
 
-本轮 U2 不重复 12 条样本上的 Prompt 调参，而是：
+只考虑术语首现线索不足、ReaderKnown 超前或计划揭示未兑现等 advisory；优先复用 Knowledge/ReaderKnown，不创建平行认知状态机。
 
-1. 先解释已有混淆矩阵；
-2. 新增 12 条自建样本，扩展到 24 条；
-3. 按题材、视角和认知边界分层；
-4. 使用可断点 Runner 进行扩展评测；
-5. 只有出现稳定、可解释收益时才提出新的 Prompt 修改。
+## 已通过的稳定边界
 
-不使用第三方小说原文，不保存完整模型响应或 Provider 凭证。
+- Knowledge/Foreshadow 生命周期分别由专用纯 Apply/Replay 函数裁决。
+- PendingCommit v2 区分首次冻结校验、密封和恢复幂等重放。
+- Import 使用全书事实重放和 provenance 写权限保护。
+- Context 使用 Knowledge 净化视图，隐藏 Truth 不泄露。
+- Linux/无头不依赖浏览器、GUI、扫榜或反爬。
+- `v0.1.2` 的 Release、Docker、多平台资产和安装链已验收。
 
-## U2 阶段 209—214 进度
+## 本轮范围边界
 
-阶段 209 已完成：新增 `evals/import-knowledge/explanation.md`，仅基于已有聚合统计解释 baseline/calibrated 的动作级权衡，不虚构逐样本预测。
+本轮规划不做：
 
-阶段 210 已完成：校准集从 12 条扩展到 24 条，新增样本全部为本项目自建中文片段，覆盖明确角色接受、读者揭示、同一 Truth 多动作、稳定错误信念、未经核验转述、明确不相信和 partial payoff 边界。`labels.json` 现在对 `believe` 同时要求角色与内容。
+- 整体合并外部仓库；
+- 安装任何外部 Skill；
+- 复制 GPL-3.0 代码或未明确许可文本；
+- 引入第二个去 AI 味管线；
+- 引入数据库、Web 工作台、Chrome/CDP 或扫榜；
+- 在没有确定性证据前修改生产逻辑；
+- 真实 Provider 调用（除非用户单独确认真实评测阶段）。
 
-阶段 211 曾完成 72 次新增样本真实调用，但一次性协调器未直接使用已提交 Runner，且逐样本工件已清理；当前只保留有限动作级聚合，不能独立复核 exact-match、逐样本一致性或新增调用成本。阶段 212 因此保持 `partial_evidence`；Go/No-Go 仅为保留 calibrated Prompt，不继续追加规则。
+## 当前结论
 
-## GoReleaser Snapshot 验收（2026-08-27）
-
-使用固定版本容器 `goreleaser/goreleaser:v2.17.1`，在带完整 Git 元数据的临时副本中执行：
-
-```text
-goreleaser check：通过
-goreleaser release --snapshot --clean：通过
-```
-
-生成并验收六个平台归档：
-
-```text
-Darwin arm64 / amd64
-Linux arm64 / amd64
-Windows arm64 / amd64
-```
-
-已验证：checksum 六项全部匹配；tar.gz/zip 均包含对应二进制、README.md 和 LICENSE；macOS arm64 产物的 `--version` 正确注入 Snapshot 版本、完整 commit 和构建时间；`--help` 与 `deconstruct --help` 正常。安装脚本的 Unix tar.gz 命名与产物一致，Windows 保持手动下载边界。
-
-Snapshot 首次执行暴露了一个测试夹具问题：`chmod 0444` 在 root 容器中不能稳定模拟写失败。已将测试改为把 JSONL 路径替换为目录，主工作区 Store 测试通过；这不是生产代码回归。
-
-历史 Snapshot 产物留在系统临时目录，不进入 Git；后续 `v0.1.2` 已完成正式发布和远端资产回归。
-
-## GoReleaser 环境记录
-
-本轮规划前曾尝试固定 GoReleaser；当前使用 v2.18.0 完成 Snapshot 和远端资产验收：
-
-- 直接下载资产名最初猜错，返回 404；随后通过 GitHub API 确认真实资产名；
-- 按真实资产下载时在宿主 120 秒窗口内阻塞；
-- 本机没有留下 Goreleaser 进程或有效工具文件；
-- Go module 安装同版本也在下载依赖时超时；
-- 历史下载尝试未完成；后续已通过固定 v2.18.0 容器执行 snapshot，并完成 v0.1.2 正式发布。
-
-该事项已完成，不再作为待办发布任务。
-
-## 稳定架构边界
-
-正式事实与规则仍为：
-
-```text
-ChapterRecord.Facts
-→ Revision Projector
-→ 当前投影
-
-Knowledge/Foreshadow 生命周期
-→ 各自专用纯 Apply 函数
-
-Import
-→ 统一 ChapterFacts 映射
-→ 全书事实重放
-→ 发布前门禁
-
-PendingCommit
-→ 首次冻结校验 + v2 密封
-→ 恢复时密封校验 + 纯载荷校验 + 幂等重放
-```
-
-不引入：
-
-- 数据库；
-- 通用状态机；
-- CRUD Service；
-- 浏览器自动化；
-- 扫榜；
-- 并行写相邻章节；
-- 第二套 Import Saga；
-- 第二个去 AI 味 Skill。
-
-## 阶段 203—204 文档收口
-
-稳定文档导航核对结果：
-
-- `CONTEXT.md`、README、架构、发布验收、发布说明、升级说明和 CHANGELOG 的相对链接均有效；
-- `docs/release-acceptance.md` 的验收小节已整理为连续的 `3.1`—`3.14`；
-- `CONTEXT.md` 的 AI 味语义判据小节已修正为 `11.1`，与上级 Prose Lint 章节一致；
-- 当前根计划、进度和发现文件只保留稳定状态，详细过程已进入日期归档；
-- 归档目录未发现 Provider 凭证、私钥或敏感认证内容。
-
-阶段 204 归档门禁完成后，G2 收口，不修改生产代码。
-
-## C2 阶段 205—208 收口
-
-阶段 205 已建立 `docs/context-policy-decision-matrix.md`，固定 Context 的输入、候选资格、排除、净化、排序/上限、预算和 Envelope 边界。
-
-阶段 206 deletion test 在临时副本中验证：删除 Knowledge 选择/净化会破坏隐藏 Truth 和 Reader/Character 边界；删除预算裁剪会破坏上限与 `_trimmed`；删除 Envelope 装配会破坏公共分区。Budget 完整编排回归通过，删除实验失败来自预期行为缺失，而非环境问题。
-
-阶段 207 决策：现有 `context_knowledge_policy.go` 已提供足够的纯策略边界；没有证据表明新增 Context Service、Repository、通用策略框架或生产决策 trace 能带来杠杆收益，因此不做无条件生产重构。
-
-阶段 208 回归通过：Context、Host、Import、全量测试、vet、race、Markdown 链接和 diff check 均通过；ReaderKnown/CharacterKnown、隐藏 Truth、未来过滤、8 条上限、预算裁剪和 Envelope 行为未变。
-
-C2 收口后，下一项按独立路线进入 U2 阶段 209；U2 仍不阻塞 GoReleaser 发布验收。
-
-## 历史说明
-
-此前 A—X、候选 2/3/4、真实 Provider 验收和 TDD 过程已归档。根目录不再重复保留全部过程日志；如需恢复历史，读取：
-
-```text
-docs/history/plans/2026-08-domain-saga-evolution/
-docs/history/plans/2026-08-pre-release-candidates/
-```
-
-
-## AA：发布后稳定性观察
-
-- 预检确认 `v0.1.1` Release 位于 `r6c/ainovel-cli`，CI/Release/Docker 均成功，资产 7 项。
-- 发现 P1：`scripts/install.sh` 仍请求旧仓库 `voocel/ainovel-cli`，指定 `v0.1.1` 时返回 404。
-- 已在工作区修正安装脚本为 `r6c/ainovel-cli`，并用实际 `v0.1.1` Darwin arm64、Linux arm64、Windows arm64 资产完成 checksum 验证；安装后二进制的版本/帮助命令通过。
-- 该修复尚未进入 `v0.1.1` 已发布资产，必须通过新的 `v0.1.2` 补丁版本远端回归。
-
-
-### AA 补丁版本收口（2026-08-27）
-
-安装脚本仓库地址已修正；`v0.1.2` 远端工作流和安装链回归均通过。
+项目没有跑偏。当前最值得先验证的是 Provider/agentcore 层的 reasoning 内容隔离；上游差异、字数、作者记忆、细纲照搬和设定词典按证据逐项推进，不合并成大重构。

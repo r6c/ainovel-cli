@@ -82,7 +82,8 @@ func (s *SessionStore) Log(rel string, msg agentcore.AgentMessage) error {
 // 时才注入，user/tool 消息不带 _meta，旧 jsonl 解析时 _meta=nil 是 noop。
 type sessionLogEntry struct {
 	agentcore.Message
-	Meta *sessionLogMeta `json:"_meta,omitempty"`
+	ThinkingLen int             `json:"thinking_len,omitempty"`
+	Meta        *sessionLogMeta `json:"_meta,omitempty"`
 }
 
 type sessionLogMeta struct {
@@ -99,7 +100,10 @@ func (s *SessionStore) logEntry(rel string, msg agentcore.AgentMessage, meta *se
 		return nil // 非 LLM 消息（如自定义类型）跳过
 	}
 	compacted := compactMessage(m)
-	entry := sessionLogEntry{Message: compacted}
+	entry := sessionLogEntry{
+		Message:     compacted,
+		ThinkingLen: utf8.RuneCountInString(m.ThinkingContent()),
+	}
 	if compacted.Role == agentcore.RoleAssistant && compacted.Usage != nil {
 		entry.Meta = usageMeta(compacted.Usage)
 		if entry.Meta == nil {
@@ -192,20 +196,22 @@ func compactMessage(m agentcore.Message) agentcore.Message {
 	if len(m.Content) == 0 {
 		return m
 	}
-	blocks := make([]agentcore.ContentBlock, len(m.Content))
-	copy(blocks, m.Content)
-
+	blocks := make([]agentcore.ContentBlock, 0, len(m.Content))
 	toolName := toolNameFromMeta(m.Metadata)
 
-	for i := range blocks {
-		switch blocks[i].Type {
+	for _, block := range m.Content {
+		if block.Type == agentcore.ContentThinking {
+			continue
+		}
+		switch block.Type {
 		case agentcore.ContentText:
-			blocks[i].Text = compactText(m.Role, toolName, blocks[i].Text)
+			block.Text = compactText(m.Role, toolName, block.Text)
 		case agentcore.ContentToolCall:
-			if blocks[i].ToolCall != nil {
-				blocks[i].ToolCall = compactToolCall(blocks[i].ToolCall)
+			if block.ToolCall != nil {
+				block.ToolCall = compactToolCall(block.ToolCall)
 			}
 		}
+		blocks = append(blocks, block)
 	}
 	m.Content = blocks
 	return m

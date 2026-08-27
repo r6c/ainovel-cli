@@ -2,355 +2,239 @@
 
 ## 当前状态
 
-- 总体状态：`stable_observation`
-- 当前基线：`70a806b 修复：收口稳定版安装链并补充发布后验收`
-- 工作区：干净。v0.1.2 已完成远端安装链回归；无未提交生产代码变更。
-- 已完成主线：领域事实、Commit Saga、Import、Context、Linux/无头、真实 Headless/Cocreate/Revision/Import/Deconstruct、测试资产整理。
-- 当前稳定版本：`v0.1.2`；GoReleaser 六平台产物、checksum、包内容、版本注入、安装脚本和远端工作流均已核验。
+- 总体状态：`planned`
+- 当前基线：`40a3613 发布：完成 v0.1.2 发布后稳定性观察`
+- 稳定版本：`v0.1.2`
+- 工作区：本轮包含 AB1 推理内容隔离的代码/测试/文档变更；提交前将执行全量门禁。
+- 产品边界：本地文件系统驱动、可恢复、可审计的 AI 小说创作运行时。
 
 ## 稳定架构边界
 
-1. `ChapterRecord.Facts` 是派生事实重建输入；JSON/Markdown 当前状态文件是可重建投影，不是第二事实源。
-2. Knowledge 与 Foreshadow 生命周期分别由专用纯 Apply 函数裁决。
-3. Commit 首次冻结执行纯载荷与当前状态校验；恢复执行密封、纯载荷校验和幂等重放。
-4. Import 通过统一 ChapterFacts 映射和全书重放门禁发布；`generated/imported/user` 正文来源权限不同。
-5. Context 负责读取、选择、净化、预算裁剪和 Envelope；Writer 不直接消费完整 KnowledgeEntry。
-6. 不引入数据库、通用状态机、CRUD Service、浏览器自动化、扫榜或并行相邻章节写作。
+1. 模型负责开放语义；代码负责状态、约束、事务、恢复和验证。
+2. `ChapterRecord.Facts` 是派生事实重建输入；JSON/Markdown 状态文件是可重建投影，不是第二事实源。
+3. Knowledge 与 Foreshadow 生命周期分别由专用纯 Apply/Replay 函数裁决。
+4. Commit 首次冻结执行纯载荷校验与当前状态试运行；恢复执行密封校验、纯载荷校验和幂等重放。
+5. Import 通过统一 ChapterFacts 映射和全书重放门禁发布；`generated/imported/user` 正文来源权限不同。
+6. Context 负责读取、选择、净化、预算裁剪和 Envelope；Writer 不直接消费完整 KnowledgeEntry。
+7. 不引入数据库、通用状态机、CRUD Service、浏览器自动化、扫榜或并行相邻章节写作。
+8. 外部仓库只提供设计参考和行为假设，不直接合并代码、Prompt、Skill 或运行架构。
 
-## 已完成里程碑摘要
+## 历史归档
 
-A—X、V、W、O、P1、R、S、T、U 的已完成部分、候选 2/3/4 与真实验收过程见：
+本轮规划前的根工作记忆已归档至：
+
+```text
+docs/history/plans/2026-08-external-updates/
+```
+
+此前演进过程仍在：
 
 ```text
 docs/history/plans/2026-08-domain-saga-evolution/
 docs/history/plans/2026-08-pre-release-candidates/
 ```
 
+历史快照中的旧状态不覆盖本文件。
+
 ## 本轮规划总览
 
 ```text
-G2：稳定工作记忆继续归档与收敛
-        ↓ 提供稳定导航和历史隔离
-C2：Context selection policy 二次深化
-        ↘ 仅在 deletion/decision test 证明值得时改生产结构
-U2：Import 认知 A/B 解释与样本扩展（独立、可暂停、不阻塞发布）
+AB0：外部更新证据与许可证登记       complete
+        ↓
+AB1：推理内容与最终内容隔离专项     complete
+        ↓
+AB2：上游 ainovel-cli 差异审查       pending
+        ↓
+AB3：字数口径与完成收口复核          pending
+        ↓
+AB4：作者记忆边界设计                pending
+        ↓
+AB5：细纲照搬检测候选                pending
+        ↓
+AB6：设定词典候选                    pending
+        ↓
+AB7：范围、文档与 Go/No-Go 收口      pending
 ```
 
-U2 不依赖 C2；二者不得合并成一个大提交。GoReleaser 发布验收已完成，当前稳定版本为 `v0.1.2`。
+AB4—AB6 是有条件候选：只有前一阶段的行为测试或证据证明有明确增量，才进入实现。AB1—AB3 优先。所有阶段均不阻塞已发布的 `v0.1.2`，除非发现真实 P0/P1。
 
-# 里程碑 G2：稳定工作记忆继续归档与收敛
-
-目标：让根目录文件只承担当前导航，把完整过程、旧状态和工具错误继续放进带日期的历史目录。
-
-## 阶段 201：归档当前快照
+# 阶段 AB0：外部更新证据与许可证登记
 
 状态：`complete`
 
-已将本轮规划前的 `task_plan.md`、`findings.md`、`progress.md` 归档至：
+完成内容：
 
-```text
-docs/history/plans/2026-08-pre-release-candidates/
-```
+- 核对五个外部仓库的默认分支、最新提交/版本、最近变更和许可证字段；
+- 对比 `voocel/ainovel-cli` 与当前 fork `r6c/ainovel-cli` 的关系；
+- 将旧根规划归档；
+- 不安装外部 Skill，不执行外部脚本，不复制外部代码或长 Prompt。
 
-历史快照只作为当时记录，不覆盖当前根计划。
+外部证据与吸收决策保存在 `findings.md`，不写入本计划作为指令性网页内容。
 
-## 阶段 202：精简稳定工作记忆
-
-状态：`complete`
-
-根目录只保留：
-
-- 当前基线和工作区状态；
-- 稳定架构边界；
-- 当前活跃里程碑；
-- 已知限制；
-- 下一步入口。
-
-不在根文件继续堆叠逐工具调用日志。完整过程仍留在历史归档。
-
-## 阶段 203：稳定文档导航核对
+# 阶段 AB1：推理内容与最终内容隔离专项
 
 状态：`complete`
 
-核对 `CONTEXT.md`、`README.md`、`docs/architecture.md`、`docs/release-acceptance.md` 的链接和当前状态描述；只修正文档事实漂移，不修改运行时。
+目标：确认当前 Go/agentcore/Provider 转换链是否会把 `reasoning_content`、`reasoning_details`、`<think>` 等内容混入 JSON、章节正文、Tool 参数或用户可见共创文本。
 
-## 阶段 204：归档门禁与收口
+首个 TDD 切片：
 
-状态：`complete`
+- 非流式消息同时含 final content 与 reasoning content；
+- 流式 reasoning delta、正文 delta、tool-call delta、Done/Usage；
+- 只有 reasoning、没有 final content；
+- final content 中夹带 think block；
+- reasoning 中含 JSON 片段；
+- Cocreate、结构化调用、普通章节写作分别观察可见内容。
+
+成功标准：
+
+- reasoning 只进入内部调试/可选思考字段；
+- JSON 解析只消费 final content；
+- 章节正文不出现思考内容；
+- Tool 参数不被 reasoning 污染；
+- StreamEvent 顺序与 Usage 记录不回归；
+- 不打印完整思考内容。
+
+实现约束：优先在现有 Provider/agentcore 转换接缝修复；不得复制 MuMu 的 Python 代码；不新增第二套模型客户端。
+
+已完成结果：
+
+- `agentcore.Message.TextContent()` 排除 `ContentThinking`，结构化 JSON 解码回归通过；
+- `coCreateStream` 不再把 thinking-only 响应当作用户回复；
+- 共创最终回复、流式预览和未闭合 `<think>/<thinking>` 块均做最终内容清理；
+- 普通 Worker 与 Cocreate 会话日志不保存完整 reasoning，只保留可见响应和 thinking 长度；
+- thinking 中的 JSON 不会成为 Tool 参数；
+- `Failure.Raw`、结构化自愈历史和 Import 失败工件不再携带内嵌 thinking；
+- TUI thinking 进度、Usage 和流式事件顺序保持兼容。
+
+本阶段没有修改 agentcore 上游库，没有引入模型客户端或新的持久化事实源。
+
+# 阶段 AB2：上游 ainovel-cli 差异审查
+
+状态：`pending`
+
+目标：对 `voocel/ainovel-cli` 的近期修复做行为级比较，不直接 merge/cherry-pick。
+
+优先审查：
+
+1. `LatestCompleted()` 是否比当前数组末尾语义更安全；
+2. 分层完成状态补偿是否覆盖当前终态恢复之外的窗口；
+3. `ChapterRecordStore.Prepare` 是否能替代或补强当前 Rewrite/Import 候选记录验证；
+4. 返工伏笔恢复是否存在当前 `RestoreOwnPlants + ApplyForeshadowUpdates` 未覆盖的变体。
+
+每项必须先有当前行为测试或差异样例；无差异则只记录结论，不改代码。不得引入上游不同的状态模型或流程架构。
+
+# 阶段 AB3：字数口径与完成收口复核
+
+状态：`pending`
+
+目标：对照 `oh-story` v0.7.7 的 `visible_chars_v1` 与当前 `domain.WordCount`、`chapter_target_chars`、120% 上限、生成/导入来源政策和完成 checkpoint。
 
 验证：
 
-```text
-根计划无过期 active 状态
-历史归档可定位
-Markdown 相对链接有效
-敏感信息和 Provider 凭证未进入归档
-```
+- 标题、换行、Markdown 标记的计数口径；
+- generated/imported/user 三种来源；
+- 普通提交与 Rewrite；
+- Progress、Projector、Commit 是否使用同一口径；
+- 超长是否应最多压缩一次；
+- 偏短是否继续交给 Editor，不设置机械下限；
+- 缺少合法目标时是否保持当前保守行为。
 
-建议提交信息：
+若口径已经一致，只增加文档/回归结论；不新增长度 Service、第二份合同字段或自动灌水流程。
 
-```text
-文档：继续归档并收敛稳定工作记忆
-```
+# 阶段 AB4：作者记忆边界设计
 
-# 里程碑 C2：Context selection policy 二次深化
+状态：`pending`
 
-目标：在已有 `context_knowledge_policy.go` 的基础上，验证并改善“选择决策可解释性、策略局部性和回归可观察性”，不创建 `ContextService`、Repository 或第二个 Envelope。
+目标：评估 `oh-story` 跨会话作者记忆与当前 UserRules 的边界。
 
-## 阶段 205：输入/决策/输出矩阵
-
-状态：`complete`
-
-基于已拆分的 Context 测试资产，补充决策矩阵：
+先设计，不直接实现完整目录协议。必须明确：
 
 ```text
-输入事实
-→ 候选资格
-→ 排除原因
-→ 净化字段
-→ 排序/数量上限
-→ 预算裁剪
-→ Envelope 输出
+UserRules       = 当前书/当前运行可执行规则
+Author Memory   = 跨项目、用户明确要求长期记住的偏好
+Book Facts      = 本书事实
+Run Intent      = 本次运行意图
 ```
 
-覆盖 Knowledge、Foreshadow、Recall、References、SimulationProfile 和 UserRules；先只写测试/文档，不改生产结构。
+首批只考虑：
 
-## 阶段 206：删除与决策追踪测试
+- 明确“记住”意图；
+- 用户确认；
+- 写入回执；
+- 相关性查询上限；
+- 冲突替代；
+- 撤回/清除。
 
-状态：`complete`
+不得把模型推断自动写成长期偏好；不得复制 `.story/作者记忆/` 的文件结构或实现代码；不得让作者记忆覆盖本书硬约束。
 
-通过 deletion test 和行为 trace 判断当前策略是否仍有真实深化空间：
+# 阶段 AB5：细纲照搬检测候选
 
-- 删除候选过滤是否泄露未来/隐藏 Truth；
-- 删除角色匹配是否扩大无关知识；
-- 删除排序是否破坏最近优先和 8 条上限；
-- 删除策略 trace 是否使误选无法诊断；
-- 预算裁剪是否仍能记录 `_trimmed`。
+状态：`pending`
 
-如果删除只会造成测试断言搬家，不进行生产重构。
+目标：评估 `oh-story` 的 outline-copy 检测是否适合当前 ChapterContract/大纲文本。
 
-## 阶段 207：条件性策略深化与收口
+先做输入可得性和误报样本：
 
-状态：`complete`
+- 细纲与正文是否有稳定的同章配对；
+- 复沓锚句、专名、系统提示、固定台词如何豁免；
+- 15 字连续重合阈值是否适合中文网文；
+- Import、Rewrite、generated 三种来源如何处理。
 
-仅当阶段 206 证明值得时，才在现有 `internal/tools` 包内做小范围深化：
+若实现，只能先作为 `rules.Lint`/Editor advisory；不直接阻断 Commit，不复制外部 JS，不做语义相似度或跨章模糊匹配。
 
-- 保留 `ContextTool.Execute` 公共入口；
-- 保留 `context_knowledge_policy` 作为纯策略边界；
-- 如确有需要，增加结构化决策 trace，仅供诊断/测试，不改变公开 Envelope；
-- 不把 trace 变成作者事实，不把策略变成新 Service；
-- 保持 ReaderKnown/CharacterKnown、未来过滤、8 条上限和预算语义完全兼容。
+# 阶段 AB6：设定词典候选
 
-如果 deletion/trace 测试证明现有结构足够，则本里程碑只更新测试和文档，明确“不再深化”。
+状态：`pending`
 
-## 阶段 208：Context 二次深化回归
+目标：评估 `chinese-novelist-skill` 的设定词典是否能复用现有 Knowledge/ReaderKnown，而不是新建平行事实源。
 
-状态：`complete`
-
-运行：
-
-```bash
-go test ./internal/tools -run 'Context|NovelContext' -count=1 -timeout=5m
-go test ./internal/host ./internal/host/imp -count=1 -timeout=5m
-go test ./... -timeout=5m
-go vet ./...
-go test -race ./internal/tools ./internal/host/imp -count=1 -timeout=10m
-git diff --check
-```
-
-建议提交信息（仅有实际生产深化时）：
+先定义边界：
 
 ```text
-重构：增强 Context 选择策略可解释性
+Knowledge       = 作者 Truth、角色 KnownBy、ReaderRevealedAt、Belief
+Setting Term    = 术语首现、类别线索、读者可见含义、计划揭示提示
 ```
 
-# 里程碑 U2：Import 认知 A/B 解释与样本扩展
+首批只考虑：
 
-目标：在不继续堆 Prompt 规则的前提下，扩大自有样本并解释现有 A/B 权衡；评测线独立、可断点、可暂停，不阻塞 Release Candidate。
+- 新术语首现缺少类别/可感知线索时生成 advisory；
+- 已知术语超出 ReaderKnown 时提示；
+- 计划揭示临近但未兑现时提示。
 
-当前基线：
+只有能复用现有事实和投影，且误报可控，才考虑实现。不创建新的认知状态机或 `TermGlossaryService`。
+
+# 阶段 AB7：范围、文档与 Go/No-Go 收口
+
+状态：`pending`
+
+完成条件：
+
+- `go test ./...`、`go vet ./...`、关键 Race 通过；
+- 所有外部来源、许可证和吸收/不吸收决定可追溯；
+- 没有外部代码、长 Prompt、凭证或临时脚本进入仓库；
+- 稳定文档与当前阶段一致；
+- 逐阶段决定：实现、仅保留测试/文档，或明确不引入。
+
+建议提交信息按实际内容使用中文，例如：
 
 ```text
-12 条自建样本
-baseline/calibrated × 3 轮
-36/36 结果有效
+兼容：隔离推理内容与最终输出
+审查：记录上游差异与吸收决策
+评估：复核字数口径与章节完成收口
 ```
 
-已知结论：calibrated 提高 `learn` recall，但整体 precision、`reveal_to_reader` precision 和动作集合完全匹配下降；当前 Prompt 暂不继续修改。
-
-## 阶段 209：评测结果解释
-
-状态：`complete`
-
-已生成 `evals/import-knowledge/explanation.md`。报告仅基于现有聚合统计，解释 `learn` 召回提升、`reveal_to_reader` 精确率下降、`believe` 未改善和整体 exact-match 下降；未从缺失的逐样本数据反推具体预测。
-
-对现有 `ab-summary.json` 做脱敏再分析，输出：
-
-- 按样本的动作集合差异；
-- 按语义类别的混淆矩阵；
-- `establish` 与“被转述说法”的边界错误；
-- `learn` 漏报/补报类型；
-- `reveal_to_reader` 误报类型；
-- `believe` 误报是否集中于角色误解叙述；
-- baseline/calibrated 的三轮一致性；
-- Provider 错误率与 Usage 分布。
-
-不重新调用 Provider，不修改生产 Prompt。
-
-## 阶段 210：扩展自建样本
-
-状态：`complete`
-
-样本已从 12 条扩展到 24 条；新增样本覆盖不同题材/视角、明确角色接受、读者揭示、稳定错误信念、未证实转述、明确不相信和部分兑现边界。金标测试已要求 `believe` 携带角色与内容。
-
-从 12 条扩展到 24 条，新增 12 条独立样本，按现有混淆分层：
-
-- 明确角色接受 Truth；
-- 角色听到但不相信；
-- 读者明确获知但角色未知；
-- 同一 Truth 多动作；
-- 转述、谎言、未经证实广播；
-- 稳定错误信念与客观 Truth 分离；
-- 普通世界设定不等于 reader reveal；
-- 不同题材/视角/叙述可靠性反例。
-
-样本、金标、类别说明和评测结果严格分离；只使用自有文本，不引入第三方小说原文。
-
-## 阶段 211：可断点有限扩展评测
-
-状态：`partial_evidence`
-
-曾完成 72 次新增样本真实调用，但本轮实际协调器未直接调用已提交 Runner，且逐样本工件已清理；因此只保留聚合动作证据，不宣称可断点 Runner 接入已经验收。
-
-使用既有 Runner，执行新增 12 条的：
-
-```text
-baseline/calibrated × 3 轮
-```
-
-要求：
-
-- 每条结果立即落盘；
-- Prompt 名称/摘要变化时不得复用旧结果；
-- 缺结果 fail-loud；
-- 单条 Provider 错误记录并可续跑；
-- 不保存完整模型响应、正文或凭证。
-
-停止条件：连续两条 Provider 阻塞、单条超过 180 秒、结构化自愈超过上限。
-
-## 阶段 212：合并统计与 Go/No-Go
-
-状态：`partial_evidence`
-
-已形成新增样本与原基线的动作级聚合，但 exact-match、逐样本一致性和新增调用成本因工件清理不可独立复核；当前 Go/No-Go 仅为暂保留 calibrated，不授权继续改 Prompt。
-
-将新增 12 条与原 12 条分别统计并合并，报告：
-
-- precision/recall；
-- exact action set；
-- 多动作顺序；
-- 负例误报；
-- `believe` 与 `reveal_to_reader` 混淆；
-- 题材/视角分层差异；
-- Provider 可用性和成本。
-
-只有在扩大样本后仍出现稳定、可解释的收益，才允许提出下一轮 Prompt 修改；否则保留当前折中 Prompt。
-
-## 阶段 213：U2 文档收口
-
-状态：`complete`
-
-更新：
-
-- `evals/import-knowledge/report.md`；
-- `evals/import-knowledge/README.md`；
-- `CONTEXT.md`；
-- `findings.md`；
-- `progress.md`。
-
-只提交脱敏样本标签、聚合统计和解释，不提交完整模型响应、Provider 配置或原始临时工作区。
-
-建议提交信息：
-
-```text
-评测：扩展并解释导入认知动作基线
-```
-
-# 共同门禁与范围边界
-
-## 阶段 214：最终验证
-
-状态：`planned`
-
-运行：
-
-```bash
-go test ./... -timeout=5m
-go vet ./...
-go test -race ./internal/tools ./internal/host/imp ./internal/eval -count=1 -timeout=10m
-git diff --check
-```
-
-## 不进入本轮
-
-- 不创建 GoReleaser Tag/Release；
-- 不修改运行时 Import Prompt，除非 U2 Go/No-Go 明确授权；
-- 不创建 ContextService、Repository 或通用策略框架；
-- 不改变 Context JSON Envelope；
-- 不新增 Knowledge/Foreshadow 动作；
-- 不引入第二个去 AI 味 Skill；
-- 不恢复扫榜、Chrome/CDP、浏览器登录态；
-- 不引入数据库、Web 事实源或新的 E2E 框架；
-- 不把 Provider 阻塞伪装成质量结论。
-
-## 后续顺序
-
-```text
-G2：稳定工作记忆归档
-→ C2：Context selection policy 二次深化
-→ U2：Import A/B 解释与样本扩展
-→ GoReleaser snapshot
-→ 再决定 v0.1.0-rc.1
-```
-
-当前入口：进入稳定观察期，仅处理实际 P0/P1 反馈，不继续扩大核心领域模型。
-
-
-# 里程碑 AA：发布后稳定性观察与安装链修复
-
-目标：使用实际稳定版 Release 资产验证安装、无头入口、Docker 和反馈记录；发现 P0/P1 先修复，不继续扩展领域功能。
-
-## 阶段 215：稳定版安装链预检
-
-状态：`complete`
-
-核对 `v0.1.1` Release、CI、Release、Docker 和七项资产；发现 `scripts/install.sh` 仍指向旧仓库 `voocel/ainovel-cli`，实际 `r6c/ainovel-cli` 返回 404，确定为 P1。
-
-## 阶段 216：安装脚本修复与本地验收
-
-状态：`complete`
-
-修正安装脚本仓库地址，增加安装契约；使用实际 Release 资产验证 checksum、版本、帮助和 `deconstruct --help`。`v0.1.1` 临时安装与 `v0.1.2` 远端安装回归均通过。
-
-## 阶段 217：发布后反馈记录与门禁
-
-状态：`complete`
-
-新增 `docs/post-release-feedback.md`，记录环境、资产、步骤、预期/实际和严重级别；完整测试、vet、race、脚本语法、链接和敏感信息检查均通过。
-
-## 阶段 218：补丁版本发布
-
-状态：`complete`
-
-提交安装链修复并发布 `v0.1.2`，不移动或删除已公开的 `v0.1.1`；CI、Release、Docker 和七项资产均已核验。
-
-## 阶段 219：观察期收口
-
-状态：`complete`
-
-确认 `v0.1.2` 安装链可用，保留非阻塞限制；不调用模型，不引入新领域状态。
-
-
-### AA 补丁版本收口（2026-08-27）
-
-安装脚本仓库地址已修正；`v0.1.2` 远端工作流和安装链回归均通过。
+## 本轮不做
+
+- 不安装 `chinese-novelist-skill`、`oh-story` 或 `lieflat-less-ai-tone`；
+- 不复制任何外部 Skill、Prompt、脚本或 GPL-3.0 代码；
+- 不 merge/cherry-pick `voocel/ainovel-cli`；
+- 不引入 PostgreSQL、FastAPI、React、Web 工作台；
+- 不恢复扫榜、Chrome/CDP、浏览器登录态或网络抓取；
+- 不引入第二个去 AI 味管线；
+- 不调用真实 Provider，除非用户明确把某一阶段推进到真实评测；
+- 不新增通用状态机、ContextService、Repository 或新的事实源。
+
+## 当前下一步
+
+进入阶段 AB1：先为 reasoning_content / think 标签隔离建立确定性非流式、流式和结构化输出回归测试；测试先红，再决定最小修复位置。

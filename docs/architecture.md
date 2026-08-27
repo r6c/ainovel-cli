@@ -41,6 +41,8 @@
 
 ### 2.3 观察层只观察
 
+模型的内部推理与最终内容是两条不同的数据通道。`agentcore.ContentThinking` / thinking delta 只能用于内部进度和用量统计；结构化解码、工具参数、章节正文、共创回复和持久化会话日志只允许消费最终内容。Cocreate 对 `<think>` / `<thinking>` 标签做最终内容侧清理；SessionStore 对 ThinkingBlock 做日志投影过滤并仅记录长度。TUI 可以显示短暂 thinking 进度，但不得把它写入用户回复或可分享工件。
+
 UI、诊断、事件日志都是从事件流 / 只读工件投影出来的被动消费者。读事实，不产生事实，不影响控制流。
 
 观测数据严格分三层：`agentcore.ProgressPayload` 是传输层，错误文本必须完整且不得包含 UI 截断策略；`host.Event.Summary` 是短展示语义，`Detail` 是完整诊断；文件日志优先写完整 `Detail`，TUI 只读 `Summary` 并在最终渲染时按终端宽度截断。文件 logger 由 `Host` 持有：先取得小说目录租约，再建立日志会话，随后才装配 Store、模型和 Engine；这样既不会绕过单书独占，也能覆盖全部装配和关闭日志。所谓“完整日志”指错误链、原始非法参数和生命周期元数据不丢失，不是把成功生成的小说正文重复转录到 `tui.log`；大内容仍由 Store 工件和 `meta/sessions` 承载。

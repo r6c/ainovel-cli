@@ -282,10 +282,81 @@ func (m *executionModel) Generate(_ context.Context, messages []agentcore.Messag
 	}}, nil
 }
 
+type thinkingExecutionModel struct {
+	*executionModel
+	thinking string
+}
+
+func (m *thinkingExecutionModel) Generate(context.Context, []agentcore.Message, []agentcore.ToolSpec, ...agentcore.CallOption) (*agentcore.LLMResponse, error) {
+	return &agentcore.LLMResponse{Message: agentcore.Message{
+		Role: agentcore.RoleAssistant,
+		Content: []agentcore.ContentBlock{
+			agentcore.ThinkingBlock(m.thinking),
+			agentcore.TextBlock(`{"action":"a","reason":"final"}`),
+		},
+	}}, nil
+}
+
 type nativeExecutionModel struct{ *executionModel }
 
 func (m *nativeExecutionModel) Capabilities() llm.Capabilities {
 	return structured(llm.SupportYes, llm.SupportYes)
+}
+
+func TestExecuteIgnoresReasoningBlocksWhenDecodingJSON(t *testing.T) {
+	model := &thinkingExecutionModel{
+		executionModel: &executionModel{},
+		thinking:       `{"action":"bad","reason":"hidden"}`,
+	}
+	type output struct {
+		Action string `json:"action"`
+		Reason string `json:"reason"`
+	}
+	out, err := Execute(t.Context(), model, Request[output]{
+		Contract: testContract(), SystemPrompt: "判断。", Payload: "输入", Agent: "test",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if out.Action != "a" || out.Reason != "final" {
+		t.Fatalf("reasoning JSON leaked into structured result: %+v", out)
+	}
+}
+
+func TestExecuteDoesNotExposeInlineThinkingInFailureRaw(t *testing.T) {
+	model := &nativeExecutionModel{executionModel: &executionModel{responses: []string{
+		`<think>绝密推理</think>不是 JSON`,
+	}}}
+	_, err := Execute(t.Context(), model, Request[map[string]any]{
+		Contract: testContract(), SystemPrompt: "判断。", Payload: "输入", Agent: "test",
+	})
+	var failure *Failure
+	if !errors.As(err, &failure) {
+		t.Fatalf("expected typed failure, got %T: %v", err, err)
+	}
+	if strings.Contains(failure.Raw, "绝密推理") {
+		t.Fatalf("failure raw exposed inline thinking: %q", failure.Raw)
+	}
+}
+
+func TestExecuteSkipsInlineThinkBlockBeforeDecodingJSON(t *testing.T) {
+	model := &executionModel{responses: []string{
+		`<think>{"action":"bad","reason":"hidden"}</think>{"action":"a","reason":"final"}`,
+		`{"action":"a","reason":"retry"}`,
+	}}
+	type output struct {
+		Action string `json:"action"`
+		Reason string `json:"reason"`
+	}
+	out, err := Execute(t.Context(), model, Request[output]{
+		Contract: testContract(), SystemPrompt: "判断。", Payload: "输入", Agent: "test",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if out.Action != "a" || out.Reason != "final" || model.calls != 1 {
+		t.Fatalf("inline think JSON leaked or triggered retry: out=%+v calls=%d", out, model.calls)
+	}
 }
 
 func TestExecutePromptModeSelfHealsSchemaViolation(t *testing.T) {

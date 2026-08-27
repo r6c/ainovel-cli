@@ -225,6 +225,28 @@ internal/store/signals.go
 
 `phase=complete` 不是充分条件。Headless/TUI 只有在目录租约可取得、无 PendingCommit、无 PendingRevision、无未完成 Import 且无外部正文修改时，才显示干净完成态。`Host.Resume` 会先用现有 Commit Saga 同步收尾 PendingCommit，再重新判定终态；外部修订与 Import 只给 `/sync`、`/import` 指引，不自动调用模型。
 
+## 5.3 推理内容与最终内容边界
+
+`agentcore.ContentThinking` / `StreamEventThinkingDelta` 是模型内部推理通道，`ContentText` 是最终内容通道。两者不得混用：
+
+- 结构化 JSON 只从 final text 解码；
+- Tool 参数只从 `ContentToolCall` 解码，不能从 thinking 猜测；
+- Cocreate 的 thinking-only 响应按空最终响应失败；
+- final text 中的 `<think>` / `<thinking>` 块在协议解析和流式预览前移除；
+- 普通 Worker 与 Cocreate 会话日志不保存完整 reasoning，只保留可见内容、工具调用、Usage 和 `thinking_len`；
+- TUI 的短暂 thinking 进度仍可显示，但不得进入用户回复、持久化日志或失败工件。
+
+代码入口：
+
+```text
+internal/llmcontract/execute.go
+internal/host/cocreate.go
+internal/store/session.go
+internal/agents/agentcore_contract_test.go
+```
+
+外部 Provider 可能使用 `reasoning_content`、`reasoning_details` 或思考标签承载内部推理；应用层只消费最终内容，不复制外部 Provider 实现。
+
 ## 6. 正文来源与自动写权限
 
 `ChapterRecord.Origin` 区分 `generated / imported / user`。Editor 可以在 chapter/global/arc Review 中记录任何来源章节的问题和完整 `affected_chapters`，但自动返工队列只允许 `origin=generated`（或旧兼容缺记录）的章节。`imported/user` 是作者原文，Writer 不得自动覆盖；需要修改时由作者编辑正文后执行 `/sync`。

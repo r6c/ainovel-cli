@@ -1,0 +1,225 @@
+# ainovel-cli 当前稳定发现
+
+## 当前基线
+
+- Git 基线：`70a806b 修复：收口稳定版安装链并补充发布后验收`
+- 当前工作区：干净。v0.1.2 安装链、CI、Release、Docker 和远端资产回归已完成。
+- 项目定位：本地文件系统驱动、可恢复、可审计的 AI 小说创作运行时。
+- 核心边界：模型负责开放语义；代码负责状态、约束、事务、恢复和验证。
+
+## 本轮规划决定（2026-08-27）
+
+用户要求继续处理三项候选：
+
+1. 稳定工作记忆继续归档；
+2. Context selection policy 二次深化；
+3. Import 认知 A/B 解释与样本扩展。
+
+三项不合并为一个大提交：
+
+```text
+G2 稳定工作记忆归档
+  ↓
+C2 Context selection policy 二次深化
+
+U2 Import 认知 A/B 解释与样本扩展
+  ↘ 独立、可暂停、不阻塞发布
+```
+
+GoReleaser 发布验收已完成；当前稳定版本为 `v0.1.2`，后续进入稳定观察期。
+
+## 归档结果
+
+本轮规划前的根工作记忆已完整复制到：
+
+```text
+docs/history/plans/2026-08-pre-release-candidates/
+```
+
+归档包含：
+
+- `task_plan-before-20260826.md`
+- `findings-before-20260826.md`
+- `progress-before-20260826.md`
+- `README.md`
+
+归档保留旧阶段、工具错误和当时状态；这些内容不覆盖根目录当前计划。
+
+## Context 二次深化边界
+
+已有第一轮深化：
+
+```text
+internal/tools/context_knowledge_policy.go
+selectKnowledgeBoundaries
+```
+
+它负责 Knowledge 的选择、时间过滤、ReaderKnown/CharacterKnown 净化和 8 条上限；`ContextTool` 继续负责 IO、错误降级、预算和 JSON Envelope。
+
+本轮只通过输入/决策/输出矩阵和 deletion/decision trace 测试判断是否值得继续深化。即使深化，也不创建：
+
+- `ContextService`
+- Repository
+- 通用策略框架
+- 第二个 JSON Envelope
+- 新事实源
+
+必须保持：
+
+- 隐藏 Truth 不泄露；
+- 当前章/未来信息不提前进入；
+- ReaderKnown 与 CharacterKnown 分离；
+- active belief 净化；
+- 8 条上限；
+- `_trimmed` 预算可观测性。
+
+## Import 认知 A/B 当前证据
+
+已经完成的 12 条样本、baseline/calibrated 三轮 A/B 结果：
+
+```text
+36/36 结果有效
+Provider 错误：0
+超时：0
+```
+
+当前结论：
+
+- calibrated 提高 `learn` recall；
+- calibrated 降低整体 precision；
+- `reveal_to_reader` precision 下降；
+- 动作集合完全匹配下降；
+- 负例未出现新增明显误报；
+- 当前 Prompt 作为折中版本保留，不继续堆规则。
+
+本轮 U2 不重复 12 条样本上的 Prompt 调参，而是：
+
+1. 先解释已有混淆矩阵；
+2. 新增 12 条自建样本，扩展到 24 条；
+3. 按题材、视角和认知边界分层；
+4. 使用可断点 Runner 进行扩展评测；
+5. 只有出现稳定、可解释收益时才提出新的 Prompt 修改。
+
+不使用第三方小说原文，不保存完整模型响应或 Provider 凭证。
+
+## U2 阶段 209—214 进度
+
+阶段 209 已完成：新增 `evals/import-knowledge/explanation.md`，仅基于已有聚合统计解释 baseline/calibrated 的动作级权衡，不虚构逐样本预测。
+
+阶段 210 已完成：校准集从 12 条扩展到 24 条，新增样本全部为本项目自建中文片段，覆盖明确角色接受、读者揭示、同一 Truth 多动作、稳定错误信念、未经核验转述、明确不相信和 partial payoff 边界。`labels.json` 现在对 `believe` 同时要求角色与内容。
+
+阶段 211 曾完成 72 次新增样本真实调用，但一次性协调器未直接使用已提交 Runner，且逐样本工件已清理；当前只保留有限动作级聚合，不能独立复核 exact-match、逐样本一致性或新增调用成本。阶段 212 因此保持 `partial_evidence`；Go/No-Go 仅为保留 calibrated Prompt，不继续追加规则。
+
+## GoReleaser Snapshot 验收（2026-08-27）
+
+使用固定版本容器 `goreleaser/goreleaser:v2.17.1`，在带完整 Git 元数据的临时副本中执行：
+
+```text
+goreleaser check：通过
+goreleaser release --snapshot --clean：通过
+```
+
+生成并验收六个平台归档：
+
+```text
+Darwin arm64 / amd64
+Linux arm64 / amd64
+Windows arm64 / amd64
+```
+
+已验证：checksum 六项全部匹配；tar.gz/zip 均包含对应二进制、README.md 和 LICENSE；macOS arm64 产物的 `--version` 正确注入 Snapshot 版本、完整 commit 和构建时间；`--help` 与 `deconstruct --help` 正常。安装脚本的 Unix tar.gz 命名与产物一致，Windows 保持手动下载边界。
+
+Snapshot 首次执行暴露了一个测试夹具问题：`chmod 0444` 在 root 容器中不能稳定模拟写失败。已将测试改为把 JSONL 路径替换为目录，主工作区 Store 测试通过；这不是生产代码回归。
+
+历史 Snapshot 产物留在系统临时目录，不进入 Git；后续 `v0.1.2` 已完成正式发布和远端资产回归。
+
+## GoReleaser 环境记录
+
+本轮规划前曾尝试固定 GoReleaser；当前使用 v2.18.0 完成 Snapshot 和远端资产验收：
+
+- 直接下载资产名最初猜错，返回 404；随后通过 GitHub API 确认真实资产名；
+- 按真实资产下载时在宿主 120 秒窗口内阻塞；
+- 本机没有留下 Goreleaser 进程或有效工具文件；
+- Go module 安装同版本也在下载依赖时超时；
+- 历史下载尝试未完成；后续已通过固定 v2.18.0 容器执行 snapshot，并完成 v0.1.2 正式发布。
+
+该事项已完成，不再作为待办发布任务。
+
+## 稳定架构边界
+
+正式事实与规则仍为：
+
+```text
+ChapterRecord.Facts
+→ Revision Projector
+→ 当前投影
+
+Knowledge/Foreshadow 生命周期
+→ 各自专用纯 Apply 函数
+
+Import
+→ 统一 ChapterFacts 映射
+→ 全书事实重放
+→ 发布前门禁
+
+PendingCommit
+→ 首次冻结校验 + v2 密封
+→ 恢复时密封校验 + 纯载荷校验 + 幂等重放
+```
+
+不引入：
+
+- 数据库；
+- 通用状态机；
+- CRUD Service；
+- 浏览器自动化；
+- 扫榜；
+- 并行写相邻章节；
+- 第二套 Import Saga；
+- 第二个去 AI 味 Skill。
+
+## 阶段 203—204 文档收口
+
+稳定文档导航核对结果：
+
+- `CONTEXT.md`、README、架构、发布验收、发布说明、升级说明和 CHANGELOG 的相对链接均有效；
+- `docs/release-acceptance.md` 的验收小节已整理为连续的 `3.1`—`3.14`；
+- `CONTEXT.md` 的 AI 味语义判据小节已修正为 `11.1`，与上级 Prose Lint 章节一致；
+- 当前根计划、进度和发现文件只保留稳定状态，详细过程已进入日期归档；
+- 归档目录未发现 Provider 凭证、私钥或敏感认证内容。
+
+阶段 204 归档门禁完成后，G2 收口，不修改生产代码。
+
+## C2 阶段 205—208 收口
+
+阶段 205 已建立 `docs/context-policy-decision-matrix.md`，固定 Context 的输入、候选资格、排除、净化、排序/上限、预算和 Envelope 边界。
+
+阶段 206 deletion test 在临时副本中验证：删除 Knowledge 选择/净化会破坏隐藏 Truth 和 Reader/Character 边界；删除预算裁剪会破坏上限与 `_trimmed`；删除 Envelope 装配会破坏公共分区。Budget 完整编排回归通过，删除实验失败来自预期行为缺失，而非环境问题。
+
+阶段 207 决策：现有 `context_knowledge_policy.go` 已提供足够的纯策略边界；没有证据表明新增 Context Service、Repository、通用策略框架或生产决策 trace 能带来杠杆收益，因此不做无条件生产重构。
+
+阶段 208 回归通过：Context、Host、Import、全量测试、vet、race、Markdown 链接和 diff check 均通过；ReaderKnown/CharacterKnown、隐藏 Truth、未来过滤、8 条上限、预算裁剪和 Envelope 行为未变。
+
+C2 收口后，下一项按独立路线进入 U2 阶段 209；U2 仍不阻塞 GoReleaser 发布验收。
+
+## 历史说明
+
+此前 A—X、候选 2/3/4、真实 Provider 验收和 TDD 过程已归档。根目录不再重复保留全部过程日志；如需恢复历史，读取：
+
+```text
+docs/history/plans/2026-08-domain-saga-evolution/
+docs/history/plans/2026-08-pre-release-candidates/
+```
+
+
+## AA：发布后稳定性观察
+
+- 预检确认 `v0.1.1` Release 位于 `r6c/ainovel-cli`，CI/Release/Docker 均成功，资产 7 项。
+- 发现 P1：`scripts/install.sh` 仍请求旧仓库 `voocel/ainovel-cli`，指定 `v0.1.1` 时返回 404。
+- 已在工作区修正安装脚本为 `r6c/ainovel-cli`，并用实际 `v0.1.1` Darwin arm64、Linux arm64、Windows arm64 资产完成 checksum 验证；安装后二进制的版本/帮助命令通过。
+- 该修复尚未进入 `v0.1.1` 已发布资产，必须通过新的 `v0.1.2` 补丁版本远端回归。
+
+
+### AA 补丁版本收口（2026-08-27）
+
+安装脚本仓库地址已修正；`v0.1.2` 远端工作流和安装链回归均通过。

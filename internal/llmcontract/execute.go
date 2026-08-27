@@ -120,26 +120,27 @@ func Execute[T any](ctx context.Context, model llmretry.Generator, req Request[T
 		}
 
 		raw := resp.Message.TextContent()
+		safeRaw := stripReasoningBlocks(raw)
 		switch resp.Message.StopReason {
 		case agentcore.StopReasonLength:
-			return zero, &Failure{Kind: FailureLength, Contract: req.Contract.Name, Raw: raw, Err: errors.New("模型输出被长度截断(stop_reason=length)")}
+			return zero, &Failure{Kind: FailureLength, Contract: req.Contract.Name, Raw: safeRaw, Err: errors.New("模型输出被长度截断(stop_reason=length)")}
 		case agentcore.StopReasonSafety:
-			return zero, &Failure{Kind: FailureSafety, Contract: req.Contract.Name, Raw: raw, Err: errors.New("模型拒答或触发内容过滤(stop_reason=safety)")}
+			return zero, &Failure{Kind: FailureSafety, Contract: req.Contract.Name, Raw: safeRaw, Err: errors.New("模型拒答或触发内容过滤(stop_reason=safety)")}
 		case agentcore.StopReasonError:
-			return zero, &Failure{Kind: FailureProtocol, Contract: req.Contract.Name, Raw: raw, Err: errors.New("模型以错误状态结束(stop_reason=error)")}
+			return zero, &Failure{Kind: FailureProtocol, Contract: req.Contract.Name, Raw: safeRaw, Err: errors.New("模型以错误状态结束(stop_reason=error)")}
 		case agentcore.StopReasonToolUse:
-			return zero, &Failure{Kind: FailureProtocol, Contract: req.Contract.Name, Raw: raw, Err: errors.New("结构化调用意外返回工具调用(stop_reason=tool_use)")}
+			return zero, &Failure{Kind: FailureProtocol, Contract: req.Contract.Name, Raw: safeRaw, Err: errors.New("结构化调用意外返回工具调用(stop_reason=tool_use)")}
 		case agentcore.StopReasonAborted:
-			return zero, &Failure{Kind: FailureProtocol, Contract: req.Contract.Name, Raw: raw, Err: errors.New("模型调用被中止(stop_reason=aborted)")}
+			return zero, &Failure{Kind: FailureProtocol, Contract: req.Contract.Name, Raw: safeRaw, Err: errors.New("模型调用被中止(stop_reason=aborted)")}
 		}
 
-		body := strings.TrimSpace(raw)
+		body := strings.TrimSpace(stripReasoningBlocks(raw))
 		if native {
 			if body == "" {
-				return zero, &Failure{Kind: FailureContract, Contract: req.Contract.Name, Raw: raw, Err: errors.New("原生 schema 返回空内容")}
+				return zero, &Failure{Kind: FailureContract, Contract: req.Contract.Name, Raw: safeRaw, Err: errors.New("原生 schema 返回空内容")}
 			}
 		} else {
-			body = ExtractJSONObject(raw)
+			body = ExtractJSONObject(body)
 		}
 
 		layer := "schema"
@@ -153,7 +154,7 @@ func Execute[T any](ctx context.Context, model llmretry.Generator, req Request[T
 			if err := json.Unmarshal([]byte(body), &out); err != nil {
 				// Schema 已通过而 DTO 无法解码，说明静态契约与 Go 类型不一致，
 				// 继续要求模型重写无法修复代码缺陷。
-				return zero, &Failure{Kind: FailureContract, Contract: req.Contract.Name, Raw: raw, Err: fmt.Errorf("schema 与 DTO 不一致: %w", err)}
+				return zero, &Failure{Kind: FailureContract, Contract: req.Contract.Name, Raw: safeRaw, Err: fmt.Errorf("schema 与 DTO 不一致: %w", err)}
 			}
 			if req.Validate == nil {
 				return out, nil
@@ -166,9 +167,9 @@ func Execute[T any](ctx context.Context, model llmretry.Generator, req Request[T
 		}
 
 		if native && layer != "semantic" {
-			return zero, &Failure{Kind: FailureContract, Contract: req.Contract.Name, Raw: raw, Err: fmt.Errorf("原生 schema 契约违约: %w", cause)}
+			return zero, &Failure{Kind: FailureContract, Contract: req.Contract.Name, Raw: safeRaw, Err: fmt.Errorf("原生 schema 契约违约: %w", cause)}
 		}
-		correction := Correction{Attempt: attempt, Layer: layer, Mode: resolution.Mode, Raw: raw, Err: cause}
+		correction := Correction{Attempt: attempt, Layer: layer, Mode: resolution.Mode, Raw: safeRaw, Err: cause}
 		if req.Hooks.Correction != nil {
 			req.Hooks.Correction(correction)
 		}
@@ -177,9 +178,38 @@ func Execute[T any](ctx context.Context, model llmretry.Generator, req Request[T
 			hint = semanticCorrection
 		}
 		messages = append(messages,
-			agentcore.Message{Role: agentcore.RoleAssistant, Content: []agentcore.ContentBlock{agentcore.TextBlock(raw)}},
+			agentcore.Message{Role: agentcore.RoleAssistant, Content: []agentcore.ContentBlock{agentcore.TextBlock(safeRaw)}},
 			agentcore.UserMsg(hint+"\n错误："+cause.Error()),
 		)
+	}
+}
+
+// stripReasoningBlocks removes inline provider thinking blocks before structured decoding.
+// An unclosed block is discarded through the end because it cannot be treated as final output.
+func stripReasoningBlocks(raw string) string {
+	lower := strings.ToLower(raw)
+	for {
+		start, tagLen := -1, 0
+		for _, tag := range []string{"<think>", "<thinking>"} {
+			if idx := strings.Index(lower, tag); idx >= 0 && (start < 0 || idx < start) {
+				start, tagLen = idx, len(tag)
+			}
+		}
+		if start < 0 {
+			return raw
+		}
+		end, endTagLen := -1, 0
+		for _, tag := range []string{"</think>", "</thinking>"} {
+			if idx := strings.Index(lower[start+tagLen:], tag); idx >= 0 && (end < 0 || idx < end) {
+				end, endTagLen = idx, len(tag)
+			}
+		}
+		if end < 0 {
+			return raw[:start]
+		}
+		end += start + tagLen + endTagLen
+		raw = raw[:start] + raw[end:]
+		lower = strings.ToLower(raw)
 	}
 }
 

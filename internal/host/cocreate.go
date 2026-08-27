@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/voocel/agentcore"
 	"github.com/voocel/ainovel-cli/internal/bootstrap"
@@ -130,13 +131,14 @@ func coCreateStream(ctx context.Context, models *bootstrap.ModelSet, sessions *s
 		if sessions == nil {
 			return
 		}
+		visibleRaw := stripThinkBlocks(raw.String())
 		if logErr := sessions.LogCoCreate(coCreateLogEntry{
 			Time:         time.Now(),
 			DurationMS:   time.Since(start).Milliseconds(),
 			InputHistory: history,
-			RawResponse:  raw.String(),
-			RawLen:       len([]rune(raw.String())),
-			Thinking:     thinking.String(),
+			RawResponse:  visibleRaw,
+			RawLen:       len([]rune(visibleRaw)),
+			ThinkingLen:  utf8.RuneCountInString(thinking.String()),
 			ParsedReply:  reply.Message,
 			ParsedDraft:  reply.Prompt,
 			ParsedStage:  reply.Stage,
@@ -179,15 +181,9 @@ func coCreateStream(ctx context.Context, models *bootstrap.ModelSet, sessions *s
 		}
 	}
 
-	// Channel fallback：思考型模型（R1/GLM-Z1/QwQ 等）偶发把完整答案写进
-	// reasoning_content 后没切回 final answer 通道，导致 raw 为空但 thinking 含
-	// 完整四段。实测见 meta/sessions/cocreate.jsonl —— 直接拿 thinking 当 raw 解析，
-	// 协议层已有降级处理（无 [REPLY] 标记时整段当 reply），救场后 UI 体验无差别。
 	rawText := raw.String()
 	if strings.TrimSpace(rawText) == "" {
-		if t := strings.TrimSpace(thinking.String()); t != "" {
-			rawText = t
-		}
+		return CoCreateReply{}, fmt.Errorf("cocreate empty final response")
 	}
 	reply, err = parseCoCreateResponse(rawText)
 	return reply, err
@@ -201,7 +197,7 @@ type coCreateLogEntry struct {
 	InputHistory []CoCreateMessage `json:"input_history"`
 	RawResponse  string            `json:"raw_response"`
 	RawLen       int               `json:"raw_len"`
-	Thinking     string            `json:"thinking,omitempty"`
+	ThinkingLen  int               `json:"thinking_len,omitempty"`
 	ParsedReply  string            `json:"parsed_reply"`
 	ParsedDraft  string            `json:"parsed_draft"`
 	ParsedStage  string            `json:"parsed_stage,omitempty"`
@@ -225,10 +221,38 @@ func assistantMsg(text string) agentcore.Message {
 	}
 }
 
+// stripThinkBlocks removes provider reasoning blocks from visible co-create text.
+// An unclosed block is discarded through the end because it cannot be treated as a reply.
+func stripThinkBlocks(raw string) string {
+	lower := strings.ToLower(raw)
+	for {
+		start, tagLen := -1, 0
+		for _, tag := range []string{"<think>", "<thinking>"} {
+			if idx := strings.Index(lower, tag); idx >= 0 && (start < 0 || idx < start) {
+				start, tagLen = idx, len(tag)
+			}
+		}
+		if start < 0 {
+			return raw
+		}
+		end := strings.Index(lower[start+tagLen:], "</think>")
+		endTagLen := len("</think>")
+		if thinkingEnd := strings.Index(lower[start+tagLen:], "</thinking>"); thinkingEnd >= 0 && (end < 0 || thinkingEnd < end) {
+			end, endTagLen = thinkingEnd, len("</thinking>")
+		}
+		if end < 0 {
+			return raw[:start]
+		}
+		end += start + tagLen + endTagLen
+		raw = raw[:start] + raw[end:]
+		lower = strings.ToLower(raw)
+	}
+}
+
 // parseCoCreateResponse 解析 XML 标签输出。模型若没遵守协议（直接说自然语言），
 // 整段作为 reply 显示，draft 留空让 session 保留上一轮。
 func parseCoCreateResponse(raw string) (CoCreateReply, error) {
-	raw = strings.TrimSpace(raw)
+	raw = strings.TrimSpace(stripThinkBlocks(raw))
 	if raw == "" {
 		return CoCreateReply{}, fmt.Errorf("cocreate empty response")
 	}
@@ -388,10 +412,10 @@ func extractReplyPreview(raw string) string {
 		rest = trimmed[rIdx+len(open):]
 	}
 	if cIdx := strings.Index(rest, closeTag); cIdx >= 0 {
-		return strings.TrimSpace(rest[:cIdx])
+		return strings.TrimSpace(stripThinkBlocks(rest[:cIdx]))
 	}
 	if dIdx := strings.Index(rest, draftOpen); dIdx >= 0 {
 		rest = rest[:dIdx]
 	}
-	return strings.TrimSpace(rest)
+	return strings.TrimSpace(stripThinkBlocks(rest))
 }

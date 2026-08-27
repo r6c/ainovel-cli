@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/voocel/agentcore"
@@ -123,6 +124,32 @@ func TestSessionStoreContinuesAgentSequenceAcrossRestarts(t *testing.T) {
 	}
 	if got := len(readJSONL(t, filepath.Join(dir, "meta/sessions/agents/architect_long-002.jsonl"))); got != 1 {
 		t.Fatalf("second session entries = %d, want 1", got)
+	}
+}
+
+func TestSessionStoreDoesNotPersistThinkingText(t *testing.T) {
+	const hidden = "不要把这段推理写入会话日志"
+	dir := t.TempDir()
+	s := NewSessionStore(newIO(dir))
+	s.Log("meta/sessions/agents/writer-ch01.jsonl", agentcore.Message{
+		Role: agentcore.RoleAssistant,
+		Content: []agentcore.ContentBlock{
+			agentcore.ThinkingBlock(hidden),
+			agentcore.TextBlock("用户可见正文"),
+		},
+		Usage: &agentcore.Usage{Input: 10, Output: 5, TotalTokens: 15},
+	})
+
+	data, err := os.ReadFile(filepath.Join(dir, "meta/sessions/agents/writer-ch01.jsonl"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(data), hidden) || strings.Contains(string(data), `"thinking"`) {
+		t.Fatalf("session log persisted reasoning: %s", data)
+	}
+	entries := readJSONL(t, filepath.Join(dir, "meta/sessions/agents/writer-ch01.jsonl"))
+	if entries[0]["content"] == nil || entries[0]["usage"] == nil {
+		t.Fatalf("visible content or usage lost: %#v", entries[0])
 	}
 }
 
