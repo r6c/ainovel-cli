@@ -16,7 +16,7 @@ ainovel-cli 是一个面向单机、Linux 服务器/NAS、macOS 和 Windows 的�
 
 ## 稳定版产物状态
 
-GoReleaser v2.18.0 Snapshot 与 v0.1.1 稳定版产物已完成验收：
+GoReleaser v2.18.0 Snapshot 与 v0.1.2 稳定版产物已完成验收：
 
 - 六个平台归档：Linux/Darwin/Windows × amd64/arm64；
 - checksum 六项全部匹配；
@@ -25,7 +25,7 @@ GoReleaser v2.18.0 Snapshot 与 v0.1.1 稳定版产物已完成验收：
 - `--help` 与 `deconstruct --help` 通过；
 - Windows 使用 zip，Unix 安装脚本继续使用 tar.gz。
 
-这只是 Snapshot 验收，不代表已经创建 Tag 或 GitHub Release。
+v0.1.2 已创建正式 Tag 和 GitHub Release，Release 与 Docker 工作流均成功。
 
 ## 安装与无头使用
 

@@ -8,4 +8,4 @@ repo=$(sed -n 's/^REPO="\([^"]*\)"$/\1/p' "$script")
   exit 1
 }
 grep -F "https://raw.githubusercontent.com/$repo/" "$script" >/dev/null
-grep -F "github.com/$repo/cmd/ainovel-cli@latest" "$(dirname -- "$script")/../README.md" >/dev/null
+grep -F "github.com/voocel/ainovel-cli/cmd/ainovel-cli@latest" "$(dirname -- "$script")/../README.md" >/dev/null
