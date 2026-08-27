@@ -3,12 +3,12 @@
 ## 当前会话
 
 - 日期：2026-08-27
-- 基线：`dc1d41d 收口：完成字数口径复核`
+- 基线：`f0498b8 设计：明确作者记忆与用户规则边界`
 - 当前里程碑：外部更新审查与兼容性收敛
 - 当前阶段：AB4 作者记忆边界设计——complete；下一阶段 AB5 细纲照搬检测候选——pending
 - AB1 核心红→绿：thinking-only 不再回退为用户回复；内嵌 `<think>/<thinking>` 在结构化解析、共创最终回复和流式预览前清理；会话日志不保存完整 reasoning，仅保留可见内容与 `thinking_len`。
 - 稳定版本：`v0.1.2`
-- AB1 已修改现有 Host/Store/llmcontract 的输出边界并完成回归；AB2 已完成上游行为差异审查；AB3 已统一章节字数口径；未安装外部 Skill、未调用真实 Provider。
+- AB1 已修改现有 Host/Store/llmcontract 的输出边界并完成回归；AB2 已完成上游行为差异审查；AB3 已统一章节字数口径；AB4 已完成作者记忆边界设计；未安装外部 Skill、未调用真实 Provider。
 
 ## AB0 结果
 
