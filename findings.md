@@ -210,3 +210,16 @@ C2 收口后，下一项按独立路线进入 U2 阶段 209；U2 仍不阻塞 Go
 docs/history/plans/2026-08-domain-saga-evolution/
 docs/history/plans/2026-08-pre-release-candidates/
 ```
+
+
+## AA：发布后稳定性观察
+
+- 预检确认 `v0.1.1` Release 位于 `r6c/ainovel-cli`，CI/Release/Docker 均成功，资产 7 项。
+- 发现 P1：`scripts/install.sh` 仍请求旧仓库 `voocel/ainovel-cli`，指定 `v0.1.1` 时返回 404。
+- 已在工作区修正安装脚本为 `r6c/ainovel-cli`，并用实际 `v0.1.1` Darwin arm64、Linux arm64、Windows arm64 资产完成 checksum 验证；安装后二进制的版本/帮助命令通过。
+- 该修复尚未进入 `v0.1.1` 已发布资产，必须通过新的 `v0.1.2` 补丁版本远端回归。
+
+
+### AA 补丁版本收口（2026-08-27）
+
+安装脚本仓库地址已修正；`v0.1.2` 待远端工作流回归。

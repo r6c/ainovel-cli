@@ -1,6 +1,6 @@
 # 发布说明
 
-## ainovel-cli 当前发布候选
+## ainovel-cli v0.1.2 稳定补丁版
 
 ainovel-cli 是一个面向单机、Linux 服务器/NAS、macOS 和 Windows 的可恢复 AI 小说创作引擎。核心原则是：模型负责开放语义，代码负责状态、约束、事务、恢复和验证。
 
@@ -14,9 +14,9 @@ ainovel-cli 是一个面向单机、Linux 服务器/NAS、macOS 和 Windows 的�
 - Writer Context 区分 Author Truth、Character Known、Reader Known 和 Character Belief。
 - 用户可通过 `deconstruct` 分析主动提供的本地文本，生成抽象 SimulationProfile，并增量复用未变化来源。
 
-## Release Candidate 产物状态
+## 稳定版产物状态
 
-GoReleaser v2.17.1 Snapshot 已完成验收：
+GoReleaser v2.18.0 Snapshot 与 v0.1.1 稳定版产物已完成验收：
 
 - 六个平台归档：Linux/Darwin/Windows × amd64/arm64；
 - checksum 六项全部匹配；

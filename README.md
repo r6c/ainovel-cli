@@ -200,10 +200,10 @@ ToolResultMicrocompact → LightTrim → StoreSummaryCompact → FullSummary
 
 ```bash
 # 一键安装（macOS / Linux，无需 Go）
-curl -fsSL https://raw.githubusercontent.com/voocel/ainovel-cli/main/scripts/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/r6c/ainovel-cli/main/scripts/install.sh | sh
 
 # 安装指定版本
-curl -fsSL https://raw.githubusercontent.com/voocel/ainovel-cli/v1.2.3/scripts/install.sh | sh -s -- v1.2.3
+curl -fsSL https://raw.githubusercontent.com/r6c/ainovel-cli/v1.2.3/scripts/install.sh | sh -s -- v1.2.3
 
 # 或通过 Go 安装
 go install github.com/voocel/ainovel-cli/cmd/ainovel-cli@latest
@@ -216,7 +216,7 @@ ainovel-cli update
 ainovel-cli
 ```
 
-> Windows 或手动安装：前往 [Releases](https://github.com/voocel/ainovel-cli/releases/latest) 下载对应平台的包。
+> Windows 或手动安装：前往 [Releases](https://github.com/r6c/ainovel-cli/releases/latest) 下载对应平台的包。
 > 安装脚本会从同一 GitHub Release 下载 SHA256 清单，校验通过后才提取并安装二进制。
 
 ### Headless 模式
