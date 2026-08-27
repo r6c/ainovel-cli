@@ -165,6 +165,10 @@ resolve
 
 Rewrite 的 `RestoreOwnPlants` 是候选 ChapterRecord 构造策略，不属于生命周期函数本身。
 
+## 4.1 章节字数口径
+
+章节字数统一由 `domain.WordCount` 计算：先调用 `NormalizeChapterContent` 去除 BOM、将 CRLF/CR 统一为 LF，再按 Unicode rune 计数。Draft、Commit、Progress 和 Projector 必须复用这一口径；Checkpoint 只记录工件摘要，不另定义字数规则。`generated` 的明确单章目标只在超过 120% 时拒绝，`imported/user` 保留原文且不受 generated 篇幅门禁约束。
+
 ## 5. Chapter Commit Saga
 
 普通提交与 Rewrite 共用 `PendingCommit`：
