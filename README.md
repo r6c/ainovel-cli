@@ -203,7 +203,7 @@ ToolResultMicrocompact → LightTrim → StoreSummaryCompact → FullSummary
 curl -fsSL https://raw.githubusercontent.com/r6c/ainovel-cli/main/scripts/install.sh | sh
 
 # 安装指定版本
-curl -fsSL https://raw.githubusercontent.com/r6c/ainovel-cli/v1.2.3/scripts/install.sh | sh -s -- v1.2.3
+curl -fsSL https://raw.githubusercontent.com/r6c/ainovel-cli/v0.1.2/scripts/install.sh | sh -s -- v0.1.2
 
 # 或通过 Go 安装
 go install github.com/voocel/ainovel-cli/cmd/ainovel-cli@latest
@@ -250,8 +250,8 @@ ainovel-cli --headless
 Docker 镜像适合在服务器/NAS 上运行 headless 长任务，也可以用 `-it` 进入 TUI。镜像支持 linux/amd64 与 linux/arm64。帮助命令可在无配置挂载、无 TTY、无网络时运行：
 
 ```bash
-docker run --rm --network none ghcr.io/voocel/ainovel-cli:latest --help
-docker run --rm --network none ghcr.io/voocel/ainovel-cli:latest deconstruct --help
+docker run --rm --network none ghcr.io/r6c/ainovel-cli:latest --help
+docker run --rm --network none ghcr.io/r6c/ainovel-cli:latest deconstruct --help
 ```
 
 正式创作时，配置和作品目录建议挂载到宿主机：
@@ -263,13 +263,13 @@ mkdir -p config workspace
 docker run --rm -it \
   -v "$PWD/config:/root/.ainovel" \
   -v "$PWD/workspace:/workspace" \
-  ghcr.io/voocel/ainovel-cli:latest
+  ghcr.io/r6c/ainovel-cli:latest
 
 # Headless
 docker run --rm \
   -v "$PWD/config:/root/.ainovel" \
   -v "$PWD/workspace:/workspace" \
-  ghcr.io/voocel/ainovel-cli:latest \
+  ghcr.io/r6c/ainovel-cli:latest \
   --headless --prompt "写一本东方玄幻长篇，主角从边陲小城起步"
 ```
 

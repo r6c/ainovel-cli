@@ -3,12 +3,12 @@
 ## 当前会话
 
 - 日期：2026-08-27
-- 基线：`5b78d81 评估：明确细纲正文重合检测边界`
+- 基线：`a3a884f 评估：明确设定术语事实边界`
 - 当前里程碑：外部更新审查与兼容性收敛
-- 当前阶段：AB6 设定词典候选——complete；下一阶段 AB7 范围、文档与 Go/No-Go 收口——pending
+- 当前阶段：AB7 范围、文档与 Go/No-Go 收口——complete
 - AB1 核心红→绿：thinking-only 不再回退为用户回复；内嵌 `<think>/<thinking>` 在结构化解析、共创最终回复和流式预览前清理；会话日志不保存完整 reasoning，仅保留可见内容与 `thinking_len`。
 - 稳定版本：`v0.1.2`
-- AB1 已修改现有 Host/Store/llmcontract 的输出边界并完成回归；AB2 已完成上游行为差异审查；AB3 已统一章节字数口径；AB4 已完成作者记忆边界设计；未安装外部 Skill、未调用真实 Provider。
+- AB1 已修改现有 Host/Store/llmcontract 的输出边界并完成回归；AB2 已完成上游行为差异审查；AB3 已统一章节字数口径；AB4 已完成作者记忆边界设计；AB5/AB6 已完成候选评估并记录 No-Go；AB7 已完成最终范围、文档与 Go/No-Go 收口；未安装外部 Skill、未调用真实 Provider。
 
 ## AB0 结果
 
@@ -95,7 +95,7 @@ AB2 结果：`LatestCompleted()` 已统一接入最大完成章语义；分层�
 
 已确认 `WorldRule`、`CastEntry` 与 `KnowledgeEntry` 各自承担不同事实职责；设定术语尚无稳定 ID、首现章或显式来源，不应从普通字符串自动推导术语生命周期。已建立 `docs/setting-term-boundary.md` 与 Store 边界测试。当前 No-Go：不新增术语事实源、不实现术语首现 advisory，不改 Knowledge/ReaderKnown、Commit 或 Context。
 
-### 阶段 AB7：最终范围与路线收口——pending
+### 阶段 AB7：最终范围与路线收口——complete
 
 完成全量门禁、许可证追溯、稳定文档更新和各候选 Go/No-Go。
 
@@ -111,4 +111,4 @@ AB2 结果：`LatestCompleted()` 已统一接入最大完成章语义；分层�
 
 ## 记录规则
 
-每阶段完成后更新本文件；外部网页内容只进入 `findings.md`，完整过程进入日期归档。AB6 已完成设定术语边界评估，当前 No-Go 不新增术语事实源或 advisory；下一步为 AB7 范围、文档与 Go/No-Go 收口。
+每阶段完成后更新本文件；外部网页内容只进入 `findings.md`，完整过程进入日期归档。AB7 已完成最终范围、文档与 Go/No-Go 收口；后续如需继续，另行创建新计划。

@@ -463,7 +463,7 @@ ainovel-cli deconstruct <本地语料目录>
 
 扫榜功能已从产品路线移除。为保持 Linux、服务器、NAS 和无头环境可移植性，不引入 Chrome/CDP、浏览器登录态、平台爬虫、反爬或番茄/起点/晋江页面适配。需要分析的资料必须由用户以本地文本主动提供。
 
-## 17. Linux 与无头环境边界
+## 18. Linux 与无头环境边界
 
 顶层 `--help/-h/help` 和 `deconstruct --help` 必须在配置、首次引导、TTY、模型和 Host 初始化之前返回；它们可用于 Linux/Docker 无配置健康检查。
 
@@ -471,11 +471,11 @@ Linux amd64/arm64 发布目标均使用 `CGO_ENABLED=0`。CI 除 Ubuntu/Windows 
 
 桌面通知是 best-effort Adapter：Linux 缺少 `notify-send` 时只降级日志，不能影响 Engine、Route 或恢复流程。生产代码不得引入 Chrome/CDP、浏览器登录态、GUI 动态库或绝对临时目录依赖。
 
-## 17.1 发布候选文档
+## 18.1 发布候选文档
 
 发布候选的用户可读说明位于 `docs/release-notes.md`，升级兼容边界位于 `docs/upgrade.md`，变更记录位于 `CHANGELOG.md`。发布前逐项验收继续使用 `docs/release-acceptance.md`。Import 认知动作三轮 baseline/calibrated A/B 已完成；解释报告位于 `evals/import-knowledge/explanation.md`，当前 calibrated 是经评测保留的折中版本：`learn` 召回提升，但整体 precision、`reveal_to_reader` precision 和动作集合完全匹配下降。真实 Architect 扩弧后的第 3 章 Context 端到端验收仍未完成，必须与代码层 Context 回归分开记录。Import Analyze Prompt 版本现为 `analyze-v2`；每次语义 Prompt 修改必须递增该版本。
 
-## 18. 常用验证
+## 19. 常用验证
 
 ```bash
 go test ./... -timeout=5m
