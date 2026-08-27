@@ -50,6 +50,42 @@ func TestDraftChapterRejectsUnfinishedPendingRewrite(t *testing.T) {
 	}
 }
 
+func TestDraftChapterReportsNormalizedWordCount(t *testing.T) {
+	s := store.NewStore(t.TempDir())
+	if err := s.Init(); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Progress.Init(1); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Progress.UpdatePhase(domain.PhaseWriting); err != nil {
+		t.Fatal(err)
+	}
+
+	content := "\ufeff月面\r\n维修"
+	args, err := json.Marshal(map[string]any{
+		"chapter": 1,
+		"content": content,
+		"mode":    "write",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	result, err := NewDraftChapterTool(s).Execute(context.Background(), args)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var output struct {
+		WordCount int `json:"word_count"`
+	}
+	if err := json.Unmarshal(result, &output); err != nil {
+		t.Fatal(err)
+	}
+	if output.WordCount != domain.WordCount(content) {
+		t.Fatalf("word_count = %d, want normalized count %d", output.WordCount, domain.WordCount(content))
+	}
+}
+
 func TestDraftChapterRejectsUnexpandedLayeredChapter(t *testing.T) {
 	s := store.NewStore(t.TempDir())
 	if err := s.Init(); err != nil {

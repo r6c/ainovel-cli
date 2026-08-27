@@ -2,9 +2,9 @@
 
 ## 当前基线
 
-- Git 基线：`40a3613 发布：完成 v0.1.2 发布后稳定性观察`
+- Git 基线：`496c0bb 兼容：收口上游完成状态与分层完结`
 - 稳定版本：`v0.1.2`
-- 工作区：AB2 包含完成章语义与分层完结补偿的生产/测试变更；提交前门禁待执行。
+- 工作区：AB3 包含章节字数口径统一的生产/测试/文档变更；提交前门禁待执行。
 - 项目定位：本地文件系统驱动、可恢复、可审计的 AI 小说创作运行时。
 - 核心边界：模型负责开放语义；代码负责状态、约束、事务、恢复和验证。
 
@@ -66,6 +66,14 @@ AB1 已完成：用户可见回复、结构化 JSON、工具参数和持久化�
 
 实现仍为 clean-room 自有代码，没有复制 MuMu 的 Python/GPL-3.0 实现。
 
+## AB3 字数口径复核结论
+
+已确认章节字数只有一套口径：`domain.WordCount` 先执行 `NormalizeChapterContent`（去 BOM、CRLF/CR 统一为 LF），再按 Unicode rune 计数。DraftStore、`draft_chapter`、Commit、Progress 和 Revision Projector 已统一复用；剩余 `utf8.RuneCountInString` 仅用于会话、对话样本和风格锚点等非章节字数场景。
+
+`generated` 正文继续在 PendingCommit 创建前执行明确单章目标的 120% 上限；`imported/user` 正文保留原文且不受 generated 篇幅门禁约束；不设置机械下限，不引入第二套 `visible_chars_v1`、Length Service 或自动压缩状态。Checkpoint 只记录工件摘要，不定义字数规则。
+
+新增 BOM/CRLF 的 Domain、DraftStore、draft_chapter 和 Projector 回归测试。
+
 ## AB2 上游差异审查结论
 
 已对 `voocel/ainovel-cli` 最新 `c090029` 做行为级比较，不直接合并上游。
@@ -86,6 +94,12 @@ AB2 的新回归覆盖：
 - Host Resume/Snapshot 使用最大完成章；
 - Store CheckConsistency 检查最大完成章；
 - 已落盘卷末三件套补偿到 `PhaseComplete`，并验证幂等。
+
+## AB3 字数口径复核结论
+
+当前章节字数采用单一口径：`domain.WordCount` 先执行 `NormalizeChapterContent`（去 BOM、CRLF/CR 统一为 LF），再按 Unicode rune 计数。DraftStore、`draft_chapter`、Commit 和 Revision Projector 已统一使用该函数；`generated/imported/user` 仅决定生成篇幅门禁是否适用。`generated` 继续只拒绝超过明确单章目标 120% 的正文，`imported/user` 保留原文且不受生成门禁约束；不引入第二套 `visible_chars_v1`、Length Service 或压缩状态。
+
+新增回归覆盖 BOM/CRLF 的 Domain、Draft、Tool 和 Projector 路径。`Checkpoint` 只记录工件摘要，不定义字数口径。
 
 ## 其他候选
 

@@ -3,9 +3,9 @@
 ## 当前状态
 
 - 总体状态：`planned`
-- 当前基线：`428dc40 测试：补充推理日志隔离回归`
+- 当前基线：`496c0bb 兼容：收口上游完成状态与分层完结`
 - 稳定版本：`v0.1.2`
-- 工作区：AB2 上游差异审查的生产/测试/文档变更待提交；提交前将执行全量门禁。
+- 工作区：AB3 字数口径复核的生产/测试变更待提交；提交前将执行全量门禁。
 - 产品边界：本地文件系统驱动、可恢复、可审计的 AI 小说创作运行时。
 
 ## 稳定架构边界
@@ -45,7 +45,7 @@ AB1：推理内容与最终内容隔离专项     complete
         ↓
 AB2：上游 ainovel-cli 差异审查       complete
         ↓
-AB3：字数口径与完成收口复核          pending
+AB3：字数口径与完成收口复核          complete
         ↓
 AB4：作者记忆边界设计                pending
         ↓
@@ -135,9 +135,17 @@ AB4—AB6 是有条件候选：只有前一阶段的行为测试或证据证明�
 
 # 阶段 AB3：字数口径与完成收口复核
 
-状态：`pending`
+状态：`complete`
 
 目标：对照 `oh-story` v0.7.7 的 `visible_chars_v1` 与当前 `domain.WordCount`、`chapter_target_chars`、120% 上限、生成/导入来源政策和完成 checkpoint。
+
+完成结果：
+
+- 当前唯一章节字数口径是 `domain.WordCount`：先执行 `NormalizeChapterContent`（去 BOM、统一 CRLF/CR 为 LF），再按 Unicode rune 计数。
+- DraftStore、`draft_chapter`、Commit 和 Revision Projector 均使用该口径；`generated/imported/user` 只决定篇幅门禁是否适用，不改变计数方式。
+- `generated` 正文继续只在超过明确单章目标的 120% 时于 PendingCommit 前拒绝；`imported/user` 正文保留原文，不受该生成门禁约束；不设置机械下限。
+- Checkpoint 只记录工件摘要，不定义第二套字数计算；无需引入 `visible_chars_v1`、Length Service 或一次压缩状态。
+- 新增 BOM/CRLF 跨层回归测试，确认 Draft、Commit 和 Projector 的结果一致。
 
 验证：
 
@@ -246,4 +254,4 @@ Setting Term    = 术语首现、类别线索、读者可见含义、计划揭�
 
 ## 当前下一步
 
-进入阶段 AB1：先为 reasoning_content / think 标签隔离建立确定性非流式、流式和结构化输出回归测试；测试先红，再决定最小修复位置。
+进入阶段 AB4：评估跨项目作者记忆与当前 UserRules 的边界；先做设计和行为测试，不直接引入第二套长期偏好事实源。

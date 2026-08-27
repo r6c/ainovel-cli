@@ -27,7 +27,7 @@ func ShouldArcReview(isArcEnd, isVolumeEnd bool, volume, arc int) (bool, string)
 	return false, ""
 }
 
-// WordCount 按 rune 计算字数。
+// WordCount 按规范化章节正文的 rune 计算字数。
 func WordCount(content string) int {
-	return utf8.RuneCountInString(content)
+	return utf8.RuneCountInString(NormalizeChapterContent(content))
 }
