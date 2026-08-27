@@ -2,9 +2,9 @@
 
 ## 当前基线
 
-- Git 基线：`496c0bb 兼容：收口上游完成状态与分层完结`
+- Git 基线：`dc1d41d 收口：完成字数口径复核`
 - 稳定版本：`v0.1.2`
-- 工作区：AB3 章节字数口径统一已完成；生产/测试/稳定文档变更待提交。
+- 工作区：AB4 作者记忆边界设计已完成；文档/测试/稳定记录变更待提交。
 - 项目定位：本地文件系统驱动、可恢复、可审计的 AI 小说创作运行时。
 - 核心边界：模型负责开放语义；代码负责状态、约束、事务、恢复和验证。
 
@@ -100,6 +100,12 @@ AB2 的新回归覆盖：
 当前章节字数采用单一口径：`domain.WordCount` 先执行 `NormalizeChapterContent`（去 BOM、CRLF/CR 统一为 LF），再按 Unicode rune 计数。DraftStore、`draft_chapter`、Commit 和 Revision Projector 已统一使用该函数；`generated/imported/user` 仅决定生成篇幅门禁是否适用。`generated` 继续只拒绝超过明确单章目标 120% 的正文，`imported/user` 保留原文且不受生成门禁约束；不引入第二套 `visible_chars_v1`、Length Service 或压缩状态。
 
 新增回归覆盖 BOM/CRLF 的 Domain、Draft、Tool 和 Projector 路径。`Checkpoint` 只记录工件摘要，不定义字数口径。
+
+## AB4 作者记忆边界结论
+
+当前不引入独立 Author Memory 运行时。现有全局 `~/.ainovel/rules/*.md` 已覆盖跨书复用输入，但它们经过每本书的 UserRules 归一化，不能等同于带确认、回执、冲突和撤回的作者记忆。作者记忆若未来实现，必须是跨项目候选输入，经过“明确记住 → 回显 → 用户确认 → 转为 UserRules Candidate”，不得直接注入 Writer、覆盖本书硬约束或混入 Book Facts/Run Intent。
+
+新增 `docs/author-memory-boundary.md`，并用边界矩阵测试锁定 UserRules、Author Memory、Book Facts、Run Intent 与未确认猜测的分离。当前 Go/No-Go：No-Go，不新增存储协议、CLI、TUI 或生产类型。
 
 ## 其他候选
 

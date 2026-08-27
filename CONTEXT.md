@@ -415,7 +415,23 @@ structured.chapter_target_chars
 
 Architect、Writer 和 Editor 通过现有 `working_memory.user_rules` 消费同一字段。Commit 使用 `domain.WordCount` 的现有 Unicode 字符口径，只在正文超过目标 120% 时于 PendingCommit 创建前拒绝；不设置机械下限，偏短章节仍由 Editor 在 pacing 维度判断，避免为达标注水。普通提交与 Rewrite 必须使用同一上限规则。
 
-## 15. 阶段化冷启动共创
+## 15. 作者记忆边界
+
+当前不实现独立跨项目 Author Memory。全局 `~/.ainovel/rules/*.md` 是跨书复用的规则输入，但每本书仍归一化到自己的 `meta/user_rules.json`；它不能直接注入 Writer，也不能覆盖本书事实和硬约束。
+
+若未来出现明确需求，必须遵循：
+
+```text
+明确“记住”意图
+→ 回显候选
+→ 用户确认
+→ 转为 UserRules Candidate
+→ 由现有 BuildSnapshot/OverlaySnapshot 合并
+```
+
+不得把模型推断、Book Facts、Run Intent 或敏感信息自动写成作者记忆。完整边界见 [`docs/author-memory-boundary.md`](docs/author-memory-boundary.md)。
+
+## 16. 阶段化冷启动共创
 
 启动模式仍只有 quick 与 cocreate，没有第三种 interview 模式。冷启动 cocreate 由 `startup.CoCreateSession` 确定性维护：
 
@@ -431,7 +447,7 @@ core → customization → title → confirmation → ready
 
 冷启动和运行中阶段共创的流式模型调用必须经过同一个 `UsageTracker`，归入 `thinking` 角色；否则书级成本、Token、缓存和预算会失明。每轮共创请求前复用 `BudgetSentinel.Refuse`，上一轮已越线时不得继续调用。瞬时流式失败由 Session 保持原阶段和 Draft，用户可重试；不得在失败时推进阶段或清空累计草稿。
 
-## 16. 本地拆文方法画像
+## 17. 本地拆文方法画像
 
 独立命令：
 

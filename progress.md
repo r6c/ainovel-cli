@@ -3,9 +3,9 @@
 ## 当前会话
 
 - 日期：2026-08-27
-- 基线：`496c0bb 兼容：收口上游完成状态与分层完结`
+- 基线：`dc1d41d 收口：完成字数口径复核`
 - 当前里程碑：外部更新审查与兼容性收敛
-- 当前阶段：AB3 字数口径复核——complete；下一阶段 AB4 作者记忆边界设计——pending
+- 当前阶段：AB4 作者记忆边界设计——complete；下一阶段 AB5 细纲照搬检测候选——pending
 - AB1 核心红→绿：thinking-only 不再回退为用户回复；内嵌 `<think>/<thinking>` 在结构化解析、共创最终回复和流式预览前清理；会话日志不保存完整 reasoning，仅保留可见内容与 `thinking_len`。
 - 稳定版本：`v0.1.2`
 - AB1 已修改现有 Host/Store/llmcontract 的输出边界并完成回归；AB2 已完成上游行为差异审查；AB3 已统一章节字数口径；未安装外部 Skill、未调用真实 Provider。
@@ -39,6 +39,7 @@ docs/history/plans/2026-08-external-updates/
 - Context policy 一次深化；
 - Commit/Context/Import 测试按 seam 拆分；
 - v0.1.2 稳定版发布与安装链回归。
+- AB4 作者记忆边界设计完成，当前不实现独立跨项目记忆事实源。
 
 ## 本轮计划
 
@@ -82,9 +83,9 @@ AB2 结果：`LatestCompleted()` 已统一接入最大完成章语义；分层�
 
 已确认章节字数统一使用规范化正文的 Unicode rune 口径：`domain.WordCount` 先去 BOM、统一换行，再计数。DraftStore、draft_chapter、Commit、Projector 已统一；generated 仍只拒绝超过 120% 的正文，imported/user 保留原文且不受生成篇幅门禁约束，不新增第二套 `visible_chars_v1`。
 
-### 阶段 AB4：作者记忆边界设计——pending
+### 阶段 AB4：作者记忆边界设计——complete
 
-评估跨项目长期偏好与当前 UserRules 的分界；只考虑明确记住、确认、回执、相关性上限、冲突和撤回。
+已确认当前不实现独立 Author Memory。全局 rules 继续作为跨书复用输入，本书唯一可执行规则仍是 `meta/user_rules.json`；作者记忆若未来实现，必须经过明确记住、回显、用户确认，再转为现有 UserRules Candidate。已新增 `docs/author-memory-boundary.md` 与边界矩阵测试，没有新增存储协议或运行时接口。
 
 ### 阶段 AB5：细纲照搬检测候选——pending
 
@@ -110,4 +111,4 @@ AB2 结果：`LatestCompleted()` 已统一接入最大完成章语义；分层�
 
 ## 记录规则
 
-每阶段完成后更新本文件；外部网页内容只进入 `findings.md`，完整过程进入日期归档。当前下一步是 AB4 的作者记忆边界设计。
+每阶段完成后更新本文件；外部网页内容只进入 `findings.md`，完整过程进入日期归档。当前下一步是 AB5 的细纲照搬检测候选。
