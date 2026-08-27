@@ -196,3 +196,30 @@ imported/user 来源政策
 ## 当前结论
 
 项目没有跑偏。AB0—AB7 已完成；当前没有新的 S1/S2 运行时问题。外部仓库均已完成选择性评估，已吸收内容通过回归，No-Go 候选保持隔离。后续如继续，应另行创建新计划，不把历史阶段文本当作当前任务。
+
+## AC：发布基线一致性（2026-08-27）
+
+已确认的事实：
+
+- `HEAD=5ed53d0`，`origin/main=286a16a`，本地 `main` 超前 9 个提交；
+- `v0.1.2` 指向 `70a806b`，不是当前 HEAD；
+- Release workflow 触发标签使用 `v*`，但 `gen-changelog.sh` 当前通过 `git describe --tags HEAD` 猜当前标签；
+- 同一提交存在旧 RC/正式标签时，默认描述可能选中旧标签，导致 Release notes 或 GoReleaser 基线歧义。
+
+本轮已用显式 `RELEASE_TAG`、`RELEASE_SHA` 和发布说明元数据修复该问题；先完成失败测试，再实现脚本与 workflow 接入。没有移动既有标签或推送远端。
+
+AC 实施结果：
+
+- `check-release-baseline.sh` 校验显式发布标签、当前 checkout、标签指向和发布说明头部；
+- `gen-changelog.sh` 服从显式标签/提交，AI 成功、fallback、空提交范围均写入同一元数据头；
+- Release workflow 在 GoReleaser 前运行 fail-closed 门禁；
+- 同一提交多标签不再由脚本自行猜测当前发布标签。
+- AC1—AC6 已完成：门禁脚本、发布说明元数据、Release workflow 和普通 CI 契约均已接入；下一步候选为 Import 评测证据、模型入口 Usage、Context 决策可见性。
+
+后续候选规划：
+
+1. Import 评测证据可复核性：统一使用已提交 Runner，逐条原子保存脱敏结果和 Usage；
+2. 模型入口 Usage 统一契约：用 fake model 覆盖八类入口、流式 Done 和预算哨兵；
+3. Context 决策可见性：仅在真实失败样本出现后，以测试/诊断模式提供排除原因，不改变公共 JSON。
+
+当前均为后续候选，不在 AC 收口中实现。

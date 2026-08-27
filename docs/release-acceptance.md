@@ -2,6 +2,8 @@
 
 本清单用于发布前验证 `ainovel-cli` 的完整用户路径。自动化部分只使用 fake/mock 模型，不访问真实 Provider；人工部分只有操作者明确配置 Provider、接受费用后才执行。
 
+发布工作流的基线门禁位于 GoReleaser 之前：CI 必须显式传入发布标签和提交，发布说明头部必须包含相同的 `release-tag` / `release-sha`，不依赖 `git describe` 猜测当前标签。AI 发布说明响应异常时回退到确定性的提交列表。
+
 ## 1. 问题分级
 
 | 级别 | 定义 | 发布处理 |

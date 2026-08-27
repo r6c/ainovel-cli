@@ -32,7 +32,12 @@ jobs:
 
       - name: Installer syntax check
         if: runner.os == 'Linux'
-        run: sh -n scripts/install.sh
+        run: |
+          sh -n scripts/install.sh
+          sh -n .github/scripts/check-release-baseline.sh
+          sh -n .github/scripts/gen-changelog.sh
+          sh -n scripts/release_baseline_test.sh
+          sh scripts/release_baseline_test.sh
 
       - name: Vet
         env:

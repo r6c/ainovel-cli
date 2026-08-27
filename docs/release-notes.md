@@ -54,4 +54,6 @@ Headless、Linux amd64/arm64 静态构建和 Docker 无网络帮助冒烟已纳�
 
 已通过自动化与真实 Provider 验收：Quick/Headless、Cocreate、Revision、Import 后续写、Deconstruct、Linux/无头、恢复和成品隔离均有记录。Import 认知动作已完成三轮 baseline/calibrated A/B；calibrated 提升 `learn` 召回，但整体 precision 和动作集合完全匹配下降，因此保留为折中版本。真实 Architect 扩弧后的第 3 章 Context 端到端验收仍未完成，代码层 ReaderKnown/CharacterKnown 净化边界已有确定性回归。Import 分析 Prompt 当前为 `analyze-v2`，旧 `analyze-v1` 分析工件会自然失效。
 
+发布工作流使用显式 `release-tag` / `release-sha` 元数据和 GoReleaser 前置基线门禁；发布说明生成失败仍可回退确定性的提交列表，旧标签不会被自动猜测为当前发布标签。
+
 Import 认知扩展评测新增 12 条样本完成了 72 次真实调用，并保留动作级部分聚合；逐样本工件和新增调用成本未保留，因此该扩展结果不作为完整可复核基线，也不继续追加 Prompt 规则。

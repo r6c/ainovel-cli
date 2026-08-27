@@ -199,6 +199,8 @@ Artifact 在 `store/outline.go` `drafts.go` `summaries.go` `characters.go` `worl
 
 单文件写入原子；跨文件步骤不承诺数据库式原子性。`commit_chapter` 的普通提交与返工提交共用 `PendingCommit`，按“完整意图 → artifact/状态 → Progress → checkpoint → 清除意图”推进。首次冻结前执行纯载荷校验和当前投影语义校验，再写入 `seal_version=2` 与 payload/draft/intent 三个 SHA-256；v2 intent 同时保护 chapter/rewrite/rewrite_mode/origin。恢复先验证密封与不依赖当前 Store 的载荷自洽性，再按 Stage 幂等重放，禁止用已部分应用后的当前投影重新裁决冻结意图，也禁止采用重启后模型重新生成的参数或被覆盖的 draft。历史 v1 工件兼容恢复，但不能携带未密封的 imported origin；旧版 `started/state_applied` 工件仅在纯载荷通过后先原子升级为密封格式；`progress_marked/signal_saved` 已完成正文与状态，只按既有结果收尾。摘要或密封格式异常时保留工件并返回 `ErrPendingCommitIntegrity`，不自动重签。`expand_arc` / `append_volume` 等结构操作没有持久化意图，只承诺同一参数的幂等重放、派生视图修复和错误显式返回。
 
+发布工作流也采用显式基线：发布标签和提交由 CI 的 `github.ref_name` / `github.sha` 传入，发布说明头部记录 `release-tag` / `release-sha`，GoReleaser 前的基线脚本会拒绝 checkout、标签和说明元数据不一致。发布说明生成器在未提供显式身份时仅保留本地兼容回退，不应在发布工作流中依赖 `git describe` 猜测当前标签。
+
 | 工具 | Artifact | Step |
 |---|---|---|
 | `save_book` | meta/book.json + book.md | book |

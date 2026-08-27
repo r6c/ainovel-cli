@@ -3,9 +3,8 @@
 ## 当前状态
 
 - 总体状态：`complete`
-- 当前基线：`a3a884f 评估：明确设定术语事实边界`
-- 稳定版本：`v0.1.2`
-- 工作区：AB7 收口待提交；生产代码无未提交变更。
+- 当前基线：AC 发布基线一致性门禁待提交；稳定版本仍为 `v0.1.2`。
+- 工作区：AC1—AC6 已完成；本轮脚本、Workflow、测试和文档变更待提交，生产代码无未提交变更。
 - 产品边界：本地文件系统驱动、可恢复、可审计的 AI 小说创作运行时。
 
 ## 稳定架构边界
@@ -276,4 +275,126 @@ Setting Term    = 术语首现、类别线索、读者可见含义、计划揭�
 
 ## 当前下一步
 
-外部更新审查与 Go/No-Go 已收口；后续如需继续，另行规划新的开发或发布维护阶段。
+AC 发布基线一致性门禁已完成；下一步另行规划 Import 评测证据可复核性、模型入口 Usage 契约和 Context 决策可见性。
+
+# 里程碑 AC：发布基线一致性门禁
+
+状态：`in_progress`
+
+目标：阻止以下情况进入 Release workflow：
+
+```text
+测试/构建提交 ≠ 触发标签提交
+发布说明对应的标签 ≠ 当前发布标签
+同一提交的旧 RC 标签被 GoReleaser/脚本误选
+```
+
+## 阶段 AC1：基线失败测试
+
+状态：`complete`
+
+- 模拟两个标签指向同一提交；
+- 显式指定当前发布标签与提交；
+- 要求基线检查拒绝标签/提交/发布说明不一致；
+- 不推送、不创建新标签。
+
+## 阶段 AC2：最小基线脚本
+
+状态：`complete`
+
+新增一个 CI 可复用的 shell 检查：
+
+- 校验发布标签解析到 `RELEASE_SHA`；
+- 校验当前 checkout 提交与 `RELEASE_SHA` 一致；
+- 校验发布说明包含当前标签和提交元数据；
+- 不依赖标签排序猜测；
+- 失败时 fail-closed。
+
+## 阶段 AC3：Release workflow 接入
+
+状态：`complete`
+
+- 通过 `github.ref_name` 和 `github.sha` 显式传入当前发布身份；
+- `gen-changelog.sh` 使用显式当前标签，不再依赖 `git describe HEAD` 猜当前标签；
+- GoReleaser 前执行基线门禁；
+- 保留无 Secret 时的确定性 fallback。
+
+## 阶段 AC4：发布说明可重复性收口
+
+状态：`complete`
+
+- 发布说明写入 tag/commit 元数据；
+- AI 生成仅改变正文，不改变基线头；
+- 生成失败仍可回退确定性提交列表；
+- 不把外部 AI 变成发布成功的必要依赖。
+
+## 阶段 AC5：候选 2—4 规划
+
+状态：`complete`
+
+### 候选 AC5-A：Import 评测证据可复核性
+
+状态：`planned`
+
+先修正评测执行与证据保存协议，再重新调用 Provider：
+
+- 真实调用必须经过已提交的 `ImportKnowledgeRunner`；
+- 每条结果原子落盘，保存 sample/round/arm、Prompt 名称与摘要、动作签名和 Usage；
+- 不保存完整模型响应、原文或凭证；
+- 统计脚本必须能从脱敏工件重新计算 precision/recall、exact set/order 和一致性；
+- 任一 Provider 错误只影响该样本，不把未完成轮次算成有效结果；
+- 连续阻塞达到停止条件时暂停，不修改 Prompt。
+
+### 候选 AC5-B：模型入口 Usage 统一契约
+
+状态：`planned`
+
+为 Architect、Writer、Editor、Arbiter、Import、Revision、Cocreate、Deconstruct 建立 fake-model 用量契约：
+
+- `per_agent` 与 `per_model` 都有记录；
+- input/output token 和 cost 不伪造为零；
+- 流式 Done Usage 只记录一次；
+- BudgetSentinel 能看到累计费用；
+- 模型缺 Usage 时按现有缺失策略记录，不静默宣称零成本；
+- 不新增 Usage 系统或入口抽象。
+
+### 候选 AC5-C：Context 决策可见性
+
+状态：`planned`
+
+只在真实失败样本出现后深化。第一步先加测试专用决策报告，不改变公共 JSON：
+
+- 记录候选来源、入选/排除原因、排序和裁剪原因；
+- 默认不输出 Truth、Belief 或正文；
+- 仅在测试/诊断模式启用；
+- 不新增 `ContextService`、Repository 或通用 Trace 框架；
+- 如果现有边界测试已足够，保持 No-Go。
+
+候选执行顺序：
+
+```text
+AC5-A Import 证据可复核性
+→ AC5-B 模型入口 Usage 契约
+→ AC5-C Context 决策可见性（有真实失败再做）
+```
+
+三项均不阻塞已经发布的 `v0.1.2`，也不自动创建新版本标签。
+
+## 阶段 AC6：全量验证与收口
+
+状态：`complete`
+
+通过：
+
+```bash
+sh -n .github/scripts/check-release-baseline.sh
+sh -n scripts/release_baseline_test.sh
+sh scripts/release_baseline_test.sh
+bash -n .github/scripts/gen-changelog.sh
+
+go test ./... -timeout=5m
+go vet ./...
+git diff --check
+```
+
+本里程碑不创建标签、不推送、不发布远端；完成后另行决定版本基线。
