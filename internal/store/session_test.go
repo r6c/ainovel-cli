@@ -127,6 +127,26 @@ func TestSessionStoreContinuesAgentSequenceAcrossRestarts(t *testing.T) {
 	}
 }
 
+func TestSessionStoreDoesNotPersistThinkingOnlyMessage(t *testing.T) {
+	const hidden = "只有推理的消息也不能写入日志"
+	dir := t.TempDir()
+	s := NewSessionStore(newIO(dir))
+	s.Log("meta/sessions/agents/writer-ch01.jsonl", agentcore.Message{
+		Role:    agentcore.RoleAssistant,
+		Content: []agentcore.ContentBlock{agentcore.ThinkingBlock(hidden)},
+	})
+	data, err := os.ReadFile(filepath.Join(dir, "meta/sessions/agents/writer-ch01.jsonl"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(data), hidden) || strings.Contains(string(data), `"thinking"`) {
+		t.Fatalf("thinking-only session log persisted reasoning: %s", data)
+	}
+	if got, ok := readJSONL(t, filepath.Join(dir, "meta/sessions/agents/writer-ch01.jsonl"))[0]["thinking_len"].(float64); !ok || int(got) != len([]rune(hidden)) {
+		t.Fatalf("thinking length missing or wrong: %v", got)
+	}
+}
+
 func TestSessionStoreDoesNotPersistThinkingText(t *testing.T) {
 	const hidden = "不要把这段推理写入会话日志"
 	dir := t.TempDir()
