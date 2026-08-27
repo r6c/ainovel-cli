@@ -54,6 +54,8 @@ timeline / relationships / state changes / cast 等
 - Markdown sidecar 只是人类可读视图。
 - `revision.Projector` 负责按章重建投影。
 - `revision.ValidateRecordSet` 只验证整组记录能否重建，不写 Store。
+- `Progress.LatestCompleted()` 返回完成章节最大值；Flow、Host Resume/Snapshot 和 Store 一致性检查使用该语义，不把列表末项当成最新章节。
+- 分层卷末工件已齐但 `Progress` 尚未完成时，Engine 在路由前通过 `tools.ReconcileLayeredCompletion` 幂等补齐完结状态。
 
 关键入口：
 
@@ -225,7 +227,7 @@ internal/store/signals.go
 
 `phase=complete` 不是充分条件。Headless/TUI 只有在目录租约可取得、无 PendingCommit、无 PendingRevision、无未完成 Import 且无外部正文修改时，才显示干净完成态。`Host.Resume` 会先用现有 Commit Saga 同步收尾 PendingCommit，再重新判定终态；外部修订与 Import 只给 `/sync`、`/import` 指引，不自动调用模型。
 
-## 5.3 推理内容与最终内容边界
+## 5.4 推理内容与最终内容边界
 
 `agentcore.ContentThinking` / `StreamEventThinkingDelta` 是模型内部推理通道，`ContentText` 是最终内容通道。两者不得混用：
 

@@ -1321,13 +1321,13 @@ func (h *Host) fillDetails(snap *UISnapshot, progress *domain.Progress) {
 		}
 	}
 	if progress != nil && len(progress.CompletedChapters) > 0 {
-		lastCh := progress.CompletedChapters[len(progress.CompletedChapters)-1]
+		lastCh := progress.LatestCompleted()
 		wc := progress.ChapterWordCounts[lastCh]
 		snap.LastCommitSummary = fmt.Sprintf("第%d章 %d字", lastCh, wc)
 	}
 	currentCh := 1
 	if progress != nil && len(progress.CompletedChapters) > 0 {
-		currentCh = progress.CompletedChapters[len(progress.CompletedChapters)-1]
+		currentCh = progress.LatestCompleted()
 	}
 	if review, err := h.store.World.LoadLastReview(currentCh); err == nil && review != nil {
 		snap.LastReviewSummary = fmt.Sprintf("verdict=%s %d个问题", review.Verdict, len(review.Issues))

@@ -5,10 +5,10 @@
 - 日期：2026-08-27
 - 基线：`40a3613 发布：完成 v0.1.2 发布后稳定性观察`
 - 当前里程碑：外部更新审查与兼容性收敛
-- 当前阶段：AB1 推理内容与最终内容隔离——complete；下一阶段 AB2 上游差异审查——pending
+- 当前阶段：AB2 上游 ainovel-cli 差异审查——complete；下一阶段 AB3 字数口径复核——pending
 - AB1 核心红→绿：thinking-only 不再回退为用户回复；内嵌 `<think>/<thinking>` 在结构化解析、共创最终回复和流式预览前清理；会话日志不保存完整 reasoning，仅保留可见内容与 `thinking_len`。
 - 稳定版本：`v0.1.2`
-- AB1 已修改现有 Host/Store/llmcontract 的输出边界并完成回归；未安装外部 Skill、未调用真实 Provider。
+- AB1 已修改现有 Host/Store/llmcontract 的输出边界并完成回归；AB2 已完成上游行为差异审查；未安装外部 Skill、未调用真实 Provider。
 
 ## AB0 结果
 
@@ -65,9 +65,9 @@ docs/history/plans/2026-08-external-updates/
 
 只有测试证明当前转换链存在真实污染，才在现有 Provider/agentcore 接缝做最小修复；不复制 MuMu GPL-3.0 代码，不新增第二套模型客户端。
 
-### 阶段 AB2：上游 ainovel-cli 差异审查——pending
+### 阶段 AB2：上游 ainovel-cli 差异审查——complete
 
-只做行为级差异测试：
+已完成行为级差异测试：
 
 - `LatestCompleted()`；
 - 分层完成状态补偿；
@@ -75,6 +75,8 @@ docs/history/plans/2026-08-external-updates/
 - 返工伏笔恢复。
 
 不直接 merge/cherry-pick 上游。
+
+AB2 结果：`LatestCompleted()` 已统一接入最大完成章语义；分层完结补偿已按当前 `layeredComplete` 规则接入 Engine；`ChapterRecordStore.Prepare` 和上游伏笔恢复实现确认无须吸收。
 
 ### 阶段 AB3：字数口径与完成收口复核——pending
 

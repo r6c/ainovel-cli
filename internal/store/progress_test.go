@@ -1,6 +1,7 @@
 package store
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/voocel/ainovel-cli/internal/domain"
@@ -115,6 +116,28 @@ func TestIsChapterCompleted(t *testing.T) {
 	}
 	if completed, err := store.Progress.IsChapterCompleted(2); err != nil || completed {
 		t.Fatal("chapter 2 should not be completed")
+	}
+}
+
+func TestCheckConsistencyUsesLatestCompletedChapterWhenCompletionListIsUnordered(t *testing.T) {
+	st := NewStore(t.TempDir())
+	if err := st.Init(); err != nil {
+		t.Fatal(err)
+	}
+	if err := st.Progress.Save(&domain.Progress{
+		Phase:             domain.PhaseWriting,
+		Flow:              domain.FlowWriting,
+		CompletedChapters: []int{1, 3, 2},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if err := st.Drafts.SaveDraft(2, "第二章正文"); err != nil {
+		t.Fatal(err)
+	}
+
+	warnings := st.CheckConsistency()
+	if len(warnings) != 1 || !strings.Contains(warnings[0], "第 3 章") {
+		t.Fatalf("warnings = %v, want missing latest chapter 3 warning", warnings)
 	}
 }
 

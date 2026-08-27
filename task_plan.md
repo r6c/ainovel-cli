@@ -3,9 +3,9 @@
 ## 当前状态
 
 - 总体状态：`planned`
-- 当前基线：`40a3613 发布：完成 v0.1.2 发布后稳定性观察`
+- 当前基线：`428dc40 测试：补充推理日志隔离回归`
 - 稳定版本：`v0.1.2`
-- 工作区：本轮包含 AB1 推理内容隔离的代码/测试/文档变更；提交前将执行全量门禁。
+- 工作区：AB2 上游差异审查的生产/测试/文档变更待提交；提交前将执行全量门禁。
 - 产品边界：本地文件系统驱动、可恢复、可审计的 AI 小说创作运行时。
 
 ## 稳定架构边界
@@ -43,7 +43,7 @@ AB0：外部更新证据与许可证登记       complete
         ↓
 AB1：推理内容与最终内容隔离专项     complete
         ↓
-AB2：上游 ainovel-cli 差异审查       pending
+AB2：上游 ainovel-cli 差异审查       complete
         ↓
 AB3：字数口径与完成收口复核          pending
         ↓
@@ -111,9 +111,18 @@ AB4—AB6 是有条件候选：只有前一阶段的行为测试或证据证明�
 
 # 阶段 AB2：上游 ainovel-cli 差异审查
 
-状态：`pending`
+状态：`complete`
 
 目标：对 `voocel/ainovel-cli` 的近期修复做行为级比较，不直接 merge/cherry-pick。
+
+完成结果：
+
+- `Progress.LatestCompleted()` 已统一接入 Flow、Host Resume、Host Snapshot 和 Store 一致性检查；按完成列表顺序工作的全局评审逻辑保持不变。
+- 上游分层完结补偿已按当前 `layeredComplete` 规则 clean-room 实现为 `ReconcileLayeredCompletion`，Engine 在路由前的明确恢复窗口调用；卷末三件套缺失、骨架弧和开放长线语义保持原规则。
+- 上游 `ChapterRecordStore.Prepare` 不吸收：当前 Rewrite 在 PendingCommit 前已有候选记录集验证，Revision 在 PendingRevision 前已有候选记录验证，新增 API 只会扩大表面积。
+- 返工伏笔恢复已有 `RestoreOwnPlants + ApplyForeshadowUpdates` 与完整生命周期回归覆盖，无需复制上游修复。
+
+不直接 merge/cherry-pick 上游。
 
 优先审查：
 

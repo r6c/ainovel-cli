@@ -4,7 +4,7 @@
 
 - Git 基线：`40a3613 发布：完成 v0.1.2 发布后稳定性观察`
 - 稳定版本：`v0.1.2`
-- 工作区：本轮只更新规划和历史归档，生产代码未修改。
+- 工作区：AB2 包含完成章语义与分层完结补偿的生产/测试变更；提交前门禁待执行。
 - 项目定位：本地文件系统驱动、可恢复、可审计的 AI 小说创作运行时。
 - 核心边界：模型负责开放语义；代码负责状态、约束、事务、恢复和验证。
 
@@ -24,6 +24,12 @@
 - `oh-story` 的最新作者记忆设计与当前 `UserRules` 有潜在重叠；若后续设计，必须保持“跨项目长期偏好”和“当前书可执行规则”分离。
 - `chinese-novelist-skill` 的术语词典与当前 Knowledge/ReaderKnown 有交叉；应优先做诊断 advisory，不新增平行事实源。
 - `lieflat` 最新冒号修订强调按用途区分正常总说分说与空转列表引导；当前项目已有反例校准方向，不新增第二个 Skill。
+
+## AB2 收口结论
+
+本阶段对上游 `voocel/ainovel-cli` 最新 `c090029` 做了行为级比较，不直接合并上游。`LatestCompleted()` 的最大完成章语义和分层完结补偿在当前 fork 中存在真实增量，已按当前模型 clean-room 实现并通过回归；`ChapterRecordStore.Prepare` 没有明确增量，当前 Rewrite/Revision 已有写前候选事实验证；返工伏笔恢复已有 `RestoreOwnPlants + ApplyForeshadowUpdates` 与回归覆盖。
+
+新增行为回归：乱序完成章的 Flow/Host/Store 消费、卷末三件套补偿到 `PhaseComplete` 且重复调用幂等。
 
 ## 首要候选：推理内容隔离
 
@@ -59,6 +65,27 @@ AB1 的回归范围包括：
 AB1 已完成：用户可见回复、结构化 JSON、工具参数和持久化会话日志均与内部 reasoning 隔离；TUI 内部 thinking 进度与 Usage 保持可用。
 
 实现仍为 clean-room 自有代码，没有复制 MuMu 的 Python/GPL-3.0 实现。
+
+## AB2 上游差异审查结论
+
+已对 `voocel/ainovel-cli` 最新 `c090029` 做行为级比较，不直接合并上游。
+
+### 已吸收的行为
+
+- `Progress.LatestCompleted()`：当前 fork 原本已有领域方法，但 Flow、Host Resume、Host Snapshot、Store CheckConsistency 仍有末项读取；已统一改为最大完成章号。
+- 分层完成补偿：当前 fork 原本缺少“卷末摘要已落盘、Progress 尚未 MarkComplete”的恢复接缝；已复用现有 `layeredComplete` 增加 `ReconcileLayeredCompletion`，Engine 在路由前调用。
+
+### 未吸收的行为
+
+- `ChapterRecordStore.Prepare`：当前 Rewrite 和 Revision 已分别具备写前候选记录/整组事实验证；新增 Prepare API 没有明确增量。
+- 返工伏笔恢复：当前已有 `RestoreOwnPlants`、纯 `ApplyForeshadowUpdates`、Projector 和 Rewrite 回归，不复制上游实现。
+
+AB2 的新回归覆盖：
+
+- 乱序 `CompletedChapters=[1,3,2]` 的 Flow `LastCompleted`；
+- Host Resume/Snapshot 使用最大完成章；
+- Store CheckConsistency 检查最大完成章；
+- 已落盘卷末三件套补偿到 `PhaseComplete`，并验证幂等。
 
 ## 其他候选
 

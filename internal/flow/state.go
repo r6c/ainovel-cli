@@ -45,8 +45,8 @@ func LoadState(store *storepkg.Store) (State, error) {
 		}
 	}
 
-	if n := len(progress.CompletedChapters); n > 0 {
-		s.LastCompleted = progress.CompletedChapters[n-1]
+	if len(progress.CompletedChapters) > 0 {
+		s.LastCompleted = progress.LatestCompleted()
 	}
 
 	// 弧边界仅在分层模式且有已完成章节时才计算

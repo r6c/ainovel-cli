@@ -215,7 +215,7 @@ func describeArcEndLabel(store *storepkg.Store, progress *domain.Progress) (stri
 	if !progress.Layered || len(progress.CompletedChapters) == 0 {
 		return "", nil
 	}
-	lastCh := progress.CompletedChapters[len(progress.CompletedChapters)-1]
+	lastCh := progress.LatestCompleted()
 	boundary, err := store.Outline.CheckArcBoundary(lastCh)
 	if err != nil {
 		return "", fmt.Errorf("检查弧边界: %w", err)

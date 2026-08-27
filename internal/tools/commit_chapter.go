@@ -1107,6 +1107,33 @@ func layeredComplete(st *store.Store, progress *domain.Progress) (bool, error) {
 	return layeredBookComplete(st, progress)
 }
 
+// ReconcileLayeredCompletion 根据已落盘的分层工件补齐尚未同步的完结状态。
+// 它只处理“分层大纲、章节和卷末收尾事实已经齐全，但 Progress 仍为 writing”的
+// 恢复窗口；不新增完结判定规则，实际谓词仍由 layeredComplete 统一裁决。
+func ReconcileLayeredCompletion(st *store.Store) (bool, error) {
+	progress, err := st.Progress.Load()
+	if err != nil {
+		return false, fmt.Errorf("load progress: %w", err)
+	}
+	if progress == nil || !progress.Layered {
+		return false, nil
+	}
+	if progress.Phase == domain.PhaseComplete {
+		return true, nil
+	}
+	if progress.Phase != domain.PhaseWriting {
+		return false, nil
+	}
+	complete, err := layeredComplete(st, progress)
+	if err != nil || !complete {
+		return complete, err
+	}
+	if err := st.Progress.MarkComplete(); err != nil {
+		return false, fmt.Errorf("mark complete: %w", err)
+	}
+	return true, nil
+}
+
 // layeredBookComplete 用客观事实判断分层长篇是否真正写完，对照 architect-long.md 完结判定
 // 清单里可量化的几项 + 结构性事实。结构完整之上再要求伏笔归零、长线收束——任一不满足都
 // 让位给架构师继续 expand_arc / append_volume，绝不抢在故事没写完时收尾。无 compass 时保守

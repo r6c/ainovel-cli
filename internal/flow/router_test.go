@@ -24,6 +24,38 @@ func TestLoadStateReturnsProgressReadError(t *testing.T) {
 	}
 }
 
+func TestLoadStateUsesLatestCompletedChapterWhenCompletionListIsUnordered(t *testing.T) {
+	st := storepkg.NewStore(t.TempDir())
+	if err := st.Init(); err != nil {
+		t.Fatal(err)
+	}
+	if err := st.Progress.Save(&domain.Progress{
+		Phase:             domain.PhaseWriting,
+		Flow:              domain.FlowWriting,
+		Layered:           true,
+		CompletedChapters: []int{1, 3, 2},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if err := st.Outline.SaveLayeredOutline([]domain.VolumeOutline{{
+		Index: 1,
+		Arcs: []domain.ArcOutline{{
+			Index:    1,
+			Chapters: []domain.OutlineEntry{{Title: "第一章"}, {Title: "第二章"}, {Title: "第三章"}},
+		}},
+	}}); err != nil {
+		t.Fatal(err)
+	}
+
+	state, err := LoadState(st)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if state.LastCompleted != 3 {
+		t.Fatalf("last completed = %d, want max completed chapter 3", state.LastCompleted)
+	}
+}
+
 func TestLoadStateOnlyPrioritizesExternalRevisionFeedback(t *testing.T) {
 	st := storepkg.NewStore(t.TempDir())
 	if err := st.Init(); err != nil {

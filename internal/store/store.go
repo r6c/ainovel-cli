@@ -118,8 +118,8 @@ func (s *Store) CheckConsistency() []string {
 	if progress == nil {
 		return warnings
 	}
-	if n := len(progress.CompletedChapters); n > 0 {
-		lastCh := progress.CompletedChapters[n-1]
+	if len(progress.CompletedChapters) > 0 {
+		lastCh := progress.LatestCompleted()
 		if text, err := s.Drafts.LoadChapterText(lastCh); err != nil {
 			warnings = append(warnings, fmt.Sprintf("第 %d 章终稿读取失败: %v", lastCh, err))
 		} else if text == "" {
