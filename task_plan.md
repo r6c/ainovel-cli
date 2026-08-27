@@ -5,7 +5,7 @@
 - 总体状态：`planned`
 - 当前基线：`f0498b8 设计：明确作者记忆与用户规则边界`
 - 稳定版本：`v0.1.2`
-- 工作区：干净；AB4 已完成，下一阶段为 AB5 细纲照搬检测候选。
+- 工作区：AB5 细纲照搬边界评估待提交；下一阶段为 AB6 设定词典候选。
 - 产品边界：本地文件系统驱动、可恢复、可审计的 AI 小说创作运行时。
 
 ## 稳定架构边界
@@ -49,7 +49,7 @@ AB3：字数口径与完成收口复核          complete
         ↓
 AB4：作者记忆边界设计                complete
         ↓
-AB5：细纲照搬检测候选                pending
+AB5：细纲照搬检测候选                complete
         ↓
 AB6：设定词典候选                    pending
         ↓
@@ -194,7 +194,7 @@ Run Intent      = 本次运行意图
 
 # 阶段 AB5：细纲照搬检测候选
 
-状态：`pending`
+状态：`complete`
 
 目标：评估 `oh-story` 的 outline-copy 检测是否适合当前 ChapterContract/大纲文本。
 
@@ -206,6 +206,15 @@ Run Intent      = 本次运行意图
 - Import、Rewrite、generated 三种来源如何处理。
 
 若实现，只能先作为 `rules.Lint`/Editor advisory；不直接阻断 Commit，不复制外部 JS，不做语义相似度或跨章模糊匹配。
+
+当前实施阶段：
+
+1. 建立 `OutlineEntry` 与 `ChapterRecord.Content` 的同章输入可得性矩阵；
+2. 用自有正反例锁定正常复述、专名、固定台词、系统提示、锚句和真正疑似照搬的边界；
+3. 仅在确定性连续重合规则的误报可控时，才考虑实现 advisory；
+4. 若输入或误报证据不足，以文档/测试结论收口，不创建新规则。
+
+当前结论：输入可得，但检测规则暂不实现；先完成误报基线。任何后续实现必须保持 `generated/imported/user` 来源边界，Import 原文不因该 advisory 被清洗或阻断。
 
 # 阶段 AB6：设定词典候选
 
@@ -227,6 +236,12 @@ Setting Term    = 术语首现、类别线索、读者可见含义、计划揭�
 - 计划揭示临近但未兑现时提示。
 
 只有能复用现有事实和投影，且误报可控，才考虑实现。不创建新的认知状态机或 `TermGlossaryService`。
+
+完成结果：
+
+- 已确认 `OutlineEntry` 与 `ChapterRecord.Content` 具备稳定同章配对输入。
+- 已建立 `docs/outline-copy-boundary.md`，锁定标题、专名、固定台词、系统提示、任务清单和事实锚点等误报边界。
+- 当前 No-Go：不实现运行时 `outline_copy` advisory；不扩展 `rules.Lint` 输入、不阻断 Commit、不清洗 imported/user 原文、不复制外部 JavaScript。
 
 # 阶段 AB7：范围、文档与 Go/No-Go 收口
 
@@ -261,4 +276,4 @@ Setting Term    = 术语首现、类别线索、读者可见含义、计划揭�
 
 ## 当前下一步
 
-进入阶段 AB5：评估同章大纲与正文的照搬检测；先做输入可得性和误报样本，不直接阻断 Commit。
+进入阶段 AB6：评估设定词典候选；优先复用 Knowledge/ReaderKnown，不创建平行事实源。

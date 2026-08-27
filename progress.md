@@ -5,7 +5,7 @@
 - 日期：2026-08-27
 - 基线：`f0498b8 设计：明确作者记忆与用户规则边界`
 - 当前里程碑：外部更新审查与兼容性收敛
-- 当前阶段：AB4 作者记忆边界设计——complete；下一阶段 AB5 细纲照搬检测候选——pending
+- 当前阶段：AB5 细纲照搬检测候选——complete；下一阶段 AB6 设定词典候选——pending
 - AB1 核心红→绿：thinking-only 不再回退为用户回复；内嵌 `<think>/<thinking>` 在结构化解析、共创最终回复和流式预览前清理；会话日志不保存完整 reasoning，仅保留可见内容与 `thinking_len`。
 - 稳定版本：`v0.1.2`
 - AB1 已修改现有 Host/Store/llmcontract 的输出边界并完成回归；AB2 已完成上游行为差异审查；AB3 已统一章节字数口径；AB4 已完成作者记忆边界设计；未安装外部 Skill、未调用真实 Provider。
@@ -87,9 +87,9 @@ AB2 结果：`LatestCompleted()` 已统一接入最大完成章语义；分层�
 
 已确认当前不实现独立 Author Memory。全局 rules 继续作为跨书复用输入，本书唯一可执行规则仍是 `meta/user_rules.json`；作者记忆若未来实现，必须经过明确记住、回显、用户确认，再转为现有 UserRules Candidate。已新增 `docs/author-memory-boundary.md` 与边界矩阵测试，没有新增存储协议或运行时接口。
 
-### 阶段 AB5：细纲照搬检测候选——pending
+### 阶段 AB5：细纲照搬检测候选——in_progress
 
-评估同章 outline/prose 是否有稳定可比文本；先 advisory，不直接阻断 Commit。
+已确认 `OutlineEntry` 提供稳定的 `Title/CoreEvent/Hook/Scenes`，`ChapterRecord.Content` 保存同章已接纳正文，具备同章输入配对条件。当前先建立误报边界，不改 `rules.Lint`、不阻断 Commit、不复制外部 JS；只有连续重合规则证据充分且误报可控时才考虑 advisory。
 
 ### 阶段 AB6：设定词典候选——pending
 
@@ -111,4 +111,4 @@ AB2 结果：`LatestCompleted()` 已统一接入最大完成章语义；分层�
 
 ## 记录规则
 
-每阶段完成后更新本文件；外部网页内容只进入 `findings.md`，完整过程进入日期归档。当前下一步是 AB5 的细纲照搬检测候选。
+每阶段完成后更新本文件；外部网页内容只进入 `findings.md`，完整过程进入日期归档。AB5 已完成输入可得性和误报边界基线，当前 No-Go 不实现运行时照搬检测；下一步为 AB6 设定词典候选。

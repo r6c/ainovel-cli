@@ -19,7 +19,7 @@
 - 章节按叙事依赖串行提交，不并行生成相邻正文。
 - 文件 Store 是事实层；CLI/TUI 是 Adapter，不是事实源。
 
-稳定架构详见 [`docs/architecture.md`](docs/architecture.md)；Context 选择决策矩阵见 [`docs/context-policy-decision-matrix.md`](docs/context-policy-decision-matrix.md)；发布前自动化与人工验收见 [`docs/release-acceptance.md`](docs/release-acceptance.md)。
+稳定架构详见 [`docs/architecture.md`](docs/architecture.md)；Context 选择决策矩阵见 [`docs/context-policy-decision-matrix.md`](docs/context-policy-decision-matrix.md)；作者记忆边界见 [`docs/author-memory-boundary.md`](docs/author-memory-boundary.md)；细纲—正文重合边界见 [`docs/outline-copy-boundary.md`](docs/outline-copy-boundary.md)；发布前自动化与人工验收见 [`docs/release-acceptance.md`](docs/release-acceptance.md)。
 
 ## 2. 事实源与投影
 

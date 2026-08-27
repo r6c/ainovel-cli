@@ -4,7 +4,7 @@
 
 - Git 基线：`f0498b8 设计：明确作者记忆与用户规则边界`
 - 稳定版本：`v0.1.2`
-- 工作区：干净；AB4 作者记忆边界设计已完成，下一阶段为 AB5。
+- 工作区：AB5 细纲照搬边界评估待提交；下一阶段为 AB6。
 - 项目定位：本地文件系统驱动、可恢复、可审计的 AI 小说创作运行时。
 - 核心边界：模型负责开放语义；代码负责状态、约束、事务、恢复和验证。
 
@@ -100,6 +100,22 @@ AB2 的新回归覆盖：
 当前章节字数采用单一口径：`domain.WordCount` 先执行 `NormalizeChapterContent`（去 BOM、CRLF/CR 统一为 LF），再按 Unicode rune 计数。DraftStore、`draft_chapter`、Commit 和 Revision Projector 已统一使用该函数；`generated/imported/user` 仅决定生成篇幅门禁是否适用。`generated` 继续只拒绝超过明确单章目标 120% 的正文，`imported/user` 保留原文且不受生成门禁约束；不引入第二套 `visible_chars_v1`、Length Service 或压缩状态。
 
 新增回归覆盖 BOM/CRLF 的 Domain、Draft、Tool 和 Projector 路径。`Checkpoint` 只记录工件摘要，不定义字数口径。
+
+## AB5 细纲照搬输入可得性结论
+
+同章比较所需的两类输入已经存在：`domain.OutlineEntry` 提供 `Title/CoreEvent/Hook/Scenes`，`domain.ChapterRecord.Content` 保存已接纳正文。它们可以通过章号配对，但不能直接使用大纲 Markdown 投影，因为投影包含格式标签、固定字段名和人类可读装饰。
+
+本阶段只建立误报边界，不实现检测规则。以下内容默认不能单凭连续重合判定为照搬：章节标题、角色/组织/地点专名、系统提示、用户明确要求保留的锚句、必要的任务清单和事实性短语。真正候选只能是超过最小长度、位于同章大纲与正文、且没有明显叙事功能的连续文字重合。
+
+如果后续实现，只能输出 advisory，不能阻断 Commit，不能清洗 Import 原文，也不能复制外部 JavaScript。
+
+当前 Go/No-Go：No-Go。虽然同章输入可得，但没有足够自有标注样本证明连续 15 字阈值误报可控；当前只提交边界文档和输入配对测试，不进入运行时实现。
+
+## AB5 细纲照搬输入可得性结论
+
+同章比较所需的 `OutlineEntry` 与 `ChapterRecord.Content` 已通过真实 Store 公共接口验证可读并按章节号配对。已建立 `docs/outline-copy-boundary.md`，锁定标题、专名、固定台词、系统提示、任务清单和事实锚点等误报边界。
+
+当前 Go/No-Go：No-Go。没有足够自有标注样本证明连续 15 字阈值误报可控，因此不实现运行时 `outline_copy` advisory，不扩展 `rules.Lint` 输入、不阻断 Commit、不清洗 imported/user 原文、不复制外部 JavaScript。
 
 ## AB4 作者记忆边界结论
 
