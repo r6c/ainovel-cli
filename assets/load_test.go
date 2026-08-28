@@ -51,6 +51,15 @@ func TestLoad_NoOverrides(t *testing.T) {
 	}
 }
 
+func TestWriterPromptDescribesReaderRevealPayloadDiscipline(t *testing.T) {
+	writer := mustRead(promptsFS, "prompts/writer.md")
+	for _, phrase := range []string{"`reveal_to_reader` 只能携带已有知识 ID", "不得携带 truth/character/belief", "未知知识 ID 不得自行创造"} {
+		if !strings.Contains(writer, phrase) {
+			t.Fatalf("Writer 提示缺少 reader reveal 载荷纪律 %q", phrase)
+		}
+	}
+}
+
 func TestKnowledgePromptsDescribeTruthAndLearningBoundaries(t *testing.T) {
 	writer := mustRead(promptsFS, "prompts/writer.md")
 	for _, phrase := range []string{"knowledge_boundaries", "establish", "believe", "learn", "reveal_to_reader", "越权知情", "读者已知", "错误信念", "纠正"} {

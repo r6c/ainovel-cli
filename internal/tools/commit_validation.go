@@ -2,6 +2,8 @@ package tools
 
 import (
 	"fmt"
+	"sort"
+	"strings"
 
 	"github.com/voocel/ainovel-cli/internal/chapterfacts"
 	"github.com/voocel/ainovel-cli/internal/domain"
@@ -76,6 +78,30 @@ func (t *CommitChapterTool) validateCommitArgs(a commitArgs) error {
 		entries, err := t.store.World.LoadKnowledgeState()
 		if err != nil {
 			return fmt.Errorf("load knowledge state: %w: %w", errs.ErrStoreRead, err)
+		}
+		knownIDs := make(map[string]struct{}, len(entries)+len(a.KnowledgeUpdates))
+		for _, entry := range entries {
+			knownIDs[entry.ID] = struct{}{}
+		}
+		for _, update := range a.KnowledgeUpdates {
+			if update.Action != "establish" {
+				if _, ok := knownIDs[update.ID]; !ok {
+					available := make([]string, 0, len(knownIDs))
+					for id := range knownIDs {
+						available = append(available, id)
+					}
+					sort.Strings(available)
+					availableText := strings.Join(available, ", ")
+					if availableText == "" {
+						availableText = "无"
+					}
+					return fmt.Errorf("knowledge id %q 尚未建立；当前已有知识 ID：%s。请复用已有 ID；如果这是本章新真相，先在同一 payload 中提交 establish，再提交 %s: %w",
+						update.ID, availableText, update.Action, errs.ErrToolPrecondition)
+				}
+			}
+			if update.Action == "establish" {
+				knownIDs[update.ID] = struct{}{}
+			}
 		}
 		// 章节可见性与生命周期都由纯 Apply 裁决；完整投影必须保留，才能在早期
 		// 返工 establish 同 ID 时发现后续章节已建立的冲突 Truth。

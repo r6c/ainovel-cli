@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/voocel/ainovel-cli/internal/domain"
@@ -321,6 +322,48 @@ func TestCommitChapterRejectsRevealingUnknownKnowledgeBeforePending(t *testing.T
 	}
 	if pending, err := s.Signals.LoadPendingCommit(); err != nil || pending != nil {
 		t.Fatalf("unknown reader reveal must fail before pending: pending=%+v err=%v", pending, err)
+	}
+}
+
+func TestCommitChapterUnknownKnowledgeErrorIsActionable(t *testing.T) {
+	s := store.NewStore(t.TempDir())
+	if err := s.Init(); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Progress.Init(2); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Progress.UpdatePhase(domain.PhaseWriting); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.World.UpdateKnowledge(1, []domain.KnowledgeUpdate{{
+		ID: "K01", Action: "establish", Truth: "已建立的真相",
+	}}); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Progress.MarkChapterComplete(1, 1000, "", ""); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Drafts.SaveDraft(2, "第二章正文，发现异常并决定继续调查。 "); err != nil {
+		t.Fatal(err)
+	}
+
+	args, _ := json.Marshal(map[string]any{
+		"chapter": 2, "title": "第二章", "summary": "发现异常",
+		"characters": []string{"林墨"}, "key_events": []string{"继续调查"},
+		"knowledge_updates": []map[string]any{{"id": "K02", "action": "reveal_to_reader"}},
+	})
+	_, err := newTestCommitChapterTool(s).Execute(context.Background(), args)
+	if err == nil {
+		t.Fatal("unknown knowledge must fail")
+	}
+	message := err.Error()
+	if !strings.Contains(message, "K02") || !strings.Contains(message, "K01") ||
+		!strings.Contains(message, "establish") || !strings.Contains(message, "已有知识 ID") {
+		t.Fatalf("unknown knowledge error should explain how to repair the payload, got %q", message)
+	}
+	if pending, loadErr := s.Signals.LoadPendingCommit(); loadErr != nil || pending != nil {
+		t.Fatalf("unknown knowledge must fail before pending: pending=%+v err=%v", pending, loadErr)
 	}
 }
 
