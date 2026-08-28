@@ -427,3 +427,53 @@ git diff --check
 - `go test ./...`、`go vet ./...`、关键 Race、`git diff --check`。
 
 结果：已通过；`novel_context` 的 Architect 无 chapter 请求与基础设定写工具串行，stale fingerprint 作为 `foundation_ready=false` 的结构化可修正结果返回；章节上下文仍保持并发安全。
+
+# 里程碑 AD：选择性融入 lieflat-less-ai-tone 边界
+
+状态：`complete`
+
+目标：把外部仓库中可复核的反误报方法整合进现有唯一 `anti-ai-tone` 参考资产；不安装第二个 Skill，不复制外部长文本/脚本，不新增 Python 运行时或自动改写管线。
+
+## AD1：来源与许可证边界
+
+状态：`complete`
+
+- 已核对 `SKILL.md`、`RESEARCH.en.md`、README 和 MIT 许可证。
+- 只采用 clean-room 设计摘要与本项目自有表述；外部统计数字不作为项目硬规则。
+- 保留现有 `assets/references/anti-ai-tone.md` 作为唯一规则资产。
+
+## AD2：规则边界整合
+
+状态：`in_progress`
+
+只整合以下直属增量：
+
+- 密集顿号：只关注同一分句中无必要的三项以上空清单；法规、任务清单、物证和叙事推进不误报。
+- 翻译腔：只列五种可定位结构——过长前置定语、前置“当……时”、前置话题壳、句首连接词路标、“这意味着/这表明”复述；不扩展到被动句、名词化和长句本身。
+- 具体数据：已有数字、时间和事实存在时，不得被“显著/大幅/大量”等概括覆盖；没有原文数据时不得补造。
+- 证据纪律：任何统计或算子先抽查至少 20 个命中实例，再决定是否纳入规则；无法抽查时只能作为假设。
+
+这些仍是 Writer/Editor 的语义参考，不是 `rules.Lint` 自动规则或 Commit 硬门禁。
+
+## AD3：资源契约与反误报回归
+
+状态：`complete`
+
+- 资源测试锁定新增边界。
+- 反例测试锁定短句、问句、比喻、句内排比、正常总分冒号、任务清单和叙事推进不被泛化处理。
+
+## AD4：文档、全量验证与收口
+
+状态：`complete`
+
+- 同步 `CONTEXT.md`、README、评测说明、发现与进度。
+- 运行 assets、rules、全量测试、vet、Race、diff、链接和许可证检查。
+- 使用中文提交；不安装外部 Skill。
+
+## 本轮不做
+
+- 不安装 `lieflat-less-ai-tone`。
+- 不复制 `SKILL.md`、研究长文或 Python 脚本。
+- 不把统计数字写成平台/模型硬规则。
+- 不把语义候选加入 `rules.Lint` 或 Commit 门禁。
+- 不修改正文、不调用 Provider。

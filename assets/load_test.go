@@ -115,6 +115,7 @@ func TestAntiAIToneReferenceUsesCalibratedNovelBoundaries(t *testing.T) {
 	for _, phrase := range []string{
 		"AI 来源判据", "一般审美问题", "目标风格优先", "信息守恒", "叙事功能优先",
 		"段首零回指评论", "提示性冒号", "理想化职业人格喻体",
+		"密集顿号并列", "五类翻译腔", "已有具体数据", "证据先于统计", "20 个实际命中实例",
 		"短句或短段本身", "问句本身", "比喻本身", "句内排比本身",
 	} {
 		if !strings.Contains(ref, phrase) {

@@ -228,3 +228,11 @@ AC 实施结果：
 3. Context 决策可见性：仅在真实失败样本出现后，以测试/诊断模式提供排除原因，不改变公共 JSON。
 
 当前均为后续候选，不在 AC 收口中实现。
+
+## AD：lieflat-less-ai-tone 选择性吸收结果
+
+截至 2026-08-28，已读取外部仓库 main 的 `SKILL.md`、`RESEARCH.en.md`、README 与 MIT License。没有安装 Skill、运行 Python 脚本或复制外部代码/长文本。
+
+选择性吸收进入现有唯一 `assets/references/anti-ai-tone.md` 的内容：密集顿号只指无功能空清单；翻译腔只限五类可定位结构；已有具体数据不得被概括表述覆盖；新增统计/算子先检查至少 20 个实际命中实例。它们均为 Writer/Editor 的语义参考，不是 AI 来源检测、自动改写或 Commit 硬门禁。
+
+已通过资源契约和全量门禁。由于本轮没有把外部统计语料或阈值作为本项目证据，因此没有新增 `rules.Lint` 规则、Python 依赖或第二条去 AI 味管线。

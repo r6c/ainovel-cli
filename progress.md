@@ -133,3 +133,10 @@ AB2 结果：`LatestCompleted()` 已统一接入最大完成章语义；分层�
 - AC4：已完成发布说明头部元数据和空范围回归。
 - AC5：已完成后续候选规划；下一候选为 Import 评测证据可复核性，随后是模型入口 Usage 契约，Context 决策可见性仅在真实失败样本出现后深化。
 - AC6：全量测试、vet、Race、Shell、YAML、文档和敏感信息门禁已通过，待提交收口。
+
+## AD：选择性融入 lieflat-less-ai-tone（2026-08-28）
+
+- 已读取外部 `SKILL.md`、`RESEARCH.en.md`、README 与 MIT License；未安装 Skill、未运行其脚本、未复制代码或长文本。
+- 已将密集顿号空清单、五类可定位翻译腔、具体数据保真和“先抽查命中实例”边界整合到现有唯一 `assets/references/anti-ai-tone.md`。
+- 资源契约、规则包、全量测试、vet、Race 和 diff 检查通过。
+- 未新增 `rules.Lint` 规则、自动改写、Commit 硬门禁、Python 运行时或第二条 AI 味管线。
