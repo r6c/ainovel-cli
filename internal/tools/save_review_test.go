@@ -476,6 +476,59 @@ func arcReviewArgs(t *testing.T, issueChapter int) []byte {
 	return args
 }
 
+func TestSaveReviewExplainsNonEndpointArcReview(t *testing.T) {
+	s := store.NewStore(t.TempDir())
+	if err := s.Init(); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Progress.Init(5); err != nil {
+		t.Fatal(err)
+	}
+	volumes := []domain.VolumeOutline{{
+		Index: 1,
+		Arcs: []domain.ArcOutline{
+			{Index: 1, Chapters: []domain.OutlineEntry{{Title: "一"}, {Title: "二"}, {Title: "三"}}},
+			{Index: 2, Chapters: []domain.OutlineEntry{{Title: "四"}, {Title: "五"}}},
+		},
+	}}
+	if err := s.Outline.SaveLayeredOutline(volumes); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Outline.SaveOutline(domain.FlattenOutline(volumes)); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Progress.SetLayered(true); err != nil {
+		t.Fatal(err)
+	}
+	for chapter := 1; chapter <= 5; chapter++ {
+		if err := s.Progress.MarkChapterComplete(chapter, 100, "", ""); err != nil {
+			t.Fatal(err)
+		}
+	}
+	args, err := json.Marshal(map[string]any{
+		"chapter": 2,
+		"scope":   "arc",
+		"dimensions": []map[string]any{{
+			"dimension": "pacing", "score": 70, "comment": "第二章节奏拖沓",
+		}},
+		"issues": []map[string]any{{
+			"type": "pacing", "severity": "error", "description": "冲突进入过晚", "evidence": "第二章前半没有推进",
+			"suggestion": "压缩铺垫", "chapters": []int{2}, "requires_change": true,
+		}},
+		"verdict": "polish",
+		"summary": "需要压缩一处铺垫",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := NewSaveReviewTool(s).Execute(context.Background(), args); err == nil ||
+		!strings.Contains(err.Error(), "不是弧末章节") ||
+		!strings.Contains(err.Error(), "scope=global") {
+		t.Fatalf("expected actionable non-endpoint arc error, got %v", err)
+	}
+}
+
 func TestSaveReviewRejectsIssueOutsideArcSpan(t *testing.T) {
 	s := setupArcReviewStore(t)
 	if _, err := NewSaveReviewTool(s).Execute(context.Background(), arcReviewArgs(t, 2)); err == nil || !strings.Contains(err.Error(), "outside 3-4") {

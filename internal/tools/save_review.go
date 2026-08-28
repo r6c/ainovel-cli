@@ -25,6 +25,7 @@ func NewSaveReviewTool(store *store.Store) *SaveReviewTool {
 func (t *SaveReviewTool) Name() string { return "save_review" }
 func (t *SaveReviewTool) Description() string {
 	return "保存审阅结果并更新流程状态。verdict 为 accept/polish/rewrite 之一。" +
+		"scope=chapter 用于单章，scope=global 用于指定多章或全局审阅；scope=arc 仅用于明确给出起止范围且 chapter 是弧末的完整弧级审阅。" +
 		"Editor 依据完整上下文作出 verdict，工具只校验事实并原子更新 Progress。" +
 		"返回结构化事实：verdict / affected_chapters / next_flow / next_chapter"
 }
@@ -169,7 +170,10 @@ func (t *SaveReviewTool) normalizeReviewEntry(r *domain.ReviewEntry) (*store.Arc
 			return nil, fmt.Errorf("check arc scope: %w", err)
 		}
 		if boundary == nil || !boundary.IsArcEnd || boundary.EndChapter != r.Chapter {
-			return nil, fmt.Errorf("arc review chapter must be an arc endpoint")
+			if boundary != nil && boundary.EndChapter > 0 {
+				return nil, fmt.Errorf("第 %d 章不是弧末章节；当前弧范围为第 %d-%d 章，弧末是第 %d 章。多章返工请使用 scope=global，单章返工请使用 scope=chapter", r.Chapter, boundary.StartChapter, boundary.EndChapter, boundary.EndChapter)
+			}
+			return nil, fmt.Errorf("第 %d 章不是可用的弧末章节；多章返工请使用 scope=global，单章返工请使用 scope=chapter", r.Chapter)
 		}
 	}
 

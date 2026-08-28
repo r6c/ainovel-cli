@@ -168,6 +168,19 @@ func TestLoadIncludesBoundedFanqieRubricAndOverrides(t *testing.T) {
 	}
 }
 
+func TestEditorPromptExplainsReviewScopeSelection(t *testing.T) {
+	editor := mustRead(promptsFS, "prompts/editor.md")
+	for _, phrase := range []string{
+		"多章返工改用 `scope=global`",
+		"单章返工改用 `scope=chapter`",
+		"只有任务明确给出弧的起止章节和弧末章节",
+	} {
+		if !strings.Contains(editor, phrase) {
+			t.Fatalf("Editor 提示缺少评审范围规则 %q", phrase)
+		}
+	}
+}
+
 func TestEditorPromptKeepsPlatformRubricInsideExistingDimensions(t *testing.T) {
 	editor := mustRead(promptsFS, "prompts/editor.md")
 	for _, phrase := range []string{"platform_rubric", "官方可核事实", "产品软评价", "现有七维", "不得新增平台维度", "不得单独决定 verdict"} {
