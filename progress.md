@@ -2,6 +2,15 @@
 
 ## 当前会话
 
+### `/start` 基础设定审查循环修复（2026-08-28）
+
+- 已确认 `FoundationFingerprint` 是纯读且连续读取稳定；循环根因在于 Architect 无 chapter 的 `novel_context` 曾声明可与基础设定写工具并发，以及 stale fingerprint 工具结果不足以让模型直接获得当前值。
+- 修复：Architect 无 chapter 的 `novel_context` 串行调度；章节 Context 仍保持并发安全。
+- 修复：`audit_foundation` 过期 fingerprint 返回 `foundation_ready=false`、`current_fingerprint` 和 `next_action` 的普通工具结果，不再以 `result + error` 返回（Agent Core 会丢弃 result）。
+- Prompt 规则同步：遇到 `stale_foundation_fingerprint` 直接使用 `current_fingerprint`，不得重复旧 fingerprint。
+- 定向、全量、`go vet` 和关键 Race 已通过；用户大纲未写入项目。
+
+
 - 日期：2026-08-27
 - 基线：AC 发布基线一致性门禁待提交
 - 当前里程碑：发布基线一致性门禁

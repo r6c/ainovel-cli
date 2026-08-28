@@ -74,7 +74,17 @@ func (t *AuditFoundationTool) Execute(_ context.Context, args json.RawMessage) (
 		return nil, fmt.Errorf("fingerprint foundation: %w: %w", errs.ErrStoreRead, err)
 	}
 	if audit.Fingerprint != current {
-		return nil, fmt.Errorf("基础设定已发生变化；请重新调用 novel_context 获取最新 fingerprint 后再审查: %w", errs.ErrToolConflict)
+		result, marshalErr := json.Marshal(map[string]any{
+			"error":               "stale_foundation_fingerprint",
+			"foundation_ready":    false,
+			"message":             "基础设定已发生变化，请使用当前 fingerprint 重新调用 audit_foundation。",
+			"current_fingerprint": current,
+			"next_action":         "重新调用 novel_context，读取 foundation_status.fingerprint 后原样传回",
+		})
+		if marshalErr != nil {
+			return nil, fmt.Errorf("marshal stale fingerprint result: %w: %w", marshalErr, errs.ErrStoreRead)
+		}
+		return result, nil
 	}
 	if audit.Ready && len(audit.Issues) > 0 {
 		return nil, fmt.Errorf("ready=true 时 issues 必须为空: %w", errs.ErrToolArgs)

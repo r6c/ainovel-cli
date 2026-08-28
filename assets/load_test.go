@@ -173,6 +173,19 @@ func TestEditorPromptKeepsPlatformRubricInsideExistingDimensions(t *testing.T) {
 	}
 }
 
+func TestArchitectPromptsRecoverStaleFoundationFingerprint(t *testing.T) {
+	for name, prompt := range map[string]string{
+		"architect_short": mustRead(promptsFS, "prompts/architect-short.md"),
+		"architect_long":  mustRead(promptsFS, "prompts/architect-long.md"),
+	} {
+		for _, phrase := range []string{"stale_foundation_fingerprint", "current_fingerprint", "不要重复提交旧 fingerprint"} {
+			if !strings.Contains(prompt, phrase) {
+				t.Fatalf("%s 提示缺少 fingerprint 恢复纪律 %q", name, phrase)
+			}
+		}
+	}
+}
+
 func TestWriterAndArchitectPromptsTreatPlatformRubricAsConditionalSoftReference(t *testing.T) {
 	for name, prompt := range map[string]string{
 		"writer":          mustRead(promptsFS, "prompts/writer.md"),

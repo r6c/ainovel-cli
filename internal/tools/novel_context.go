@@ -95,9 +95,15 @@ func (t *ContextTool) Description() string {
 }
 func (t *ContextTool) Label() string { return "加载上下文" }
 
-// 纯读工具，可被并发调度。
-func (t *ContextTool) ReadOnly(_ json.RawMessage) bool        { return true }
-func (t *ContextTool) ConcurrencySafe(_ json.RawMessage) bool { return true }
+// 章节上下文只读且可并发；Architect 的无 chapter 基础设定快照包含审查 fingerprint，
+// 必须与 save_foundation/audit_foundation 等写工具串行，避免读到写入前的旧版本。
+func (t *ContextTool) ReadOnly(_ json.RawMessage) bool { return true }
+func (t *ContextTool) ConcurrencySafe(args json.RawMessage) bool {
+	var a struct {
+		Chapter int `json:"chapter"`
+	}
+	return json.Unmarshal(args, &a) == nil && a.Chapter > 0
+}
 
 func (t *ContextTool) Schema() map[string]any {
 	return schema.Object(

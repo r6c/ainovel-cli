@@ -38,6 +38,17 @@ func completeShortFoundation(t *testing.T) *store.Store {
 	return s
 }
 
+func TestArchitectContextSerializesWithFoundationWrites(t *testing.T) {
+	s := completeShortFoundation(t)
+	contextTool := newTestContextTool(s, References{}, "default")
+	if contextTool.ConcurrencySafe(json.RawMessage(`{}`)) {
+		t.Fatal("architect context must serialize with save_foundation/audit_foundation writes")
+	}
+	if !contextTool.ConcurrencySafe(json.RawMessage(`{"chapter":1}`)) {
+		t.Fatal("chapter context should remain concurrency-safe")
+	}
+}
+
 func TestAuditFoundationControlsWritingTransition(t *testing.T) {
 	s := completeShortFoundation(t)
 	tool := NewAuditFoundationTool(s)
@@ -136,10 +147,120 @@ func TestAuditFoundationRejectsStaleFingerprint(t *testing.T) {
 	if err := s.Outline.SavePremise("# 已修改的版本"); err != nil {
 		t.Fatal(err)
 	}
+	current, err := s.FoundationFingerprint()
+	if err != nil {
+		t.Fatal(err)
+	}
 	args, _ := json.Marshal(map[string]any{
 		"fingerprint": fingerprint, "ready": true, "summary": "通过", "issues": []any{},
 	})
-	if _, err := NewAuditFoundationTool(s).Execute(context.Background(), args); err == nil || !strings.Contains(err.Error(), "重新调用 novel_context") {
-		t.Fatalf("expected stale fingerprint rejection, got %v", err)
+	result, err := NewAuditFoundationTool(s).Execute(context.Background(), args)
+	if err != nil {
+		t.Fatalf("stale fingerprint should return a correction result: %v", err)
+	}
+	if !strings.Contains(string(result), "重新调用 novel_context") ||
+		!strings.Contains(string(result), current) {
+		t.Fatalf("stale result should include refresh guidance and current fingerprint: %s", result)
+	}
+}
+
+func TestAuditFoundationReturnsStructuredStaleFingerprint(t *testing.T) {
+	s := completeShortFoundation(t)
+	stale, err := s.FoundationFingerprint()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Outline.SavePremise("# 已修改的版本"); err != nil {
+		t.Fatal(err)
+	}
+	current, err := s.FoundationFingerprint()
+	if err != nil {
+		t.Fatal(err)
+	}
+	args, _ := json.Marshal(map[string]any{
+		"fingerprint": stale, "ready": true, "summary": "通过", "issues": []any{},
+	})
+	result, err := NewAuditFoundationTool(s).Execute(context.Background(), args)
+	if err != nil {
+		t.Fatalf("stale fingerprint should be a structured correction result, got error: %v", err)
+	}
+	var payload struct {
+		Error              string `json:"error"`
+		CurrentFingerprint string `json:"current_fingerprint"`
+		NextAction         string `json:"next_action"`
+	}
+	if err := json.Unmarshal(result, &payload); err != nil {
+		t.Fatal(err)
+	}
+	if payload.Error != "stale_foundation_fingerprint" || payload.CurrentFingerprint != current || payload.NextAction == "" {
+		t.Fatalf("structured stale result = %+v, want current fingerprint %q", payload, current)
+	}
+}
+
+func TestAuditFoundationAcceptsFingerprintReturnedByNovelContext(t *testing.T) {
+	s := completeShortFoundation(t)
+	stale, err := s.FoundationFingerprint()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Outline.SavePremise("# 已修改的版本"); err != nil {
+		t.Fatal(err)
+	}
+
+	contextRaw, err := newTestContextTool(s, References{}, "default").Execute(
+		context.Background(), json.RawMessage(`{}`),
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var contextPayload struct {
+		Foundation struct {
+			Status struct {
+				Fingerprint string `json:"fingerprint"`
+			} `json:"foundation_status"`
+		} `json:"foundation_memory"`
+	}
+	if err := json.Unmarshal(contextRaw, &contextPayload); err != nil {
+		t.Fatal(err)
+	}
+	current := contextPayload.Foundation.Status.Fingerprint
+	if current == "" || current == stale {
+		t.Fatalf("novel_context fingerprint = %q, stale = %q", current, stale)
+	}
+
+	args, _ := json.Marshal(map[string]any{
+		"fingerprint": current, "ready": true, "summary": "通过", "issues": []any{},
+	})
+	if _, err := NewAuditFoundationTool(s).Execute(context.Background(), args); err != nil {
+		t.Fatalf("fingerprint returned by novel_context should be accepted: %v", err)
+	}
+}
+
+func TestAuditFoundationRejectsFingerprintThatIsOnlyPartiallyRefreshed(t *testing.T) {
+	s := completeShortFoundation(t)
+	stale, err := s.FoundationFingerprint()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Outline.SavePremise("# 已修改的版本"); err != nil {
+		t.Fatal(err)
+	}
+	args, _ := json.Marshal(map[string]any{
+		"fingerprint": stale, "ready": true, "summary": "通过", "issues": []any{},
+	})
+	result, err := NewAuditFoundationTool(s).Execute(context.Background(), args)
+	if err != nil {
+		t.Fatalf("stale fingerprint should return a correction result: %v", err)
+	}
+	var payload struct {
+		Error              string `json:"error"`
+		FoundationReady    bool   `json:"foundation_ready"`
+		CurrentFingerprint string `json:"current_fingerprint"`
+	}
+	if err := json.Unmarshal(result, &payload); err != nil {
+		t.Fatal(err)
+	}
+	if payload.Error != "stale_foundation_fingerprint" || payload.FoundationReady || payload.CurrentFingerprint == "" {
+		t.Fatalf("stale fingerprint result = %+v, want non-ready correction", payload)
 	}
 }

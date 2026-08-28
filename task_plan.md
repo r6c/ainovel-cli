@@ -398,3 +398,32 @@ git diff --check
 ```
 
 本里程碑不创建标签、不推送、不发布远端；完成后另行决定版本基线。
+
+## 当前修复：/start 基础设定审查循环
+
+状态：`complete`
+
+最近修复：
+
+- Architect 无 chapter 的 `novel_context` 与基础设定写工具串行；章节 Context 保持并发。
+- stale fingerprint 返回结构化 `foundation_ready=false/current_fingerprint/next_action`，避免 Agent Core 丢弃可修正结果。
+- Architect Prompt 明确消费 `current_fingerprint`，不得重提旧值。
+
+
+目标：修复 Architect 在 `/start <大纲文件>` 初始规划中反复收到旧 foundation fingerprint，导致 `audit_foundation` 持续返回 tool conflict 的循环。
+
+已确认的最小方向：
+
+- `FoundationFingerprint` 只读且连续读取稳定；
+- Architect 的无 `chapter` `novel_context` 必须与 `save_foundation`/`audit_foundation` 串行；章节上下文继续允许并发；
+- 过期 fingerprint 不应以 `result + error` 返回，因为 Agent Core 会丢弃 result；应返回 `foundation_ready=false`、`current_fingerprint` 和 `next_action` 的普通工具结果；
+- 不放宽 fingerprint 校验，不修改用户上传的大纲，不新增状态机或重试服务。
+
+验证门禁：
+
+- `novel_context → audit_foundation` 新鲜 fingerprint 公共链；
+- stale fingerprint 结构化修正结果；
+- Architect/章节 Context 调度安全；
+- `go test ./...`、`go vet ./...`、关键 Race、`git diff --check`。
+
+结果：已通过；`novel_context` 的 Architect 无 chapter 请求与基础设定写工具串行，stale fingerprint 作为 `foundation_ready=false` 的结构化可修正结果返回；章节上下文仍保持并发安全。
